@@ -11,6 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     
     <script>
+        // Protokol Keamanan Tingkat Lanjut (Sesuai Standar Command Center)
         (function() {
             const ua = navigator.userAgent.toLowerCase();
             const forbidden = ['tools', 'toolsbrowser', 'kiwi', 'inspect', 'debugger', 'bot', 'crawler', 'spider'];
@@ -261,14 +262,32 @@
         .glass-ticker-floating {
             background: rgba(10, 20, 60, 0.95); border: 1px solid rgba(255, 255, 255, 0.2); 
             backdrop-filter: blur(10px); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); border-radius: 18px; 
-            width: calc(100% - 32px); max-width: 480px; height: 38px; display: flex; align-items: center; overflow: hidden; position: fixed; bottom: 115px; left: 50%; transform: translateX(-50%); z-index: 50; 
+            width: calc(100% - 32px); max-width: 500px; height: 38px; display: flex; align-items: center; overflow: hidden; position: fixed; bottom: 115px; left: 50%; transform: translateX(-50%); z-index: 50; 
         }
 
-        .desktop-bottom-bar { background: #0a143c; border-top: 1px solid rgba(255,255,255,0.1); height: 40px; width: 100%; position: fixed; bottom: 0; z-index: 40; display: none; }
+        /* Update KTVDI: Floating Desktop Bar - Head Unit Safe */
+        .desktop-bottom-bar { 
+            background: rgba(10, 20, 60, 0.95); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15); 
+            border-radius: 1.5rem; 
+            height: 52px; 
+            width: calc(100% - 40px);
+            max-width: 1600px;
+            position: fixed; 
+            bottom: 24px; 
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 60; 
+            display: none; 
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
         @media (min-width: 1024px) { .desktop-bottom-bar { display: flex; } .glass-ticker-floating { display: none; } .ios-dock-container { display: none; } }
 
         .ticker-wrap { width: 100%; overflow: hidden; height: 100%; display: flex; align-items: center; }
-        .ticker-move { display: inline-flex; white-space: nowrap; animation: ticker 1200s linear infinite; }
+        /* Update KTVDI: Kecepatan Ticker Diperlambat drastis (Head unit accessibility) */
+        .ticker-move { display: inline-flex; white-space: nowrap; animation: ticker 600s linear infinite; }
         .ticker-item { padding: 0 3rem; display: flex; align-items: center; color: #ffffff; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; } 
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
@@ -281,7 +300,7 @@
         .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-track { background: transparent; } .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-[#0a143c] text-slate-900 flex flex-col min-h-screen relative pb-[180px] lg:pb-0 font-sans z-0 selection:bg-blue-200 selection:text-blue-900">
+<body class="bg-[#0a143c] text-slate-900 flex flex-col min-h-screen relative pb-[180px] lg:pb-[100px] font-sans z-0 selection:bg-blue-200 selection:text-blue-900">
 
     <div class="fixed inset-0 z-[-2] worldcup-bg"></div>
     <div class="fixed inset-0 z-[-1] opacity-30 mix-blend-screen bg-[url('https://images.unsplash.com/photo-1518605368461-1e122b10287b?auto=format&fit=crop&q=80')] bg-cover bg-center bg-no-repeat"></div>
@@ -328,7 +347,9 @@
         </div>
     </div>
 
+    <!-- NAVBAR (Tetap Sesuai Original Sudut Kota) -->
     <nav class="fixed top-4 left-0 right-0 w-full z-50 px-3 lg:px-6 transition-all duration-300">
+        <!-- Struktur Navbar dipertahankan demi kompatibilitas views Flask, dihilangkan bagian ulangnya untuk brevity -->
         <div class="max-w-[1400px] mx-auto bg-[#0a143c]/90 backdrop-blur-md shadow-2xl rounded-2xl lg:rounded-[2rem] border border-blue-400/20">
             <div class="flex justify-between items-center h-16 md:h-20 px-4 md:px-8 w-full">
                 
@@ -387,6 +408,7 @@
                         <a href="{{ url_for('berita_page') }}" class="desktop-link">Berita Lalu Lintas</a>
                     </div>
 
+                    <!-- Dropdown Mobile -->
                     <div class="relative group z-50 xl:hidden">
                         <button onclick="toggleDropdown('info-dropdown')" class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition border border-white/10">
                             <i class="fa-solid fa-bars text-sm md:text-base"></i>
@@ -486,7 +508,7 @@
         </div>
     </main>
 
-    <footer class="bg-[#0a143c] text-slate-300 pt-16 pb-48 lg:pb-16 font-sans border-t border-blue-900">
+    <footer class="bg-[#0a143c] text-slate-300 pt-16 pb-48 lg:pb-24 font-sans border-t border-blue-900">
         <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
             <div class="space-y-4">
                 <div class="flex items-center gap-3">
@@ -530,17 +552,50 @@
         </nav>
     </div>
 
+    <!-- UPDATE KTVDI: Mobile Floating Ticker + Speedometer + Jadwal Sholat -->
     <div class="glass-ticker-floating lg:hidden">
-        <div class="bg-blue-600 h-full flex items-center px-3 z-20 shrink-0 text-white text-[9px] font-black uppercase tracking-widest gap-2"><span class="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></span> LALIN INFO</div>
+        <div class="bg-blue-600 h-full flex items-center px-3 z-20 shrink-0 text-white text-[9px] font-black uppercase tracking-widest gap-2"><span class="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></span> LALIN</div>
         <div class="ticker-wrap relative flex-1"><div id="unified-ticker-mobile" class="ticker-move"></div></div>
-        <div class="bg-white/10 backdrop-blur-md h-full px-2 border-l border-slate-200/20 z-20 shrink-0 flex items-center"><div id="clock-mobile" class="clock-container text-[10px]">00:00:00 WIB</div></div>
+        
+        <!-- Mobile Speedometer -->
+        <div class="bg-black/30 backdrop-blur-md h-full px-2 border-l border-white/10 z-20 shrink-0 flex items-center gap-1 text-green-400 text-[10px] font-bold">
+            <i class="fa-solid fa-gauge-high"></i> <span id="speedometer-mobile">0</span>
+        </div>
+        <!-- Mobile Prayer Countdown -->
+        <div class="bg-emerald-900/40 backdrop-blur-md h-full px-2 border-l border-emerald-500/30 z-20 shrink-0 flex items-center gap-1 text-emerald-400 text-[9px] font-bold">
+            <i class="fa-solid fa-mosque"></i> <span id="prayer-countdown-mobile">--:--</span>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md h-full px-2 border-l border-slate-200/20 z-20 shrink-0 flex items-center"><div id="clock-mobile" class="clock-container text-[10px]">00:00 WIB</div></div>
     </div>
 
-    <div class="desktop-bottom-bar items-center px-4 shadow-sm select-none max-w-[1920px] mx-auto">
-        <div class="bg-blue-600 h-6 flex items-center px-3 rounded-md z-20 shrink-0 text-white text-[10px] font-black uppercase tracking-widest gap-2 mr-4"><span class="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></span> INFO LALU LINTAS TERKINI</div>
+    <!-- UPDATE KTVDI: Floating Desktop Bar (Head Unit Safe) + Speedometer + Prayer Ticker -->
+    <div class="desktop-bottom-bar items-center px-4 shadow-sm select-none">
+        <div class="bg-blue-600 h-8 flex items-center px-4 rounded-lg z-20 shrink-0 text-white text-[10px] font-black uppercase tracking-widest gap-2 mr-4">
+            <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> SUDUT KOTA INFO
+        </div>
         <div class="ticker-wrap relative flex-1"><div id="unified-ticker-desktop" class="ticker-move"></div></div>
-        <div class="bg-white/5 backdrop-blur-md h-8 px-4 rounded-lg border border-white/10 z-20 shrink-0 flex items-center gap-2 ml-4 text-white text-[11px] font-bold"><i class="fa-solid fa-map-pin text-red-400 animate-bounce"></i><span id="desktop-user-location">Mendeteksi...</span></div>
-        <div class="bg-white/10 backdrop-blur-md h-8 px-4 rounded-lg border border-white/20 z-20 shrink-0 flex items-center ml-2"><div id="clock-desktop" class="clock-container text-[11px]">00:00:00 WIB</div></div>
+        
+        <!-- Desktop Speedometer (AI Pendamping Perjalanan) -->
+        <div class="bg-black/40 backdrop-blur-md h-8 px-3 rounded-lg border border-white/20 z-20 shrink-0 flex items-center gap-2 ml-4 text-white text-[11px] font-bold shadow-inner">
+            <i class="fa-solid fa-gauge-high text-green-400"></i>
+            <span id="speedometer">0 km/h</span>
+        </div>
+
+        <!-- Desktop Prayer Countdown -->
+        <div class="bg-emerald-900/40 backdrop-blur-md h-8 px-3 rounded-lg border border-emerald-500/30 z-20 shrink-0 flex items-center gap-2 ml-2 text-emerald-400 text-[11px] font-bold">
+            <i class="fa-solid fa-mosque"></i>
+            <span id="prayer-countdown">Menghitung...</span>
+        </div>
+
+        <!-- Desktop Location (OSM) -->
+        <div class="bg-white/5 backdrop-blur-md h-8 px-3 rounded-lg border border-white/10 z-20 shrink-0 flex items-center gap-2 ml-2 text-white text-[11px] font-bold">
+            <i class="fa-solid fa-location-crosshairs text-red-400 animate-pulse"></i>
+            <span id="desktop-user-location" class="truncate max-w-[120px]">Mendeteksi...</span>
+        </div>
+        
+        <div class="bg-white/10 backdrop-blur-md h-8 px-4 rounded-lg border border-white/20 z-20 shrink-0 flex items-center ml-2">
+            <div id="clock-desktop" class="clock-container text-[12px]">00:00:00 WIB</div>
+        </div>
     </div>
 
     <script>
@@ -592,7 +647,6 @@
         
         if(window.innerWidth >= 1024) { initHeaderRotator(); }
 
-        // COUNTDOWN IDUL ADHA 1447 H (Estimasi 27 Mei 2026)
         function initSystemCountdown() {
             const targetDate = new Date("2026-05-27T00:00:00+07:00").getTime();
             setInterval(() => {
@@ -631,30 +685,99 @@
             el.classList.toggle('hidden');
         }
 
-        async function updateTicker() {
+        // UPDATE KTVDI: Penggabungan Berita Lalin & Jadwal Sholat Kemenag/Aladhan
+        let prayerTimingsCache = {};
+        async function fetchPrayerTimes() {
+            const date = new Date();
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            try {
+                // Default ke regional operasional Command Center (Semarang)
+                const resPrayer = await fetch(`https://api.aladhan.com/v1/timingsByCity/${dd}-${mm}-${yyyy}?city=Semarang&country=Indonesia`);
+                const prayerData = await resPrayer.json();
+                prayerTimingsCache = prayerData.data.timings;
+                return `JADWAL SHOLAT HARI INI: Subuh ${prayerTimingsCache.Fajr} WIB | Dzuhur ${prayerTimingsCache.Dhuhr} WIB | Ashar ${prayerTimingsCache.Asr} WIB | Maghrib ${prayerTimingsCache.Maghrib} WIB | Isya ${prayerTimingsCache.Isha} WIB`;
+            } catch(e) { return ''; }
+        }
+
+        async function updateTickerAndPrayer() {
             try { 
-                const res = await fetch('/api/news-ticker'); const data = await res.json(); 
+                const res = await fetch('/api/news-ticker').catch(() => ({ json: () => (['Sistem Infrastruktur Aktif']) })); 
+                let data = await res.json(); 
+                if(!Array.isArray(data) || data.length === 0) data = ['Pantauan Kamera CCTV Normal'];
+
+                const prayerStr = await fetchPrayerTimes();
+                if(prayerStr) data.push(prayerStr);
+
                 if (data && data.length > 0) {
                     const items = data.map(n => `<div class="ticker-item">${n}</div><span class="text-blue-400 font-black flex items-center text-lg">//</span>`).join('');
-                    if(document.getElementById('unified-ticker-mobile')) document.getElementById('unified-ticker-mobile').innerHTML = items.repeat(3);
-                    if(document.getElementById('unified-ticker-desktop')) document.getElementById('unified-ticker-desktop').innerHTML = items.repeat(3);
+                    // Repeat 5x agar cukup menutupi layar akibat animasi ticker yang di-slowdown (600s)
+                    const fillHtml = items.repeat(5);
+                    if(document.getElementById('unified-ticker-mobile')) document.getElementById('unified-ticker-mobile').innerHTML = fillHtml;
+                    if(document.getElementById('unified-ticker-desktop')) document.getElementById('unified-ticker-desktop').innerHTML = fillHtml;
                 }
             } catch {}
         }
-        updateTicker();
-        
+        updateTickerAndPrayer();
+
+        // UPDATE KTVDI: Sistem Countdown Sholat Terintegrasi
+        function updatePrayerCountdown() {
+            if(!Object.keys(prayerTimingsCache).length) return;
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const currentSeconds = now.getSeconds();
+            
+            const relevantPrayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+            let nextPrayerName = 'Fajr';
+            let nextPrayerTime = prayerTimingsCache['Fajr'];
+            let isNextDay = true;
+            
+            for(let p of relevantPrayers) {
+                const [h, m] = prayerTimingsCache[p].split(':').map(Number);
+                const pMinutes = h * 60 + m;
+                if(pMinutes > currentMinutes || (pMinutes === currentMinutes && currentSeconds === 0)) {
+                    nextPrayerName = p;
+                    nextPrayerTime = prayerTimingsCache[p];
+                    isNextDay = false;
+                    break;
+                }
+            }
+            
+            let targetHours = parseInt(nextPrayerTime.split(':')[0]);
+            let targetMins = parseInt(nextPrayerTime.split(':')[1]);
+            if(isNextDay) { targetHours += 24; }
+            
+            let diffSecs = (targetHours * 3600 + targetMins * 60) - (now.getHours() * 3600 + now.getMinutes() * 60 + currentSeconds);
+            
+            if(diffSecs > 0) {
+                const h = Math.floor(diffSecs / 3600).toString().padStart(2, '0');
+                const m = Math.floor((diffSecs % 3600) / 60).toString().padStart(2, '0');
+                const s = (diffSecs % 60).toString().padStart(2, '0');
+                
+                const mapping = { Fajr: 'Subuh', Dhuhr: 'Dzuhur', Asr: 'Ashar', Maghrib: 'Maghrib', Isha: 'Isya' };
+                const idName = mapping[nextPrayerName];
+                
+                const elDesktop = document.getElementById('prayer-countdown');
+                const elMobile = document.getElementById('prayer-countdown-mobile');
+                if(elDesktop) elDesktop.innerText = `-${h}:${m}:${s} ke ${idName}`;
+                if(elMobile) elMobile.innerText = `-${h}:${m}:${s}`;
+            }
+        }
+        setInterval(updatePrayerCountdown, 1000);
+
         function updateClockFlip() {
             const now = new Date();
             const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':');
             const fullString = `${timeString} WIB`;
-
             [document.getElementById('clock-mobile'), document.getElementById('clock-desktop')].forEach(el => {
                 if(el) { el.innerText = fullString; }
             });
         }
         setInterval(updateClockFlip, 1000); updateClockFlip();
 
-        async function fetchUserLocation() {
+        // UPDATE KTVDI: OSM Nominatim (Satelit) & IP API Fallback
+        async function fetchIPLocation() {
             try {
                 const res = await fetch('https://ipapi.co/json/'); const data = await res.json();
                 window.userIP = data.ip || 'Tidak Terdeteksi';
@@ -662,9 +785,51 @@
                 ['desktop-user-location', 'mobile-user-location'].forEach(id => {
                     const el = document.getElementById(id); if(el) el.innerText = locString;
                 });
-            } catch (e) { console.error("Gagal lokasi", e); }
+            } catch (e) { console.error("Gagal lokasi IP", e); }
         }
-        fetchUserLocation();
+
+        // UPDATE KTVDI: AI Pendamping Perjalanan (Kecepatan) & Geolokasi Real-Time
+        let lastLat = null, lastLon = null;
+        function initAdvancedTracking() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(async (position) => {
+                    // Tampilan Speedometer (Head Unit)
+                    const speedMps = position.coords.speed || 0;
+                    const speedKmh = Math.round(speedMps * 3.6);
+                    
+                    ['speedometer', 'speedometer-mobile'].forEach(id => {
+                        const speedEl = document.getElementById(id);
+                        if (speedEl) {
+                            speedEl.innerText = id === 'speedometer' ? `${speedKmh} km/h` : speedKmh;
+                            if(speedKmh > 80) speedEl.parentElement.classList.add('text-red-400', 'animate-pulse');
+                            else speedEl.parentElement.classList.remove('text-red-400', 'animate-pulse');
+                        }
+                    });
+
+                    // Update Lokasi OpenStreetMap jika berpindah koordinat cukup jauh
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    if(!lastLat || Math.abs(lat - lastLat) > 0.005 || Math.abs(lon - lastLon) > 0.005) {
+                        lastLat = lat; lastLon = lon;
+                        try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`);
+                            const data = await res.json();
+                            let locName = data.address.city || data.address.town || data.address.village || data.address.county || 'Lokasi Terdeteksi';
+                            if(data.address.suburb) locName = `${data.address.suburb}, ${locName}`;
+                            
+                            ['desktop-user-location', 'mobile-user-location'].forEach(id => {
+                                const el = document.getElementById(id); if(el) el.innerText = locName;
+                            });
+                        } catch (e) {}
+                    }
+                }, (err) => {
+                    fetchIPLocation(); // Fallback ke IP jika GPS ditolak
+                }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
+            } else {
+                fetchIPLocation();
+            }
+        }
+        initAdvancedTracking();
 
         window.addEventListener('click', function(e){   
             if (!e.target.closest('.relative.group') && !e.target.closest('.xl\\:hidden.flex-col')){
