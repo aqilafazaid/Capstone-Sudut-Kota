@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Otorisasi Petugas - Command Center Sudut Kota{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-transparent py-12 px-4 relative overflow-hidden font-sans">
+    
+    <div class="absolute top-10 left-10 w-96 h-96 bg-blue-700 rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-blob"></div>
+    <div class="absolute top-0 right-20 w-96 h-96 bg-cyan-600 rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-blob animation-delay-2000"></div>
+    <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-blue-900 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-4000"></div>
+
+    <div class="max-w-md w-full bg-[#030718]/80 backdrop-blur-xl rounded-3xl shadow-[0_0_50px_rgba(37,99,235,0.15)] border border-blue-500/30 p-8 relative z-10">
+        
+        <div class="text-center mb-8">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Logo_Kementerian_Perhubungan_Republik_Indonesia.png/640px-Logo_Kementerian_Perhubungan_Republik_Indonesia.png" class="h-16 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:scale-110 transition-transform" alt="Logo Dishub">
+            <h1 class="text-2xl font-black text-white tracking-widest uppercase">Otorisasi Akses</h1>
+            <p class="text-blue-400 text-[10px] mt-2 font-bold tracking-[0.2em] uppercase">Sistem Command Center Dishub</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-6 space-y-2">
+                {% for category, message in messages %}
+                    <div class="p-3 rounded-xl text-xs font-bold flex items-center gap-3 backdrop-blur-md 
+                        {{ 'bg-green-900/50 text-green-300 border border-green-500/50' if category == 'success' else 'bg-red-900/50 text-red-300 border border-red-500/50' }}">
+                        <i class="fa-solid {{ 'fa-shield-check text-green-400' if category == 'success' else 'fa-triangle-exclamation text-red-400' }} text-lg"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login') }}" class="space-y-5">
+            
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-id-badge text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
+                </div>
+                <input type="text" name="username" placeholder="ID Petugas / Username" required 
+                    class="w-full pl-11 pr-4 py-3.5 bg-[#050a1f] border border-blue-900/50 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600 shadow-inner">
+            </div>
+
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-key text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
+                </div>
+                <input type="password" id="password" name="password" placeholder="Kata Sandi / Password" required 
+                    class="w-full pl-11 pr-12 py-3.5 bg-[#050a1f] border border-blue-900/50 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600 shadow-inner">
+                
+                <div class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-slate-500 hover:text-blue-400 transition-colors" onclick="togglePassword()">
+                    <i id="eye-icon" class="fa-solid fa-eye"></i>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <a href="{{ url_for('forgot_password') }}" class="text-[11px] font-bold text-slate-400 hover:text-blue-400 transition flex items-center gap-1">
+                    <i class="fa-solid fa-unlock-keyhole"></i> Lupa Sandi?
+                </a>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider py-3.5 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] border border-blue-400/50 transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem
+            </button>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-white/10 text-center">
+            <p class="text-[11px] text-slate-400 font-medium">
+                Belum memiliki otorisasi akses? <br>
+                <a href="{{ url_for('register') }}" class="text-blue-400 font-bold hover:text-blue-300 hover:underline inline-block mt-1">Registrasi Petugas Baru</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById("password");
+        const eyeIcon = document.getElementById("eye-icon");
+
+        if (passwordInput.type === "password") {
+            passwordInput.type = "text";
+            eyeIcon.classList.remove("fa-eye");
+            eyeIcon.classList.add("fa-eye-slash");
+        } else {
+            passwordInput.type = "password";
+            eyeIcon.classList.remove("fa-eye-slash");
+            eyeIcon.classList.add("fa-eye");
+        }
+    }
+</script>
+
+<style>
+    /* Animasi Blob Background */
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob {
+        animation: blob 10s infinite;
+    }
+    .animation-delay-2000 {
+        animation-delay: 3s;
+    }
+    .animation-delay-4000 {
+        animation-delay: 6s;
+    }
+</style>
+{% endblock %}

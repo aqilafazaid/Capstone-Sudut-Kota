@@ -1,0 +1,56 @@
+# ==========================================
+# 1. KREDENSIAL & KEAMANAN (SANGAT PENTING!)
+# ==========================================
+.env
+serviceAccountKey.json
+credentials.json
+*.pem
+*.key
+
+# ==========================================
+# 2. PYTHON & ENVIRONMENT
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+env/
+venv/
+ENV/
+.venv/
+
+# ==========================================
+# 3. KECERDASAN BUATAN (YOLO, PyTorch, OpenCV)
+# ==========================================
+# Mengabaikan file bobot model AI yang ukurannya raksasa
+*.pt
+*.pth
+*.weights
+# Mengabaikan folder output bawaan Ultralytics YOLO
+runs/
+# Mengabaikan dataset gambar/video lokal
+datasets/
+images/
+labels/
+
+# ==========================================
+# 4. OUTPUT VIDEO & STREAMING (HLS)
+# ==========================================
+# Mengabaikan file hasil transkoding FFmpeg agar tidak memenuhi repository
+*.m3u8
+*.ts
+*.mp4
+*.avi
+*.mkv
+
+# ==========================================
+# 5. IDE & EDITOR (VS Code)
+# ==========================================
+.vscode/
+.idea/
+
+# ==========================================
+# 6. FLASK & LOGS
+# ==========================================
+instance/
+.webassets-cache
+*.log

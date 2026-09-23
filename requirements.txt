@@ -1,0 +1,10 @@
+Flask
+firebase-admin
+requests
+feedparser
+google-generativeai
+Flask-Cors
+python-dotenv
+Flask-Mail
+pytz
+urllib3
