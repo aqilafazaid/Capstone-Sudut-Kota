@@ -61,18 +61,20 @@
         <div class="glass-card p-8 flex flex-col md:flex-row justify-between items-center gap-6 animate-fade-in-up">
             <div class="flex items-center gap-5 w-full md:w-auto">
                 <div class="relative">
+                    <!-- [PERBAIKAN]: Fallback Jinja untuk Inisial Nama -->
                     <div class="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-[0_0_20px_rgba(37,99,235,0.5)] border-2 border-blue-400">
-                        {{ name[0] | upper if name else 'P' }}
+                        {{ (name | default('Admin'))[0] | upper }}
                     </div>
                     <span class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-[#050a1f] rounded-full animate-pulse"></span>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-extrabold text-white">Siap, {{ name }}! <i class="fa-solid fa-shield-halved text-blue-500 ml-1"></i></h1>
+                    <!-- [PERBAIKAN]: Fallback Jinja untuk Nama Lengkap -->
+                    <h1 class="text-2xl font-extrabold text-white">Siap, {{ name | default('Admin Dishub') }}! <i class="fa-solid fa-shield-halved text-blue-500 ml-1"></i></h1>
                     <p class="text-blue-300 text-sm font-medium tracking-wide">Akses Command Center Terverifikasi.</p>
                 </div>
             </div>
             
-            <a href="{{ url_for('logout') }}" class="action-btn px-6 py-3 bg-red-900/50 text-red-400 font-bold rounded-xl border border-red-500/50 hover:bg-red-600 hover:text-white flex items-center gap-2 w-full md:w-auto justify-center">
+            <a href="#" class="action-btn px-6 py-3 bg-red-900/50 text-red-400 font-bold rounded-xl border border-red-500/50 hover:bg-red-600 hover:text-white flex items-center gap-2 w-full md:w-auto justify-center">
                 <i class="fa-solid fa-power-off"></i> Akhiri Sesi
             </a>
         </div>
@@ -95,7 +97,8 @@
                         <i class="fa-solid fa-map-location-dot absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 z-10"></i>
                         <select id="provinsi" class="glass-input w-full p-4 pl-12 outline-none font-bold cursor-pointer">
                             <option value="">Pilih Zona</option>
-                            {% for p in zona_list %}
+                            <!-- [PERBAIKAN]: Simulasi Data Array Jinja agar tidak Error -->
+                            {% for p in zona_list | default(['Pekalongan Barat', 'Pekalongan Timur', 'Pekalongan Selatan', 'Pekalongan Utara']) %}
                             <option value="{{ p }}">{{ p }}</option>
                             {% endfor %}
                         </select>
@@ -133,7 +136,7 @@
                 </div>
 
                 <div class="flex gap-3">
-                    <a href="{{ url_for('add_data') }}" id="addDataBtn" class="action-btn px-6 py-3 bg-blue-600 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 border border-blue-400/50 flex items-center gap-2">
+                    <a href="#" id="addDataBtn" class="action-btn px-6 py-3 bg-blue-600 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 border border-blue-400/50 flex items-center gap-2">
                         <i class="fa-solid fa-plus-circle"></i> Registrasi Titik Baru
                     </a>
 
@@ -161,6 +164,20 @@
 <script>
 $(document).ready(function () {
     
+    // [PERBAIKAN]: Simulasi Database Lokal Khusus Presentasi (Mock DB)
+    const mockDB_Jalan = {
+        "Pekalongan Barat": ["Simpang Ponolawen", "Simpang Tiga Tirto"],
+        "Pekalongan Timur": ["Simpang Grogolan (Alun-Alun)", "Simpang THR (Pusri)", "Simpang Matahari"],
+        "Pekalongan Selatan": ["Simpang Banyurip", "Simpang Kuripan"],
+        "Pekalongan Utara": ["Simpang Jetayu", "Simpang Sorogenen"]
+    };
+
+    const mockDB_Tiang = {
+        "Simpang Ponolawen": ["CH-29 | Kamera PTZ", "CH-29B | Kamera Fix"],
+        "Simpang Grogolan (Alun-Alun)": ["CH-35 | Kamera Utama", "CH-35B | Kamera Arah Selatan"],
+        "Simpang THR (Pusri)": ["CH-43 | Kamera Utara", "CH-43B | Kamera Timur"]
+    };
+
     function toggleState(hasCamera) {
         if(hasCamera) {
             $("#addDataBtn").addClass("hidden");
@@ -175,68 +192,65 @@ $(document).ready(function () {
         }
     }
 
-    // 1. Zona Wilayah (Dulu Provinsi)
+    // 1. Zona Wilayah Berubah -> Load Nama Jalan Simulasi
     $("#provinsi").change(function () {
         var val = $(this).val();
         $("#wilayah").prop('disabled', true).html('<option>Memuat rute...</option>');
         $("#mux").prop('disabled', true).html('<option>Menunggu jalan...</option>');
         toggleState(false);
         
-        if (val) {
-            $.getJSON("/get_wilayah", { provinsi: val }, function (data) {
+        if (val && mockDB_Jalan[val]) {
+            setTimeout(() => { // Simulasi delay loading jaringan
                 var w = $("#wilayah").empty().append('<option value="">Pilih Nama Jalan</option>').prop('disabled', false);
-                if (data.wilayah) $.each(data.wilayah, function (i, item) { w.append('<option value="' + item + '">' + item + '</option>'); });
-            });
+                $.each(mockDB_Jalan[val], function (i, item) { w.append('<option value="' + item + '">' + item + '</option>'); });
+            }, 400);
         }
     });
 
-    // 2. Nama Jalan (Dulu Wilayah)
+    // 2. Nama Jalan Berubah -> Load ID Tiang Simulasi
     $("#wilayah").change(function () {
-        var p = $("#provinsi").val(), w = $(this).val();
+        var w = $(this).val();
         $("#mux").prop('disabled', true).html('<option>Mencari node...</option>');
         toggleState(false);
 
         if (w) {
-            $.getJSON("/get_mux", { provinsi: p, wilayah: w }, function (data) {
+            setTimeout(() => { // Simulasi delay loading jaringan
                 var m = $("#mux").empty().append('<option value="">Pilih ID Tiang</option>').prop('disabled', false);
-                if (data.mux) $.each(data.mux, function (i, item) { m.append('<option value="' + item + '">' + item + '</option>'); });
-            });
+                // Cek jika jalan ada di DB, jika tidak beri dummy default
+                var tiangList = mockDB_Tiang[w] || ["CH-XX | Node Belum Dikonfigurasi"];
+                $.each(tiangList, function (i, item) { m.append('<option value="' + item + '">' + item + '</option>'); });
+            }, 400);
         }
     });
 
-    // 3. ID Tiang Selected -> Show Buttons & Preview
+    // 3. ID Tiang Dipilih -> Munculkan Detail & Tombol Aksi
     $("#mux").change(function () {
-        var p = $("#provinsi").val(), w = $("#wilayah").val(), m = $(this).val();
+        var m = $(this).val();
         
         if (m) {
-            // Load Preview Data
-            $.getJSON("/get_siaran", { provinsi: p, wilayah: w, mux: m }, function (data) {
+            setTimeout(() => {
                 toggleState(true);
                 var list = $("#preview-list").empty();
-                if(data.kamera) {
-                    $.each(data.kamera, function(i, s) {
-                        list.append(`<div class="bg-blue-900/20 p-3 rounded-xl border border-blue-800/50 text-xs font-bold text-blue-200 truncate flex items-center shadow-sm"><i class="fa-solid fa-video text-blue-500 mr-2"></i>${s}</div>`);
-                    });
-                }
-            });
+                
+                // Menampilkan preview status CCTV palsu yang realistis
+                list.append(`<div class="bg-blue-900/20 p-3 rounded-xl border border-blue-800/50 text-xs font-bold text-blue-200 truncate flex items-center shadow-sm"><i class="fa-solid fa-video text-blue-500 mr-2"></i>Status: ONLINE</div>`);
+                list.append(`<div class="bg-blue-900/20 p-3 rounded-xl border border-blue-800/50 text-xs font-bold text-blue-200 truncate flex items-center shadow-sm"><i class="fa-solid fa-microchip text-yellow-500 mr-2"></i>AI YOLOv8: ACTIVE</div>`);
+                list.append(`<div class="bg-blue-900/20 p-3 rounded-xl border border-blue-800/50 text-xs font-bold text-blue-200 truncate flex items-center shadow-sm"><i class="fa-solid fa-database text-green-500 mr-2"></i>Firebase: SYNCED</div>`);
+                
+            }, 300);
         } else {
             toggleState(false);
         }
     });
 
-    // Actions
+    // Actions (Hanya Alert Simulasi agar tidak error ke halaman kosong)
     $("#editDataBtn").click(function() {
-        var p = $("#provinsi").val(), w = $("#wilayah").val(), m = $("#mux").val();
-        window.location.href = `/edit_data/${encodeURIComponent(p)}/${encodeURIComponent(w)}/${encodeURIComponent(m)}`;
+        alert("Mode Demonstrasi: Fitur pembaruan node dikunci sementara untuk keamanan sistem.");
     });
 
     $("#deleteDataBtn").click(function() {
         if(confirm("⚠️ Otorisasi Diperlukan: Tindakan ini akan menghapus data node CCTV secara permanen dari server Command Center. Lanjutkan?")) {
-            var p = $("#provinsi").val(), w = $("#wilayah").val(), m = $("#mux").val();
-            $.post(`/delete_data/${encodeURIComponent(p)}/${encodeURIComponent(w)}/${encodeURIComponent(m)}`, function() {
-                alert("Protokol Penghapusan Berhasil. Data telah dihapus dari sistem.");
-                location.reload();
-            });
+            alert("Protokol Penghapusan Gagal: Anda masuk menggunakan akun terbatas (Guest/Demo).");
         }
     });
 });
