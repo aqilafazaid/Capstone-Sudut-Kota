@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}Sudut Kota - Bidang Infrastruktur Command Center{% endblock %}</title>
     
+    <!-- FIX ERROR 500: Menambahkan Favicon statis agar Vercel tidak mencari /favicon.ico -->
+    <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Logo_Kementerian_Perhubungan_Republik_Indonesia.png/64px-Logo_Kementerian_Perhubungan_Republik_Indonesia.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- HLS.js untuk CCTV -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     
-    <!-- Script Anti-Debugging (Harus di head agar dieksekusi pertama) -->
     <script>
         (function() {
             const ua = navigator.userAgent.toLowerCase();
@@ -24,7 +25,6 @@
         })();
     </script>
 
-    <!-- Tailwind Config & Theme Init -->
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -37,7 +37,6 @@
             }
         }
         
-        // Cek Tema sebelum render untuk menghindari FOUC (Flash of Unstyled Content)
         if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -45,10 +44,8 @@
         }
     </script>
 
-    <!-- [PERBAIKAN 1]: Menggunakan tag standar Flask url_for untuk file CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        /* CSS Khusus yang tidak bisa menggunakan Tailwind murni */
         body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         .privacy-blur > *:not(#security-overlay):not(#penalty-overlay):not(.bg-base) {
             filter: blur(30px) grayscale(100%); pointer-events: none; opacity: 0.1; transition: 0s; 
@@ -56,18 +53,15 @@
         .bg-base { transition: background-color 0.3s ease; }
         .ticker-move { display: inline-flex; white-space: nowrap; animation: ticker 600s linear infinite; }
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        /* Animasi Pop menu Apple */
         .ios-bubble-menu { animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-origin: top right; }
         @keyframes bubblePop { 0% { opacity: 0; transform: scale(0.9) translate(10px, -10px); } 100% { opacity: 1; transform: scale(1) translate(0, 0); } }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-[#0a143c] text-slate-800 dark:text-slate-200 flex flex-col min-h-screen relative pb-[180px] lg:pb-[100px] font-sans z-0 transition-colors duration-300">
 
-    <!-- Background Layer -->
     <div class="bg-base fixed inset-0 z-[-2] bg-gradient-to-br from-blue-100 to-slate-50 dark:from-[#0a143c] dark:to-[#1e3a8a]"></div>
     <div class="fixed inset-0 z-[-1] opacity-10 dark:opacity-30 mix-blend-multiply dark:mix-blend-screen bg-[url('https://images.unsplash.com/photo-1518605368461-1e122b10287b?auto=format&fit=crop&q=80')] bg-cover bg-center"></div>
 
-    <!-- Loader Init -->
     <div id="initial-loader" class="fixed inset-0 z-[9999] bg-white dark:bg-[#0a143c] flex flex-col justify-center items-center transition-opacity duration-400">
         <div class="relative z-10 font-black text-4xl text-slate-900 dark:text-white animate-bounce mb-8">
             SUDUT <span class="text-blue-600 dark:text-blue-500 text-5xl">KOTA</span>
@@ -77,11 +71,10 @@
 
     <!-- NAVBAR -->
     <nav class="fixed top-4 left-0 right-0 w-full z-50 px-3 lg:px-6">
-        <div class="max-w-[1400px] mx-auto bg-white/80 dark:bg-[#0a143c]/90 backdrop-blur-md shadow-xl rounded-2xl lg:rounded-[2rem] border border-slate-200 dark:border-blue-400/20 transition-colors duration-300">
+        <div class="max-w-[1400px] mx-auto bg-white/80 dark:bg-[#0a143c]/90 backdrop-blur-md shadow-xl rounded-2xl lg:rounded-[2rem] border border-slate-200 dark:border-blue-400/20 transition-colors duration-300 relative">
             <div class="flex justify-between items-center h-16 md:h-20 px-4 md:px-8 w-full">
                 
                 <div class="flex items-center gap-3 md:gap-5 border-r border-slate-300 dark:border-white/10 pr-3 md:pr-5 mr-1 lg:mr-2">
-                    <!-- [PERBAIKAN 2]: Routing Home menggunakan index -->
                     <a href="{{ url_for('index') }}" class="font-black text-xl md:text-2xl text-slate-900 dark:text-white hover:scale-105 transition">
                         SUDUT <span class="text-blue-600 dark:text-blue-500">KOTA</span>
                     </a>
@@ -89,25 +82,27 @@
 
                 <div class="flex items-center gap-2 lg:gap-4 justify-end">
                     <div class="hidden xl:flex items-center space-x-2 mr-4">
-                        <!-- [PERBAIKAN 3]: Sinkronisasi Route dengan app.py -->
                         <a href="{{ url_for('index') }}" class="font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white px-3 py-2 transition">Beranda</a>
                         <a href="{{ url_for('cctv') }}" class="font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white px-3 py-2 transition">Kamera</a>
                         <a href="{{ url_for('dashboard') }}" class="font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white px-3 py-2 transition">Dashboard</a>
                     </div>
 
-                    <!-- Tombol Toggle Tema -->
                     <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-white flex items-center justify-center transition border border-slate-300 dark:border-white/10 hover:bg-slate-300 dark:hover:bg-white/20">
                         <i id="theme-toggle-dark-icon" class="hidden fa-solid fa-moon"></i>
                         <i id="theme-toggle-light-icon" class="hidden fa-solid fa-sun"></i>
                     </button>
 
-                    <!-- Mobile Menu Toggle -->
-                    <button onclick="toggleDropdown('info-dropdown')" class="xl:hidden w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white flex items-center justify-center transition">
+                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="xl:hidden w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white flex items-center justify-center transition">
                         <i class="fa-solid fa-bars"></i>
                     </button>
-                    
-                    <!-- Dropdown Content Omitted for Brevity -->
                 </div>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden xl:hidden absolute top-full left-0 right-0 mt-2 bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-blue-400/20 rounded-2xl shadow-2xl p-4 flex flex-col gap-2 ios-bubble-menu">
+                <a href="{{ url_for('index') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-house w-5 text-blue-500"></i> Beranda</a>
+                <a href="{{ url_for('cctv') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-video w-5 text-blue-500"></i> Live Kamera</a>
+                <a href="{{ url_for('dashboard') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-chart-pie w-5 text-blue-500"></i> Dashboard</a>
             </div>
         </div>
     </nav>
@@ -117,7 +112,6 @@
         <div class="bg-white dark:bg-[#111827] w-full min-h-screen rounded-t-[2.5rem] md:rounded-t-[4rem] shadow-2xl relative overflow-hidden border-t-4 border-blue-600 transition-colors duration-300">
             <div class="absolute inset-0 z-0 opacity-[0.35] dark:opacity-10" style="background-image: radial-gradient(#94a3b8 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
             <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 relative z-10">
-                <!-- BLOK KONTEN FLASK -->
                 {% block content %}{% endblock %}
             </div>
         </div>
@@ -125,31 +119,40 @@
 
     <!-- FOOTER -->
     <footer class="bg-slate-900 dark:bg-[#0a143c] text-slate-400 dark:text-slate-300 pt-16 pb-24 border-t border-slate-800 dark:border-blue-900 transition-colors duration-300">
-        <div class="text-center"><p class="text-xs">&copy; {{ year }} Tim Capstone TA - Universitas Diponegoro.</p></div>
+        <!-- FIX ERROR 500: Menambahkan default(2026) untuk keamanan Jinja -->
+        <div class="text-center"><p class="text-xs">&copy; {{ year | default('2026') }} Tim Capstone TA - Universitas Diponegoro.</p></div>
     </footer>
 
     <!-- DESKTOP BOTTOM BAR -->
     <div class="hidden lg:flex desktop-bottom-bar bg-white/90 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-white/15 h-[52px] w-[calc(100%-40px)] max-w-[1600px] fixed bottom-6 left-1/2 -translate-x-1/2 z-60 rounded-full shadow-2xl items-center px-4">
-        
         <div class="bg-blue-600 h-8 flex items-center px-4 rounded-full z-20 shrink-0 text-white text-[10px] font-black uppercase tracking-widest gap-2 mr-4">
             <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> INFO
         </div>
-        
         <div class="ticker-wrap relative flex-1 text-slate-800 dark:text-white">
             <div id="unified-ticker-desktop" class="ticker-move text-xs font-semibold uppercase"></div>
         </div>
-        
         <div class="bg-slate-100 dark:bg-black/40 h-8 px-3 rounded-full border border-slate-200 dark:border-white/20 z-20 flex items-center gap-2 ml-4 text-slate-700 dark:text-white text-[11px] font-bold">
             <i class="fa-solid fa-gauge-high text-green-600 dark:text-green-400"></i>
             <span id="speedometer">0 km/h</span>
         </div>
-        
         <div class="bg-slate-100 dark:bg-white/10 h-8 px-4 rounded-full border border-slate-200 dark:border-white/20 z-20 flex items-center ml-2 text-slate-800 dark:text-white font-mono text-xs font-bold">
             <span id="clock-desktop">00:00:00 WIB</span>
         </div>
     </div>
 
-    <!-- [PERBAIKAN 4]: Menggunakan tag Flask untuk JavaScript (Pastikan namanya main.js sesuai setup sebelumnya, atau app.js jika Anda tetap menamainya app.js) -->
+    <!-- SCRIPT UTAMA -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Skrip sederhana untuk menghilangkan loader awal
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                var loader = document.getElementById('initial-loader');
+                if(loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(function() { loader.style.display = 'none'; }, 400);
+                }
+            }, 500);
+        });
+    </script>
 </body>
 </html>
