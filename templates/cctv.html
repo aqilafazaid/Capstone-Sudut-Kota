@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Live Monitor - Command Center Sudut Kota{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto text-center relative z-10 pt-4">
+    
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-[#0a143c] border border-blue-800/50 text-white text-xs font-bold rounded-full shadow-sm mb-6">
+        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Koneksi Edge Server Aktif
+    </div>
+
+    <h2 class="text-3xl md:text-4xl font-impact text-[#0a143c] dark:text-white uppercase tracking-wider mb-2 transition-colors">
+        Live CCTV <span class="text-blue-600 dark:text-blue-400">Pemantauan</span>
+    </h2>
+    <p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-8">Streaming HLS waktu nyata dari AWS Media Server</p>
+
+    <!-- KOTAK PEMUTAR VIDEO -->
+    <div class="bg-black rounded-3xl overflow-hidden border-4 border-slate-800 dark:border-blue-900/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] mx-auto w-full aspect-video relative group">
+        
+        <!-- Indikator Kiri Atas -->
+        <div class="absolute top-4 left-4 bg-red-600/90 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest z-20 flex items-center gap-2 shadow-lg">
+            <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span> LIVE HLS
+        </div>
+
+        <!-- Video Player -->
+        <video id="cctv-player" class="w-full h-full object-cover" controls autoplay muted playsinline></video>
+        
+        <!-- Overlay jika JS gagal/loading -->
+        <div id="video-overlay" class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center z-10 transition-opacity duration-500">
+            <i class="fa-solid fa-satellite-dish text-blue-500 text-5xl mb-4 animate-bounce"></i>
+            <p class="text-blue-400 font-bold tracking-widest text-xs uppercase animate-pulse">Menghubungkan ke AWS Server...</p>
+        </div>
+    </div>
+
+</div>
+
+<!-- SCRIPT HLS.JS UNTUK MENARIK STREAM DARI AWS -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const video = document.getElementById('cctv-player');
+        const overlay = document.getElementById('video-overlay');
+        
+        // Ganti URL ini dengan IP Publik AWS Anda yang menjalankan Nginx HLS
+        // Contoh: http://16.16.121.70:8091/hls/ch29/index.m3u8
+        const streamUrl = 'http://IP_AWS_ANDA:8091/hls/ch29/index.m3u8'; 
+
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                debug: false,
+                enableWorker: true
+            });
+            
+            hls.loadSource(streamUrl);
+            hls.attachMedia(video);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.style.display = 'none'; }, 500);
+                video.play().catch(e => console.log("Autoplay dicegah browser", e));
+            });
+
+            hls.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                    overlay.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-red-500 text-5xl mb-4"></i><p class="text-red-400 font-bold tracking-widest text-xs uppercase">Sinyal CCTV Terputus</p>';
+                    overlay.style.opacity = '1';
+                    overlay.style.display = 'flex';
+                }
+            });
+        } 
+        // Fallback untuk Safari / iOS yang mendukung HLS secara native
+        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = streamUrl;
+            video.addEventListener('loadedmetadata', function() {
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.style.display = 'none'; }, 500);
+                video.play();
+            });
+        }
+    });
+</script>
+{% endblock %}
