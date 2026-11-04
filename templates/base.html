@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}Sudut Kota - Bidang Infrastruktur Command Center{% endblock %}</title>
     
-    <!-- FIX ERROR 500: Menambahkan Favicon statis agar Vercel tidak mencari /favicon.ico -->
     <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Logo_Kementerian_Perhubungan_Republik_Indonesia.png/64px-Logo_Kementerian_Perhubungan_Republik_Indonesia.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -51,8 +50,12 @@
             filter: blur(30px) grayscale(100%); pointer-events: none; opacity: 0.1; transition: 0s; 
         }
         .bg-base { transition: background-color 0.3s ease; }
-        .ticker-move { display: inline-flex; white-space: nowrap; animation: ticker 600s linear infinite; }
+        
+        /* Animasi Running Text MySF Style */
+        .ticker-wrap { overflow: hidden; white-space: nowrap; position: relative; width: 100%; display: flex; align-items: center; }
+        .ticker-move { display: inline-block; white-space: nowrap; animation: ticker 25s linear infinite; padding-left: 100%; }
         @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        
         .ios-bubble-menu { animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-origin: top right; }
         @keyframes bubblePop { 0% { opacity: 0; transform: scale(0.9) translate(10px, -10px); } 100% { opacity: 1; transform: scale(1) translate(0, 0); } }
     </style>
@@ -87,18 +90,20 @@
                         <a href="{{ url_for('dashboard') }}" class="font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white px-3 py-2 transition">Dashboard</a>
                     </div>
 
+                    <!-- TOMBOL MODE GELAP/TERANG -->
                     <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-white flex items-center justify-center transition border border-slate-300 dark:border-white/10 hover:bg-slate-300 dark:hover:bg-white/20">
-                        <i id="theme-toggle-dark-icon" class="hidden fa-solid fa-moon"></i>
-                        <i id="theme-toggle-light-icon" class="hidden fa-solid fa-sun"></i>
+                        <i id="theme-toggle-dark-icon" class="fa-solid fa-moon hidden"></i>
+                        <i id="theme-toggle-light-icon" class="fa-solid fa-sun hidden"></i>
                     </button>
 
+                    <!-- TOMBOL MENU MOBILE -->
                     <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="xl:hidden w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white flex items-center justify-center transition">
                         <i class="fa-solid fa-bars"></i>
                     </button>
                 </div>
             </div>
             
-            <!-- Mobile Menu -->
+            <!-- Mobile Menu Dropdown -->
             <div id="mobile-menu" class="hidden xl:hidden absolute top-full left-0 right-0 mt-2 bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-blue-400/20 rounded-2xl shadow-2xl p-4 flex flex-col gap-2 ios-bubble-menu">
                 <a href="{{ url_for('index') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-house w-5 text-blue-500"></i> Beranda</a>
                 <a href="{{ url_for('cctv') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-video w-5 text-blue-500"></i> Live Kamera</a>
@@ -107,7 +112,7 @@
         </div>
     </nav>
 
-    <!-- KONTEN UTAMA -->
+    <!-- KONTEN UTAMA FLASK -->
     <main class="flex-grow z-10 relative pt-[100px] md:pt-[130px]">
         <div class="bg-white dark:bg-[#111827] w-full min-h-screen rounded-t-[2.5rem] md:rounded-t-[4rem] shadow-2xl relative overflow-hidden border-t-4 border-blue-600 transition-colors duration-300">
             <div class="absolute inset-0 z-0 opacity-[0.35] dark:opacity-10" style="background-image: radial-gradient(#94a3b8 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
@@ -119,32 +124,41 @@
 
     <!-- FOOTER -->
     <footer class="bg-slate-900 dark:bg-[#0a143c] text-slate-400 dark:text-slate-300 pt-16 pb-24 border-t border-slate-800 dark:border-blue-900 transition-colors duration-300">
-        <!-- FIX ERROR 500: Menambahkan default(2026) untuk keamanan Jinja -->
         <div class="text-center"><p class="text-xs">&copy; {{ year | default('2026') }} Tim Capstone TA - Universitas Diponegoro.</p></div>
     </footer>
 
-    <!-- DESKTOP BOTTOM BAR -->
+    <!-- ==========================================
+         DESKTOP BOTTOM BAR (Gaya MySmartfren)
+    =========================================== -->
     <div class="hidden lg:flex desktop-bottom-bar bg-white/90 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-white/15 h-[52px] w-[calc(100%-40px)] max-w-[1600px] fixed bottom-6 left-1/2 -translate-x-1/2 z-60 rounded-full shadow-2xl items-center px-4">
+        
+        <!-- Badge Info -->
         <div class="bg-blue-600 h-8 flex items-center px-4 rounded-full z-20 shrink-0 text-white text-[10px] font-black uppercase tracking-widest gap-2 mr-4">
             <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> INFO
         </div>
+        
+        <!-- Running Text -->
         <div class="ticker-wrap relative flex-1 text-slate-800 dark:text-white">
-            <div id="unified-ticker-desktop" class="ticker-move text-xs font-semibold uppercase"></div>
+            <div class="ticker-move text-[11px] font-bold uppercase tracking-wide">
+                🔥 TETAP PATUHI RAMBU LALU LINTAS &nbsp; | &nbsp; 📹 PANTAUAN CCTV AKTIF 24 JAM &nbsp; | &nbsp; 🚨 LAPORKAN GANGGUAN INFRASTRUKTUR KE COMMAND CENTER DISHUB PEKALONGAN.
+            </div>
         </div>
-        <div class="bg-slate-100 dark:bg-black/40 h-8 px-3 rounded-full border border-slate-200 dark:border-white/20 z-20 flex items-center gap-2 ml-4 text-slate-700 dark:text-white text-[11px] font-bold">
-            <i class="fa-solid fa-gauge-high text-green-600 dark:text-green-400"></i>
-            <span id="speedometer">0 km/h</span>
+        
+        <!-- Sapaan & Jam Real-Time -->
+        <div class="bg-slate-100 dark:bg-black/40 h-8 px-4 rounded-full border border-slate-200 dark:border-white/20 z-20 flex items-center gap-2 ml-4 text-slate-700 dark:text-white text-[11px] font-bold">
+            <i id="base-greeting-icon" class="fa-solid fa-sun text-yellow-500"></i>
+            <span id="base-greeting-text">Siang, Admin</span>
         </div>
-        <div class="bg-slate-100 dark:bg-white/10 h-8 px-4 rounded-full border border-slate-200 dark:border-white/20 z-20 flex items-center ml-2 text-slate-800 dark:text-white font-mono text-xs font-bold">
-            <span id="clock-desktop">00:00:00 WIB</span>
+        <div class="bg-blue-50 dark:bg-blue-900/30 h-8 px-4 rounded-full border border-blue-200 dark:border-blue-500/50 z-20 flex items-center ml-2 text-blue-700 dark:text-blue-300 font-mono text-xs font-bold shadow-sm">
+            <span id="base-realtime-clock">00:00:00 WIB</span>
         </div>
     </div>
 
     <!-- SCRIPT UTAMA -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
-        // Skrip sederhana untuk menghilangkan loader awal
-        window.addEventListener('load', function() {
+        document.addEventListener('DOMContentLoaded', () => {
+            /* --- Sembunyikan Loader --- */
             setTimeout(function() {
                 var loader = document.getElementById('initial-loader');
                 if(loader) {
@@ -152,6 +166,71 @@
                     setTimeout(function() { loader.style.display = 'none'; }, 400);
                 }
             }, 500);
+
+            /* --- Fitur Mode Gelap/Terang (Dark Mode) --- */
+            var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+            var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+            var themeToggleBtn = document.getElementById('theme-toggle');
+
+            // Cek tema yang sedang aktif dan ubah ikonnya
+            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                themeToggleLightIcon.classList.remove('hidden');
+            } else {
+                themeToggleDarkIcon.classList.remove('hidden');
+            }
+
+            // Fungsi klik tombol tema
+            themeToggleBtn.addEventListener('click', function() {
+                themeToggleDarkIcon.classList.toggle('hidden');
+                themeToggleLightIcon.classList.toggle('hidden');
+
+                if (localStorage.getItem('color-theme')) {
+                    if (localStorage.getItem('color-theme') === 'light') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    }
+                } else {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    }
+                }
+            });
+
+            /* --- Jam & Sapaan Bottom Bar (Desktop) --- */
+            function updateBaseHeader() {
+                const now = new Date();
+                const hours = now.getHours();
+                
+                let greeting = "Malam, Admin";
+                let iconClass = "fa-moon";
+                let iconColor = "text-blue-500 dark:text-blue-300";
+
+                if (hours >= 4 && hours < 11) { greeting = "Pagi, Admin"; iconClass = "fa-cloud-sun"; iconColor = "text-yellow-500 dark:text-yellow-400"; } 
+                else if (hours >= 11 && hours < 15) { greeting = "Siang, Admin"; iconClass = "fa-sun"; iconColor = "text-yellow-500 dark:text-yellow-300"; } 
+                else if (hours >= 15 && hours < 18.5) { greeting = "Sore, Admin"; iconClass = "fa-sun"; iconColor = "text-orange-500 dark:text-orange-400"; }
+
+                const greetTextEl = document.getElementById('base-greeting-text');
+                const greetIconEl = document.getElementById('base-greeting-icon');
+                const clockEl = document.getElementById('base-realtime-clock');
+
+                if(greetTextEl) greetTextEl.innerText = greeting;
+                if(greetIconEl) greetIconEl.className = `fa-solid ${iconClass} ${iconColor}`;
+                
+                if(clockEl) {
+                    const timeString = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }).format(now);
+                    clockEl.innerText = timeString + ' WIB';
+                }
+            }
+
+            setInterval(updateBaseHeader, 1000);
+            updateBaseHeader();
         });
     </script>
 </body>
