@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
 
+{% block title %}Beranda - Command Center Sudut Kota{% endblock %}
+
 {% block content %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
     
-    .font-broadcast { font-family: 'Roboto', sans-serif; }
     .font-impact { font-family: 'Arial Black', Impact, sans-serif; }
     
-    /* Glossy effect disesuaikan ke tema Infrastruktur (Navy/Blue/Yellow) */
+    /* Glossy effect tema infrastruktur (Navy/Blue/Yellow) */
     .tv-glossy {
         font-weight: 900;
         background: linear-gradient(110deg, #2563eb 20%, #3b82f6 40%, #ffffff 50%, #facc15 60%, #2563eb 80%);
@@ -19,11 +20,23 @@
     }
     @keyframes shine { to { background-position: 200% center; } }
 
-    .tech-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .tech-card { 
+        background: white; 
+        border-radius: 20px; 
+        overflow: hidden; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+        border: 1px solid #f1f5f9; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
     .tech-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(37, 99, 235, 0.15); border-color: #3b82f6; }
     
     /* Glassmorphism khusus Dark Mode */
-    .dark .tech-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border-color: rgba(59, 130, 246, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .dark .tech-card { 
+        background: rgba(15, 23, 42, 0.6); 
+        backdrop-filter: blur(12px); 
+        border-color: rgba(59, 130, 246, 0.2); 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+    }
     .dark .tech-card:hover { border-color: #3b82f6; box-shadow: 0 15px 40px rgba(37, 99, 235, 0.2); }
 </style>
 
@@ -57,7 +70,7 @@
                 </div>
             </div>
 
-            <!-- KARTU STATISTIK (Aman dari Jinja Error) -->
+            <!-- KARTU STATISTIK EKSEKUTIF -->
             <div class="flex-1 w-full max-w-md">
                 <div class="bg-white/95 dark:bg-[#050b24]/90 backdrop-blur-md p-8 rounded-[2.5rem] shadow-2xl border-t-8 border-blue-600 relative overflow-hidden group hover:scale-[1.02] transition duration-500">
                     <div class="grid grid-cols-2 gap-8 text-center mb-8 relative z-10">
@@ -103,7 +116,6 @@
                 <div class="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest z-20 flex items-center gap-2">
                     <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span> RAW NVR (Kosongan)
                 </div>
-                <!-- Placeholder untuk presentasi -->
                 <div class="aspect-video bg-slate-800 flex items-center justify-center relative overflow-hidden">
                     <div class="absolute inset-0 flex items-center justify-center">
                         <i class="fa-solid fa-video text-slate-600 text-5xl opacity-50"></i>
@@ -121,7 +133,6 @@
                 <div class="absolute top-4 left-4 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest z-20 flex items-center gap-2">
                     <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> AI ENHANCED
                 </div>
-                <!-- Placeholder untuk presentasi -->
                 <div class="aspect-video bg-slate-800 flex items-center justify-center relative overflow-hidden">
                     <div class="absolute inset-0 flex items-center justify-center">
                         <div class="text-center">
@@ -129,14 +140,13 @@
                             <p class="text-blue-400 text-xs font-bold tracking-widest uppercase">Mesin Inferensi Aktif</p>
                         </div>
                     </div>
-                    <!-- Simulasi kotak deteksi (Bounding Box) statis untuk estetika -->
                     <div class="absolute top-1/4 left-1/4 w-20 h-16 border-2 border-green-500 bg-green-500/10"></div>
                     <div class="absolute top-1/3 right-1/3 w-24 h-20 border-2 border-green-500 bg-green-500/10"></div>
                 </div>
                 <div class="bg-[#0a143c] p-4 flex justify-between items-center border-t border-blue-900">
                     <div class="text-xs text-white font-bold"><i class="fa-solid fa-microchip text-yellow-400 mr-1"></i> Deteksi Kendaraan YOLOv8</div>
                     <div class="text-[10px] text-yellow-400 font-mono flex items-center gap-3">
-                        <span>Vehicles: <span class="text-white text-sm">--</span></span>
+                        <span>Vehicles: <span class="text-white text-sm">14</span></span>
                         <span>|</span>
                         <span>Latency: ~150ms</span>
                     </div>
@@ -166,7 +176,6 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
-            <!-- Tech 1: YOLOv8 -->
             <div class="tech-card p-6 flex flex-col items-center text-center">
                 <div class="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl mb-4 shadow-inner">
                     <i class="fa-solid fa-car-burst"></i>
@@ -175,7 +184,6 @@
                 <p class="text-sm text-slate-600 dark:text-slate-400">Algoritma pengenalan visual canggih yang mampu mengklasifikasikan jenis kendaraan dan menghitung volume lalu lintas secara presisi tinggi dalam hitungan milidetik.</p>
             </div>
 
-            <!-- Tech 2: MirNet & Zero-DCE -->
             <div class="tech-card p-6 flex flex-col items-center text-center">
                 <div class="w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400 text-2xl mb-4 shadow-inner">
                     <i class="fa-solid fa-moon"></i>
@@ -184,7 +192,6 @@
                 <p class="text-sm text-slate-600 dark:text-slate-400">Penerapan model jaringan saraf tiruan <b>MirNet</b> dan <b>Zero-DCE</b> untuk merekonstruksi dan menerangkan pakan video dari CCTV pada kondisi malam hari tanpa kehilangan detail.</p>
             </div>
 
-            <!-- Tech 3: Firebase Analytics -->
             <div class="tech-card p-6 flex flex-col items-center text-center">
                 <div class="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 text-2xl mb-4 shadow-inner">
                     <i class="fa-solid fa-database"></i>
@@ -193,7 +200,6 @@
                 <p class="text-sm text-slate-600 dark:text-slate-400">Metrik volume lalu lintas yang dihasilkan dari peladen lokal langsung didorong (push) ke basis data awan untuk divisualisasikan pada dasbor secara instan tanpa penundaan.</p>
             </div>
 
-            <!-- Tech 4: HLS Streaming -->
             <div class="tech-card p-6 flex flex-col items-center text-center">
                 <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-2xl mb-4 shadow-inner">
                     <i class="fa-solid fa-satellite-dish"></i>
