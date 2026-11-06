@@ -146,7 +146,6 @@
 <!-- ==========================================
      PEMANGGIL LOGIKA CCTV DARI FILE EXTERNAL
 =========================================== -->
-<!-- FIX: Menggunakan rute absolut untuk menghindari error Vercel url_for -->
-<script src="/static/cctv.js"></script>
+<script src="{{ url_for('static', filename='js/cctv.js') }}"></script>
 
 {% endblock %}
