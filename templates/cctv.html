@@ -4,13 +4,11 @@
 
 {% block content %}
 <style>
-    /* Premium Scrollbar untuk Grid CCTV */
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
     .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
     
-    /* Glassmorphism Card MySF Style */
     .glass-card-premium {
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(24px);
@@ -23,23 +21,17 @@
         box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3);
     }
 
-    /* Efek Glow untuk Kamera AI */
     .ai-glow { box-shadow: 0 0 25px rgba(37, 99, 235, 0.25); border-color: rgba(37, 99, 235, 0.4); }
 </style>
 
 <div class="max-w-[1600px] mx-auto pt-2 pb-10 px-4 md:px-6">
 
-    <!-- ==========================================
-         BAGIAN 1: EXECUTIVE HEADER (Tanpa Sapaan Pagi/Malam)
-    =========================================== -->
+    <!-- BAGIAN 1: EXECUTIVE HEADER -->
     <div class="glass-card-premium rounded-[2rem] p-6 md:p-8 mb-8 relative overflow-hidden group">
-        <!-- Ornamen Visual Latar -->
         <div class="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] pointer-events-none"></div>
         <div class="absolute -bottom-10 left-10 w-56 h-56 bg-cyan-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[60px] pointer-events-none"></div>
         
         <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-            
-            <!-- Identitas Dashboard -->
             <div class="flex items-center gap-5">
                 <div class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-navy to-blue-600 flex items-center justify-center text-white text-2xl shadow-lg border-2 border-white dark:border-slate-800">
                     <i class="fa-solid fa-shield-halved"></i>
@@ -50,13 +42,11 @@
                 </div>
             </div>
 
-            <!-- Panel Status & Jam Realtime -->
             <div class="w-full lg:w-auto bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-200 dark:border-white/10 flex flex-col gap-3 min-w-[320px]">
                 <div class="flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-3 px-1">
                     <span class="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-2 border border-green-200 dark:border-green-800/50">
                         <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Web Integration Aktif
                     </span>
-                    <!-- JAM FORMAT DAERAH (Otomatis WIB/WITA/WIT) -->
                     <span id="atcs-realtime-clock" class="text-lg md:text-xl font-mono font-bold text-slate-800 dark:text-white tracking-widest">00:00:00 WIB</span>
                 </div>
                 
@@ -70,9 +60,7 @@
         </div>
     </div>
 
-    <!-- ==========================================
-         BAGIAN 2: GRID LAYOUT (FILTER & KAMERA)
-    =========================================== -->
+    <!-- BAGIAN 2: GRID LAYOUT (FILTER & KAMERA) -->
     <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
         
         <!-- SIDEBAR FILTER -->
@@ -94,7 +82,6 @@
                     
                     <div>
                         <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-widest">Aksi Massal</label>
-                        <!-- Tombol ini berguna untuk menghentikan semua video jika browser mulai ngelag -->
                         <button type="button" onclick="stopAllStreams()" class="w-full text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 font-bold rounded-xl text-[10px] px-4 py-3 uppercase tracking-widest flex justify-center items-center gap-2 transition-all active:scale-95 mt-1">
                             <i class="fa-solid fa-stop"></i> Hentikan Semua Putaran
                         </button>
@@ -130,10 +117,6 @@
 </div>
 
 <script>
-    /* =========================================================================
-       KONFIGURASI DATABASE KAMERA DARI WEB ATCS
-       URL menggunakan endpoint web yang sudah ada (streaming-mse.php).
-    ========================================================================= */
     const ATCS_WEB_URL = "https://www.atcskotapekalongan.com/streaming-mse.php?id=";
     const cctvDatabase = [];
 
@@ -141,7 +124,6 @@
     for (let i = 1; i <= 50; i++) {
         cctvDatabase.push({
             id: `cam_${i}`,
-            // Simulasi: 3 Kamera pertama kita tandai sebagai AI
             nama: i <= 3 ? `Simpang Utama ${i} (AI)` : `Titik Pantau ATCS ${i}`,
             tipe: i <= 3 ? "ai" : "normal",
             url: `${ATCS_WEB_URL}${i}`,
@@ -168,30 +150,23 @@
             
             const cardClass = isAI ? 'ai-glow border-blue-500/50' : 'border-slate-200 dark:border-white/10';
 
-            /* 
-               CRITICAL FIX: 
-               Kita biarkan src iframe kosong ("") saat load pertama kali. 
-               URL aslinya disimpan di 'data-stream'. 
-            */
+            // CRITICAL FIX: Menggunakan referrerpolicy="no-referrer" dan menghapus batasan iframe
             const cardHTML = `
-                <div class="glass-card-premium rounded-2xl overflow-hidden shadow-sm flex flex-col relative ${cardClass}">
+                <div class="glass-card-premium rounded-2xl overflow-hidden shadow-sm flex flex-col relative ${cardClass} min-h-[250px]">
                     
-                    <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                    <div class="relative bg-black h-48 w-full flex items-center justify-center overflow-hidden">
                         ${badgeHTML}
                         
-                        <!-- Iframe Kosong (Lazy Load) -->
-                        <iframe id="iframe-${cam.id}" src="" class="w-full h-full border-0 hidden" allowfullscreen></iframe>
+                        <!-- Iframe (Lazy Load) - Diperbarui atribut keamanannya -->
+                        <iframe id="iframe-${cam.id}" src="" class="w-full h-full border-0 hidden" allowfullscreen referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin"></iframe>
                         
                         <!-- Thumbnail/Overlay Putar -->
-                        <div id="overlay-${cam.id}" class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80')] bg-cover bg-center">
-                            <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-[2px] flex flex-col items-center justify-center cursor-pointer transition-opacity z-10 hover:bg-slate-900/50" onclick="playWebStream('${cam.id}', '${cam.url}')">
-                                <div class="w-12 h-12 rounded-full bg-blue-600/90 text-white flex items-center justify-center text-xl shadow-[0_0_20px_rgba(37,99,235,0.6)] backdrop-blur-sm border border-white/20 hover:scale-110 transition-transform">
-                                    <i class="fa-solid fa-play ml-1"></i>
-                                </div>
-                                <span class="text-[9px] text-white font-bold tracking-widest uppercase mt-3 drop-shadow-md bg-black/50 px-2 py-1 rounded">Ketuk Untuk Menarik Data</span>
+                        <div id="overlay-${cam.id}" class="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center cursor-pointer transition-opacity z-10 hover:bg-slate-700" onclick="playWebStream('${cam.id}', '${cam.url}')">
+                            <div class="w-12 h-12 rounded-full bg-blue-600/90 text-white flex items-center justify-center text-xl shadow-[0_0_20px_rgba(37,99,235,0.6)] border border-white/20 hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-play ml-1"></i>
                             </div>
+                            <span class="text-[9px] text-white font-bold tracking-widest uppercase mt-3 drop-shadow-md bg-black/50 px-2 py-1 rounded">Ketuk Untuk Memutar</span>
                         </div>
-                        
                     </div>
                     
                     <div class="p-4 flex-grow flex flex-col justify-between border-t border-slate-100 dark:border-white/5">
@@ -213,25 +188,19 @@
         document.getElementById('stream-count').innerHTML = `<i class="fa-solid fa-video text-blue-500"></i> ${renderedCount} Titik Ditemukan`;
     }
 
-    // Fungsi Mengeksekusi Iframe saat tombol "Play" ditekan
     window.playWebStream = function(id, url) {
         const iframe = document.getElementById(`iframe-${id}`);
         const overlay = document.getElementById(`overlay-${id}`);
         const statusBadge = document.getElementById(`status-${id}`);
         
-        // Memasukkan URL sesungguhnya ke dalam iframe
         iframe.src = url;
         iframe.classList.remove('hidden');
-        
-        // Sembunyikan Overlay
         overlay.style.display = 'none';
 
-        // Update Badge Status jadi Online
         statusBadge.className = "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[9px] font-bold px-2 py-1 rounded-md border border-green-200 dark:border-green-800/50 uppercase tracking-wider";
         statusBadge.innerHTML = `<i class="fa-solid fa-circle text-[7px] align-middle mr-1 animate-pulse"></i> Mengudara`;
     };
 
-    // Fungsi Menghentikan Seluruh Stream (Mencegah Browser Lag jika kebanyakan buka tab)
     window.stopAllStreams = function() {
         cctvDatabase.forEach((cam) => {
             const iframe = document.getElementById(`iframe-${cam.id}`);
@@ -239,25 +208,21 @@
             const statusBadge = document.getElementById(`status-${cam.id}`);
             
             if (iframe && !iframe.classList.contains('hidden')) {
-                // Matikan koneksi dengan mengosongkan src
                 iframe.src = "";
                 iframe.classList.add('hidden');
                 overlay.style.display = 'flex';
                 
-                // Kembalikan status Standby
                 statusBadge.className = "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-bold px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 uppercase tracking-wider transition-colors";
                 statusBadge.innerHTML = `<i class="fa-solid fa-circle text-[7px] align-middle mr-1"></i> Standby`;
             }
         });
     }
 
-    // Fungsi Update Jam & Zona Waktu Otomatis
     function updateClock() {
         const now = new Date();
         const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
         const timeString = now.toLocaleTimeString('id-ID', timeOptions).replace(/\./g, ':');
         
-        // Kalkulasi Zona Waktu berdasarkan offset UTC
         const offset = now.getTimezoneOffset() / -60;
         let tz = 'WIB'; 
         if (offset === 8) tz = 'WITA';
@@ -267,7 +232,6 @@
         if(clockEl) clockEl.innerText = `${timeString} ${tz}`;
     }
 
-    // Inisialisasi Pertama
     document.addEventListener('DOMContentLoaded', () => {
         setInterval(updateClock, 1000);
         updateClock();
