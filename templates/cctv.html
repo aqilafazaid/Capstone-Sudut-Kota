@@ -4,17 +4,12 @@
 
 {% block content %}
 <style>
-    /* Styling khusus scrollbar untuk panel grid video */
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
-    
     .dark .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
     .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
-    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
     
-    /* Animasi MySF App Header dengan efek Glossy modern */
     .mysf-card {
         background: linear-gradient(135deg, #0a143c 0%, #1d4ed8 100%);
         box-shadow: 0 10px 30px -5px rgba(29, 78, 216, 0.4);
@@ -24,43 +19,35 @@
 
 <div class="max-w-[1400px] mx-auto pt-2 pb-10">
 
-    <!-- ==========================================
-         BAGIAN 1: MOBILE APP HEADER (Gaya MySmartfren Profesional)
-    =========================================== -->
+    <!-- BAGIAN 1: HEADER MYSMARTFREN -->
     <div class="mysf-card rounded-[2rem] p-6 md:p-8 mb-8 text-white relative overflow-hidden group">
-        <!-- Dekorasi Background Ambient -->
-        <div class="absolute top-0 right-0 w-72 h-72 bg-blue-400 rounded-full mix-blend-screen filter blur-[90px] opacity-40 group-hover:scale-110 transition-transform duration-700"></div>
-        <div class="absolute -bottom-20 left-10 w-56 h-56 bg-cyan-400 rounded-full mix-blend-screen filter blur-[70px] opacity-30 group-hover:scale-110 transition-transform duration-700"></div>
+        <div class="absolute top-0 right-0 w-72 h-72 bg-blue-400 rounded-full mix-blend-screen filter blur-[90px] opacity-40"></div>
+        <div class="absolute -bottom-20 left-10 w-56 h-56 bg-cyan-400 rounded-full mix-blend-screen filter blur-[70px] opacity-30"></div>
         
         <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            
-            <!-- Profil & Sapaan -->
             <div>
                 <div class="flex items-center gap-4 mb-2">
-                    <div class="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/40 text-2xl shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                        <i id="greeting-icon" class="fa-solid fa-sun text-yellow-300 drop-shadow-md"></i>
+                    <div class="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/40 text-2xl shadow-inner">
+                        <i id="greeting-icon" class="fa-solid fa-sun text-yellow-300"></i>
                     </div>
                     <div>
                         <h2 class="text-xs md:text-sm text-blue-200 font-bold tracking-widest uppercase mb-0.5">
-                            <span id="greeting-text">Menyiapkan...</span>,
+                            <span id="greeting-text">Memuat...</span>,
                         </h2>
-                        <h1 class="text-2xl md:text-3xl font-black tracking-tight drop-shadow-sm">{{ name | default('Admin Dishub') }}</h1>
+                        <h1 class="text-2xl md:text-3xl font-black tracking-tight">{{ name | default('Admin Dishub') }}</h1>
                     </div>
                 </div>
             </div>
 
-            <!-- Panel Info Realtime -->
-            <div class="w-full md:w-auto bg-black/40 backdrop-blur-xl rounded-2xl p-4 border border-white/20 flex flex-col gap-3 min-w-[320px] shadow-inner">
+            <div class="w-full md:w-auto bg-black/40 backdrop-blur-xl rounded-2xl p-4 border border-white/20 flex flex-col gap-3 min-w-[320px]">
                 <div class="flex justify-between items-center border-b border-white/20 pb-2.5 px-1">
                     <span class="text-[10px] md:text-xs font-bold text-blue-300 uppercase tracking-widest flex items-center gap-2">
-                        <i class="fa-solid fa-location-dot animate-bounce"></i> Command Center, PKL
+                        <i class="fa-solid fa-location-dot"></i> Command Center, PKL
                     </span>
-                    <span id="realtime-clock" class="text-lg md:text-xl font-mono font-bold text-white tracking-widest drop-shadow-md">00:00:00 WIB</span>
+                    <span id="realtime-clock" class="text-lg md:text-xl font-mono font-bold text-white tracking-widest">00:00:00 WIB</span>
                 </div>
-                
-                <!-- Running Text -->
                 <div class="overflow-hidden relative flex items-center bg-white/10 rounded-lg py-1.5 px-3 border border-white/10">
-                    <i class="fa-solid fa-bullhorn text-yellow-400 text-xs mr-3 z-10 bg-transparent animate-pulse"></i>
+                    <i class="fa-solid fa-bullhorn text-yellow-400 text-xs mr-3 z-10 animate-pulse"></i>
                     <marquee class="text-[10px] md:text-[11px] font-bold text-slate-100 uppercase tracking-widest" scrollamount="4">
                         TETAP PATUHI RAMBU LALU LINTAS | PANTAUAN CCTV AKTIF 24 JAM | LAPORKAN GANGGUAN INFRASTRUKTUR KE COMMAND CENTER DISHUB KOTA PEKALONGAN.
                     </marquee>
@@ -69,38 +56,27 @@
         </div>
     </div>
 
-    <!-- ==========================================
-         BAGIAN 2: MAIN DASHBOARD & FILTER (Gaya Pantau Semar)
-    =========================================== -->
+    <!-- BAGIAN 2: DASHBOARD & GRID -->
     <div class="flex flex-col lg:flex-row gap-6">
         
-        <!-- SIDEBAR: FILTER CCTV -->
+        <!-- SIDEBAR FILTER -->
         <div class="w-full lg:w-1/4 xl:w-1/5 flex-shrink-0">
-            <div class="bg-white dark:bg-[#0f172a] rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sticky top-[100px] transition-colors duration-300">
+            <div class="bg-white dark:bg-[#0f172a] rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sticky top-[100px]">
                 <h3 class="font-black text-slate-800 dark:text-white text-sm md:text-base uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
-                    <i class="fa-solid fa-sliders text-blue-600 dark:text-blue-500"></i> Panel Filter
+                    <i class="fa-solid fa-sliders text-blue-600"></i> Panel Filter
                 </h3>
 
                 <form class="space-y-6">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-widest">Tipe Deteksi</label>
-                        <select id="filter-tipe" class="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 block p-3.5 outline-none transition-colors cursor-pointer font-semibold shadow-sm hover:border-blue-400">
+                        <select id="filter-tipe" class="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white text-sm rounded-xl block p-3.5 outline-none font-semibold">
                             <option value="semua">Semua (AI & Normal)</option>
                             <option value="ai">Hanya AI YOLOv8</option>
                             <option value="normal">Hanya ATCS Normal</option>
                         </select>
                     </div>
-
-                    <!-- Info Box -->
-                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800/50">
-                        <p class="text-[10px] text-blue-800 dark:text-blue-300 font-medium leading-relaxed flex items-start gap-2">
-                            <i class="fa-solid fa-circle-info mt-0.5"></i> 
-                            Sistem akan menarik data 50 kamera secara realtime dari Node peladen terdekat.
-                        </p>
-                    </div>
-
                     <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <button type="button" onclick="renderCCTVGrid()" class="w-full text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 font-black rounded-xl text-xs px-5 py-4 text-center transition-all transform hover:-translate-y-0.5 uppercase tracking-widest flex justify-center items-center gap-2 shadow-lg shadow-blue-600/30">
+                        <button type="button" onclick="renderCCTVGrid()" class="w-full text-white bg-blue-600 hover:bg-blue-700 font-black rounded-xl text-xs px-5 py-4 uppercase tracking-widest flex justify-center items-center gap-2 shadow-lg">
                             <i class="fa-solid fa-magnifying-glass"></i> Terapkan Filter
                         </button>
                     </div>
@@ -108,44 +84,100 @@
             </div>
         </div>
 
-        <!-- MAIN GRID: TAMPILAN CCTV -->
+        <!-- MAIN GRID -->
         <div class="w-full lg:w-3/4 xl:w-4/5">
-            
-            <!-- Header Grid -->
-            <div class="bg-white dark:bg-[#0f172a] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 md:p-5 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors duration-300">
+            <div class="bg-white dark:bg-[#0f172a] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 md:p-5 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-wide flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span> Live Stream ATCS
-                    </h2>
-                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 tracking-wide">Terhubung langsung ke infrastruktur pengawasan Kota Pekalongan.</p>
+                    <h2 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-wide">Live Stream ATCS</h2>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">Total 50 Titik Kamera Terintegrasi.</p>
                 </div>
-                <div id="stream-count" class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-colors">
-                    <i class="fa-solid fa-satellite-dish animate-pulse text-blue-500"></i> Menghubungkan...
+                <div id="stream-count" class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-video text-blue-500"></i> Memuat...
                 </div>
             </div>
 
             <!-- CONTAINER KAMERA -->
             <div id="cctv-grid-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 h-[800px] overflow-y-auto custom-scrollbar pr-2 pb-10">
-                
-                <!-- ANIMASI LOADING SEBELUM JS BERHASIL DIMUAT -->
-                <div class="col-span-full flex flex-col items-center justify-center h-64 bg-white/50 dark:bg-slate-800/50 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700">
-                    <div class="relative w-16 h-16 flex items-center justify-center mb-4">
-                        <div class="absolute inset-0 border-4 border-blue-200 dark:border-blue-900 rounded-full"></div>
-                        <div class="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-                        <i class="fa-solid fa-video text-blue-600 dark:text-blue-400 text-sm"></i>
-                    </div>
-                    <h3 class="text-slate-800 dark:text-white font-black uppercase tracking-widest text-sm">Menyinkronkan Data Edge</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mt-1">Mengambil 50 titik kamera...</p>
-                </div>
-                
+                <!-- Javascript akan mengisi ini secara otomatis -->
             </div>
         </div>
     </div>
 </div>
 
-<!-- ==========================================
-     PEMANGGIL LOGIKA CCTV DARI FILE EXTERNAL
-=========================================== -->
-<script src="{{ url_for('static', filename='js/cctv.js') }}"></script>
+<!-- SCRIPT UTAMA DI DALAM HTML (DIJAMIN 100% LANGSUNG JALAN TANPA GAGAL PATH) -->
+<script>
+    const cctvDatabase = [];
+    
+    // Auto-generate 50 kamera ATCS Pekalongan
+    for (let i = 1; i <= 50; i++) {
+        cctvDatabase.push({
+            id: `cam${i}`,
+            nama: i <= 3 ? `Simpang Utama (${i}) - AI` : `Titik Pantau ATCS ${i}`,
+            tipe: i <= 3 ? "ai" : "normal",
+            url: `https://www.atcskotapekalongan.com/streaming-mse.php?id=${i}`,
+            status: "Aktif",
+            publik: true
+        });
+    }
+
+    function renderCCTVGrid() {
+        const container = document.getElementById('cctv-grid-container');
+        const filterTipe = document.getElementById('filter-tipe');
+        if(!container || !filterTipe) return; 
+
+        const filterValue = filterTipe.value;
+        container.innerHTML = ''; 
+        let renderedCount = 0;
+
+        cctvDatabase.forEach(cam => {
+            if (filterValue !== 'semua' && cam.tipe !== filterValue) return;
+            renderedCount++;
+
+            let badgeHTML = cam.tipe === 'ai' 
+                ? `<div class="absolute top-3 left-3 bg-blue-600 text-white text-[9px] font-bold px-2.5 py-1 rounded-md uppercase z-20"><i class="fa-solid fa-microchip text-yellow-300"></i> AI YOLOv8</div>`
+                : `<div class="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-bold px-2.5 py-1 rounded-md uppercase z-20">RAW NVR</div>`;
+
+            let borderClass = cam.tipe === 'ai' ? 'border-blue-500 shadow-lg' : 'border-slate-200 dark:border-slate-800';
+
+            const cardHTML = `
+                <div class="bg-white dark:bg-[#0f172a] rounded-2xl overflow-hidden ${borderClass} shadow-md flex flex-col relative">
+                    <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                        ${badgeHTML}
+                        <iframe src="${cam.url}" class="w-full h-full object-cover border-0 pointer-events-none" allowfullscreen></iframe>
+                    </div>
+                    <div class="p-4 flex-grow flex flex-col justify-between border-t border-slate-100 dark:border-slate-800">
+                        <h3 class="font-black text-slate-800 dark:text-white text-sm mb-2 uppercase truncate">${cam.nama}</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold px-2 py-1 rounded"><i class="fa-solid fa-signal text-green-500"></i> ${cam.status}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += cardHTML;
+        });
+
+        document.getElementById('stream-count').innerHTML = `<i class="fa-solid fa-video"></i> ${renderedCount} Stream Aktif`;
+    }
+
+    function updateAppHeader() {
+        const now = new Date();
+        const hours = now.getHours();
+        let greeting = "Selamat Malam", iconClass = "fa-moon", iconColor = "text-blue-300";
+
+        if (hours >= 4 && hours < 11) { greeting = "Selamat Pagi"; iconClass = "fa-cloud-sun"; iconColor = "text-yellow-400"; } 
+        else if (hours >= 11 && hours < 15) { greeting = "Selamat Siang"; iconClass = "fa-sun"; iconColor = "text-yellow-300"; } 
+        else if (hours >= 15 && hours < 18.5) { greeting = "Selamat Sore"; iconClass = "fa-sun"; iconColor = "text-orange-400"; }
+
+        document.getElementById('greeting-text').innerText = greeting;
+        document.getElementById('greeting-icon').className = `fa-solid ${iconClass} ${iconColor}`;
+        document.getElementById('realtime-clock').innerText = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }).format(now) + ' WIB';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setInterval(updateAppHeader, 1000);
+        updateAppHeader();
+        renderCCTVGrid();
+    });
+</script>
 
 {% endblock %}
