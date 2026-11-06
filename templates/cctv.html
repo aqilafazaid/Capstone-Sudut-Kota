@@ -33,50 +33,33 @@
 
     <!-- BAGIAN 1: EXECUTIVE HEADER -->
     <div class="glass-card-premium rounded-[2rem] p-6 md:p-8 mb-8 relative overflow-hidden group">
-
         <div class="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] pointer-events-none"></div>
         <div class="absolute -bottom-10 left-10 w-56 h-56 bg-cyan-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[60px] pointer-events-none"></div>
 
         <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-
             <div class="flex items-center gap-5">
                 <div class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-navy to-blue-600 flex items-center justify-center text-white text-2xl shadow-lg border-2 border-white dark:border-slate-800">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
-
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-display font-black tracking-tight text-slate-800 dark:text-white uppercase">
-                        Command Center
-                    </h1>
-                    <p class="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">
-                        Area Traffic Control System (ATCS) - Kota Pekalongan
-                    </p>
+                    <h1 class="text-2xl md:text-3xl font-display font-black tracking-tight text-slate-800 dark:text-white uppercase">Command Center</h1>
+                    <p class="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Area Traffic Control System (ATCS) - Kota Pekalongan</p>
                 </div>
             </div>
 
             <div class="w-full lg:w-auto bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-200 dark:border-white/10 flex flex-col gap-3 min-w-[320px]">
-
                 <div class="flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-3 px-1">
-
                     <span class="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-2 border border-green-200 dark:border-green-800/50">
-                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                        Web Integration Aktif
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Web Integration Aktif
                     </span>
-
-                    <span id="atcs-realtime-clock" class="text-lg md:text-xl font-mono font-bold text-slate-800 dark:text-white tracking-widest">
-                        00:00:00 WIB
-                    </span>
-
+                    <span id="atcs-realtime-clock" class="text-lg md:text-xl font-mono font-bold text-slate-800 dark:text-white tracking-widest">00:00:00 WIB</span>
                 </div>
 
                 <div class="overflow-hidden relative flex items-center bg-white dark:bg-black/40 rounded-xl py-2 px-3 border border-slate-100 dark:border-white/5 shadow-sm">
-
                     <i class="fa-solid fa-server text-blue-500 text-xs mr-3 z-10 animate-pulse"></i>
-
                     <marquee class="text-[10px] md:text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest" scrollamount="4">
                         MENARIK DATA DARI SERVER ATCS KOTA PEKALONGAN. GUNAKAN FITUR 'KETUK UNTUK MEMUTAR' AGAR KINERJA PERAMBAN TETAP OPTIMAL SAAT MEMANTAU 50 TITIK KAMERA.
                     </marquee>
-
                 </div>
             </div>
         </div>
@@ -87,21 +70,14 @@
 
         <!-- SIDEBAR FILTER -->
         <div class="w-full lg:w-[280px] flex-shrink-0">
-
             <div class="glass-card-premium rounded-3xl p-6 sticky top-[100px]">
-
                 <h3 class="font-display font-black text-slate-800 dark:text-white text-sm uppercase tracking-widest mb-5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
-                    <i class="fa-solid fa-sliders text-blue-600 dark:text-blue-400"></i>
-                    Filter Kamera
+                    <i class="fa-solid fa-sliders text-blue-600 dark:text-blue-400"></i> Filter Kamera
                 </h3>
 
                 <form class="space-y-5">
-
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-widest">
-                            Kategori Deteksi
-                        </label>
-
+                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-widest">Kategori Deteksi</label>
                         <select id="filter-tipe" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white text-xs rounded-xl block p-3.5 outline-none font-bold appearance-none cursor-pointer">
                             <option value="semua">Semua (AI & Web Stream)</option>
                             <option value="ai">Hanya AI YOLOv8</option>
@@ -110,23 +86,16 @@
                     </div>
 
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-widest">
-                            Aksi Massal
-                        </label>
-
+                        <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-widest">Aksi Massal</label>
                         <button type="button" onclick="stopAllStreams()" class="w-full text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 font-bold rounded-xl text-[10px] px-4 py-3 uppercase tracking-widest flex justify-center items-center gap-2 transition-all active:scale-95 mt-1">
-                            <i class="fa-solid fa-stop"></i>
-                            Hentikan Semua Putaran
+                            <i class="fa-solid fa-stop"></i> Hentikan Semua Putaran
                         </button>
                     </div>
 
                     <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
-
                         <button type="button" onclick="renderCCTVGrid()" class="w-full text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 font-bold rounded-xl text-[11px] px-5 py-3.5 uppercase tracking-widest flex justify-center items-center gap-2 shadow-lg transition-all active:scale-95">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            Terapkan Filter
+                            <i class="fa-solid fa-magnifying-glass"></i> Terapkan Filter
                         </button>
-
                     </div>
                 </form>
             </div>
@@ -134,42 +103,140 @@
 
         <!-- MAIN CCTV GRID -->
         <div class="w-full lg:flex-1">
-
             <div class="glass-card-premium rounded-2xl p-4 md:p-5 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-
                 <div>
-                    <h2 class="text-base font-display font-black text-slate-800 dark:text-white uppercase tracking-wider">
-                        Live Stream (Web Integration)
-                    </h2>
-
-                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1">
-                        Sumber:
-                        <span class="text-blue-500">ATCS Kota Pekalongan</span>
-                    </p>
+                    <h2 class="text-base font-display font-black text-slate-800 dark:text-white uppercase tracking-wider">Live Stream (Web Integration)</h2>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1">Sumber: <span class="text-blue-500">atcskotapekalongan.com</span></p>
                 </div>
-
                 <div id="stream-count" class="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold px-4 py-2.5 rounded-xl border border-blue-100 dark:border-blue-800/50 flex items-center gap-2 shadow-sm">
-                    <i class="fa-solid fa-video animate-pulse"></i>
-                    Memuat Data...
+                    <i class="fa-solid fa-video animate-pulse"></i> Memuat Data...
                 </div>
-
             </div>
 
             <!-- CONTAINER KAMERA -->
-            <!-- Semua nama, ID, URL, tipe, dan status diambil dari cctv.js -->
             <div id="cctv-grid-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 h-[750px] overflow-y-auto custom-scrollbar pr-2 pb-10">
-                <!-- Render otomatis oleh cctv.js -->
+                <!-- Javascript akan memproses grid di sini -->
             </div>
-
         </div>
     </div>
 </div>
 
-<!--
-    DATABASE DAN LOGIKA CCTV
-    Seluruh data kamera dikelola melalui file cctv.js.
-    Pastikan path sesuai struktur folder static proyek Flask.
--->
-<script src="{{ url_for('static', filename='js/cctv.js') }}"></script>
+<script>
+    const ATCS_WEB_URL = "https://www.atcskotapekalongan.com/streaming-mse.php?id=";
+    const cctvDatabase = [];
 
+    // Auto-generate 50 Kamera
+    for (let i = 1; i <= 50; i++) {
+        cctvDatabase.push({
+            id: `cam_${i}`,
+            nama: i <= 3 ? `Simpang Utama ${i} (AI)` : `Titik Pantau ATCS ${i}`,
+            tipe: i <= 3 ? "ai" : "normal",
+            url: `${ATCS_WEB_URL}${i}`,
+            status: "Siap"
+        });
+    }
+
+    // Fungsi Render Grid
+    function renderCCTVGrid() {
+        const container = document.getElementById('cctv-grid-container');
+        const filterTipe = document.getElementById('filter-tipe').value;
+
+        container.innerHTML = '';
+        let renderedCount = 0;
+
+        cctvDatabase.forEach((cam) => {
+            if (filterTipe !== 'semua' && cam.tipe !== filterTipe) return;
+            renderedCount++;
+
+            const isAI = cam.tipe === 'ai';
+            const badgeHTML = isAI
+                ? `<div class="absolute top-3 left-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg uppercase z-20 shadow-lg flex items-center gap-1.5"><i class="fa-solid fa-microchip text-yellow-300"></i> AI Active</div>`
+                : `<div class="absolute top-3 left-3 bg-slate-800/80 backdrop-blur-sm border border-slate-600 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg uppercase z-20 shadow-md">Web Stream</div>`;
+
+            const cardClass = isAI ? 'ai-glow border-blue-500/50' : 'border-slate-200 dark:border-white/10';
+
+            const cardHTML = `
+                <div class="glass-card-premium rounded-2xl overflow-hidden shadow-sm flex flex-col relative ${cardClass} min-h-[250px]">
+
+                    <div class="relative bg-black h-48 w-full flex items-center justify-center overflow-hidden">
+                        ${badgeHTML}
+
+                        <iframe id="iframe-${cam.id}" src="" class="w-full h-full border-0 hidden" allowfullscreen referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin"></iframe>
+
+                        <div id="overlay-${cam.id}" class="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center cursor-pointer transition-opacity z-10 hover:bg-slate-700" onclick="playWebStream('${cam.id}', '${cam.url}')">
+                            <div class="w-12 h-12 rounded-full bg-blue-600/90 text-white flex items-center justify-center text-xl shadow-[0_0_20px_rgba(37,99,235,0.6)] border border-white/20 hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-play ml-1"></i>
+                            </div>
+                            <span class="text-[9px] text-white font-bold tracking-widest uppercase mt-3 drop-shadow-md bg-black/50 px-2 py-1 rounded">Ketuk Untuk Memutar</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 flex-grow flex flex-col justify-between border-t border-slate-100 dark:border-white/5">
+                        <div>
+                            <h3 class="font-display font-black text-slate-800 dark:text-white text-sm mb-1 uppercase truncate">${cam.nama}</h3>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">ID CH: ${cam.id.replace('cam_', '')}</p>
+                        </div>
+                        <div class="flex items-center justify-between mt-4">
+                            <span id="status-${cam.id}" class="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-bold px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 uppercase tracking-wider transition-colors"><i class="fa-solid fa-circle text-[7px] align-middle mr-1"></i> Standby</span>
+                            <span class="text-[9px] text-blue-500 dark:text-blue-400 font-mono tracking-widest px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20">PHP WEB</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += cardHTML;
+        });
+
+        document.getElementById('stream-count').innerHTML = `<i class="fa-solid fa-video text-blue-500"></i> ${renderedCount} Titik Ditemukan`;
+    }
+
+    window.playWebStream = function(id, url) {
+        const iframe = document.getElementById(`iframe-${id}`);
+        const overlay = document.getElementById(`overlay-${id}`);
+        const statusBadge = document.getElementById(`status-${id}`);
+
+        iframe.src = url;
+        iframe.classList.remove('hidden');
+        overlay.style.display = 'none';
+
+        statusBadge.className = "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[9px] font-bold px-2 py-1 rounded-md border border-green-200 dark:border-green-800/50 uppercase tracking-wider";
+        statusBadge.innerHTML = `<i class="fa-solid fa-circle text-[7px] align-middle mr-1 animate-pulse"></i> Mengudara`;
+    };
+
+    window.stopAllStreams = function() {
+        cctvDatabase.forEach((cam) => {
+            const iframe = document.getElementById(`iframe-${cam.id}`);
+            const overlay = document.getElementById(`overlay-${cam.id}`);
+            const statusBadge = document.getElementById(`status-${cam.id}`);
+
+            if (iframe && !iframe.classList.contains('hidden')) {
+                iframe.src = "";
+                iframe.classList.add('hidden');
+                overlay.style.display = 'flex';
+
+                statusBadge.className = "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-bold px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 uppercase tracking-wider transition-colors";
+                statusBadge.innerHTML = `<i class="fa-solid fa-circle text-[7px] align-middle mr-1"></i> Standby`;
+            }
+        });
+    }
+
+    function updateClock() {
+        const now = new Date();
+        const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+        const timeString = now.toLocaleTimeString('id-ID', timeOptions).replace(/\./g, ':');
+
+        const offset = now.getTimezoneOffset() / -60;
+        let tz = 'WIB';
+        if (offset === 8) tz = 'WITA';
+        else if (offset === 9) tz = 'WIT';
+
+        const clockEl = document.getElementById('atcs-realtime-clock');
+        if(clockEl) clockEl.innerText = `${timeString} ${tz}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setInterval(updateClock, 1000);
+        updateClock();
+        renderCCTVGrid();
+    });
+</script>
 {% endblock %}
