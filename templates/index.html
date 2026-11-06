@@ -35,19 +35,36 @@
         box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
     }
     .dark .glass-card {
-        background: rgba(15, 23, 42, 0.7);
+        background: rgba(15, 23, 42, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3);
     }
     
     .atcs-glow { box-shadow: 0 0 30px rgba(37, 99, 235, 0.15); }
+    
+    /* Animasi Shimmer untuk Gambar Loading */
+    .shimmer {
+        background: #f6f7f8;
+        background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+        background-repeat: no-repeat;
+        background-size: 800px 100%; 
+        animation-duration: 1.5s;
+        animation-fill-mode: forwards; 
+        animation-iteration-count: infinite;
+        animation-name: placeholderShimmer;
+        animation-timing-function: linear;
+    }
+    .dark .shimmer {
+        background: #1e293b;
+        background-image: linear-gradient(to right, #1e293b 0%, #334155 20%, #1e293b 40%, #1e293b 100%);
+    }
+    @keyframes placeholderShimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
 </style>
 
 <!-- ==========================================
-     SEKSI 1: HERO SECTION & INSTITUTIONAL BRANDING
+     SEKSI 1: HERO SECTION & CUACA LIVE
 =========================================== -->
 <section class="relative pt-6 pb-12 overflow-hidden z-10">
-    <!-- Ornamen Latar MySF Style -->
     <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100 dark:bg-blue-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-70 -z-10 translate-x-1/3 -translate-y-1/3"></div>
     <div class="absolute bottom-0 left-0 w-[400px] h-[400px] bg-cyan-100 dark:bg-cyan-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-70 -z-10 -translate-x-1/4 translate-y-1/4"></div>
 
@@ -56,9 +73,15 @@
             
             <!-- Teks Hero -->
             <div class="flex-1 text-center lg:text-left space-y-6 pt-4 md:pt-10">
-                <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-brand-navy dark:text-white text-xs font-bold rounded-full shadow-sm">
-                    <img src="https://iili.io/nZeOBqJ.md.png" alt="Dishub Logo" class="h-4 w-auto"> 
-                    Pelayanan Informasi Publik Terpadu
+                
+                <!-- WIDGET CUACA KOTA PEKALONGAN (REAL-TIME API) -->
+                <div class="inline-flex items-center gap-3 px-4 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-brand-navy dark:text-white text-xs font-bold rounded-full shadow-sm">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-ping absolute"></span>
+                    <span class="w-2 h-2 bg-blue-500 rounded-full relative"></span>
+                    Kota Pekalongan: 
+                    <span id="weather-temp" class="text-brand-blue dark:text-blue-400 font-black shimmer rounded text-transparent">--°C</span>
+                    <i id="weather-icon" class="fa-solid fa-cloud-sun text-yellow-500 text-sm"></i>
+                    <span id="weather-desc" class="text-slate-500 dark:text-slate-400 font-medium">Memuat...</span>
                 </div>
                 
                 <h1 class="font-display font-black text-4xl md:text-5xl lg:text-6xl text-slate-800 dark:text-white leading-[1.1] tracking-tight">
@@ -74,31 +97,41 @@
                     <a href="{{ url_for('cctv') }}" class="px-8 py-4 bg-brand-blue hover:bg-blue-700 text-white font-display font-bold rounded-full shadow-[0_10px_20px_rgba(37,99,235,0.3)] transition-all flex items-center justify-center gap-3 transform hover:-translate-y-1">
                         <i class="fa-solid fa-video animate-pulse"></i> Jelajahi CCTV Live
                     </a>
-                    <a href="#feed-informasi" class="px-8 py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-white font-display font-bold rounded-full shadow-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-3 transform hover:-translate-y-1">
-                        <i class="fa-solid fa-newspaper text-brand-blue dark:text-blue-400"></i> Informasi Kota
+                    <a href="#pusat-pengaduan" class="px-8 py-4 bg-white dark:bg-slate-800 text-slate-700 dark:text-white font-display font-bold rounded-full shadow-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-3 transform hover:-translate-y-1">
+                        <i class="fa-solid fa-bullhorn text-brand-blue dark:text-blue-400"></i> Lapor & Aduan
                     </a>
                 </div>
             </div>
 
-            <!-- Ilustrasi / Hero Card Atcs -->
-            <div class="flex-1 w-full max-w-lg lg:max-w-none relative mt-8 lg:mt-0">
-                <div class="glass-card p-4 rounded-[2rem] relative overflow-hidden group">
-                    <div class="absolute top-6 left-6 bg-red-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest z-20 flex items-center gap-2 shadow-lg">
-                        <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span> LIVE MONITORING
+            <!-- Widget Eksekutif ATCS -->
+            <div class="flex-1 w-full max-w-md relative mt-8 lg:mt-0">
+                <div class="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-[2.5rem] blur opacity-20 dark:opacity-40 animate-pulse"></div>
+                <div class="glass-card p-8 rounded-[2.5rem] relative overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                    
+                    <div class="flex justify-between items-center mb-8 pb-4 border-b border-slate-200 dark:border-white/10">
+                        <h3 class="font-black text-slate-800 dark:text-white uppercase tracking-widest text-xs">Status Infrastruktur</h3>
+                        <span class="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5"><i class="fa-solid fa-check-circle"></i> Online</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-8 text-center mb-8 relative z-10">
+                        <div class="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+                            <div class="text-3xl font-impact text-slate-800 dark:text-white">12</div>
+                            <div class="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-2 tracking-widest">Simpang Pantau</div>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+                            <div class="text-3xl font-impact text-slate-800 dark:text-white">48</div>
+                            <div class="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-2 tracking-widest">Kamera Aktif</div>
+                        </div>
                     </div>
                     
-                    <div class="aspect-video bg-slate-900 rounded-[1.25rem] overflow-hidden relative border border-slate-800">
-                        <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80" alt="ATCS Network" class="w-full h-full object-cover opacity-60 mix-blend-screen transition-transform duration-700 group-hover:scale-105">
-                        <div class="absolute inset-0 bg-gradient-to-t from-brand-navy/90 via-transparent to-transparent"></div>
-                        
-                        <!-- Overlay Elemen UI -->
-                        <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                            <div>
-                                <h3 class="text-white font-display font-bold text-lg leading-tight">Simpang Ponolawen</h3>
-                                <p class="text-blue-300 text-xs font-medium">ATCS Dishub Pekalongan</p>
-                            </div>
-                            <div class="bg-black/50 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10">
-                                <span class="text-white text-xs font-mono font-bold"><i class="fa-solid fa-microchip text-cyan-400 mr-1"></i> AI Active</span>
+                    <!-- Main Counter -->
+                    <div class="bg-gradient-to-br from-blue-900 to-[#0a143c] p-8 rounded-3xl text-center text-white relative overflow-hidden shadow-inner border border-blue-700/50">
+                        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full mix-blend-screen filter blur-[40px] opacity-50"></div>
+                        <div class="relative z-10">
+                            <div class="text-6xl font-impact text-white drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]">50</div>
+                            <div class="text-[10px] text-blue-200 font-bold uppercase mt-3 tracking-[0.3em] flex justify-center items-center gap-2">
+                                <i class="fa-solid fa-camera-retro"></i> Titik CCTV ATCS
                             </div>
                         </div>
                     </div>
@@ -110,13 +143,12 @@
 </section>
 
 <!-- ==========================================
-     SEKSI 2: HIGHLIGHTS (INSTAGRAM STORIES STYLE)
+     SEKSI 2: HIGHLIGHTS (INSTAGRAM STORIES)
 =========================================== -->
 <section class="py-6 border-y border-slate-200 dark:border-white/5 bg-white/50 dark:bg-transparent">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8">
         <div class="flex overflow-x-auto hide-scrollbar gap-4 md:gap-6 pb-2 snap-x snap-mandatory">
             
-            <!-- Item 1: CCTV Live (Active) -->
             <a href="{{ url_for('cctv') }}" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
                 <div class="story-ring transition-transform group-hover:scale-105">
                     <div class="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full bg-white dark:bg-brand-navy border-2 border-white dark:border-brand-navy flex items-center justify-center overflow-hidden relative">
@@ -128,50 +160,31 @@
                 <span class="text-[10px] md:text-xs font-display font-bold text-slate-800 dark:text-slate-200">CCTV Live</span>
             </a>
 
-            <!-- Item 2: Info Lalu Lintas -->
-            <a href="#" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
+            <a href="#feed-informasi" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
                 <div class="story-ring transition-transform group-hover:scale-105">
                     <div class="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full bg-white dark:bg-brand-navy border-2 border-white dark:border-brand-navy flex items-center justify-center overflow-hidden relative">
-                        <div class="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <i class="fa-solid fa-traffic-light text-yellow-500 text-xl md:text-2xl"></i>
-                        </div>
+                        <img src="https://iili.io/nZeOBqJ.md.png" class="w-8 h-auto object-cover" alt="Dishub">
                     </div>
                 </div>
-                <span class="text-[10px] md:text-xs font-display font-medium text-slate-700 dark:text-slate-300">Lalu Lintas</span>
+                <span class="text-[10px] md:text-xs font-display font-bold text-slate-800 dark:text-slate-200">@dishub</span>
             </a>
 
-            <!-- Item 3: Info Jalan -->
-            <a href="#" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
-                <div class="border-2 border-slate-300 dark:border-slate-600 p-[3px] rounded-full transition-transform group-hover:scale-105">
+            <a href="#feed-informasi" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
+                <div class="story-ring transition-transform group-hover:scale-105">
                     <div class="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full bg-white dark:bg-brand-navy border-2 border-white dark:border-brand-navy flex items-center justify-center overflow-hidden relative">
-                        <div class="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <i class="fa-solid fa-road text-slate-500 text-xl md:text-2xl"></i>
-                        </div>
+                        <i class="fa-solid fa-lightbulb text-yellow-500 text-2xl"></i>
                     </div>
                 </div>
-                <span class="text-[10px] md:text-xs font-display font-medium text-slate-700 dark:text-slate-300">Info Jalan</span>
+                <span class="text-[10px] md:text-xs font-display font-bold text-slate-800 dark:text-slate-200">@pju</span>
             </a>
 
-            <!-- Item 4: Kegiatan Dishub -->
-            <a href="#" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
-                <div class="border-2 border-slate-300 dark:border-slate-600 p-[3px] rounded-full transition-transform group-hover:scale-105">
-                    <div class="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full bg-white dark:bg-brand-navy border-2 border-white dark:border-brand-navy flex items-center justify-center overflow-hidden relative">
-                        <img src="https://iili.io/nZeOBqJ.md.png" alt="Kegiatan" class="w-8 h-auto grayscale opacity-70">
+            <a href="#pusat-pengaduan" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
+                <div class="border-2 border-red-500 p-[3px] rounded-full transition-transform group-hover:scale-105">
+                    <div class="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full bg-red-50 dark:bg-red-900/20 border-2 border-white dark:border-brand-navy flex items-center justify-center overflow-hidden relative">
+                        <i class="fa-solid fa-bullhorn text-red-500 text-xl md:text-2xl"></i>
                     </div>
                 </div>
-                <span class="text-[10px] md:text-xs font-display font-medium text-slate-700 dark:text-slate-300">Giat Dishub</span>
-            </a>
-
-            <!-- Item 5: Pengumuman -->
-            <a href="#" class="flex flex-col items-center gap-2 min-w-[72px] md:min-w-[88px] snap-start group cursor-pointer shrink-0">
-                <div class="border-2 border-slate-300 dark:border-slate-600 p-[3px] rounded-full transition-transform group-hover:scale-105">
-                    <div class="w-[60px] h-[60px] md:w-[76px] md:h-[76px] rounded-full bg-white dark:bg-brand-navy border-2 border-white dark:border-brand-navy flex items-center justify-center overflow-hidden relative">
-                        <div class="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <i class="fa-solid fa-bullhorn text-brand-blue text-xl md:text-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                <span class="text-[10px] md:text-xs font-display font-medium text-slate-700 dark:text-slate-300">Pengumuman</span>
+                <span class="text-[10px] md:text-xs font-display font-bold text-red-600 dark:text-red-400">Lapor!</span>
             </a>
 
         </div>
@@ -179,186 +192,103 @@
 </section>
 
 <!-- ==========================================
-     SEKSI 3: ATCS DASHBOARD (MYSMARTFREN STYLE)
+     SEKSI 3: PUSAT LAYANAN PENGADUAN (NEW)
 =========================================== -->
-<section class="py-12 md:py-16">
-    <div class="max-w-[1400px] mx-auto px-4 md:px-8">
-        
-        <div class="flex justify-between items-end mb-8">
-            <div>
-                <h2 class="font-display font-black text-2xl md:text-3xl text-slate-800 dark:text-white tracking-tight">Kondisi Infrastruktur</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Ringkasan status jaringan ATCS Kota Pekalongan saat ini.</p>
-            </div>
-            <div class="hidden sm:flex bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest items-center gap-2 border border-green-200 dark:border-green-800">
-                <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Sistem Normal
-            </div>
-        </div>
+<section id="pusat-pengaduan" class="py-12 md:py-16 bg-brand-navy relative overflow-hidden">
+    <!-- Background Patterns -->
+    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+    <div class="absolute top-0 right-0 w-[300px] h-[300px] bg-red-600 rounded-full mix-blend-screen filter blur-[100px] opacity-20"></div>
 
-        <!-- Grid Cards ala MySF Data Plan -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            
-            <!-- Card 1: Total CCTV -->
-            <div class="glass-card rounded-[1.5rem] p-5 md:p-6 flex flex-col justify-between atcs-glow group relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                <div class="flex justify-between items-start mb-6 relative z-10">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-brand-blue dark:text-blue-400 flex items-center justify-center text-lg shadow-inner">
-                        <i class="fa-solid fa-camera"></i>
-                    </div>
-                    <i class="fa-solid fa-arrow-up-right-from-square text-slate-300 dark:text-slate-600 text-xs"></i>
-                </div>
-                <div class="relative z-10">
-                    <div class="text-3xl md:text-4xl font-display font-black text-slate-800 dark:text-white">50</div>
-                    <div class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">Total CCTV Terdaftar</div>
-                </div>
-            </div>
-
-            <!-- Card 2: CCTV Online -->
-            <div class="glass-card rounded-[1.5rem] p-5 md:p-6 flex flex-col justify-between group relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                <div class="flex justify-between items-start mb-6 relative z-10">
-                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center text-lg shadow-inner">
-                        <i class="fa-solid fa-signal"></i>
-                    </div>
-                </div>
-                <div class="relative z-10">
-                    <div class="text-3xl md:text-4xl font-display font-black text-slate-800 dark:text-white">48</div>
-                    <div class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">Kamera Online</div>
-                </div>
-            </div>
-
-            <!-- Card 3: CCTV Offline -->
-            <div class="glass-card rounded-[1.5rem] p-5 md:p-6 flex flex-col justify-between group relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-24 h-24 bg-slate-500/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                <div class="flex justify-between items-start mb-6 relative z-10">
-                    <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center text-lg shadow-inner">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                    </div>
-                </div>
-                <div class="relative z-10">
-                    <div class="text-3xl md:text-4xl font-display font-black text-slate-800 dark:text-white">2</div>
-                    <div class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">Pemeliharaan (Offline)</div>
-                </div>
-            </div>
-
-            <!-- Card 4: Titik Persimpangan -->
-            <div class="glass-card rounded-[1.5rem] p-5 md:p-6 flex flex-col justify-between group relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                <div class="flex justify-between items-start mb-6 relative z-10">
-                    <div class="w-10 h-10 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-lg shadow-inner">
-                        <i class="fa-solid fa-map-location-dot"></i>
-                    </div>
-                </div>
-                <div class="relative z-10">
-                    <div class="text-3xl md:text-4xl font-display font-black text-slate-800 dark:text-white">12</div>
-                    <div class="text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">Simpang Terpantau</div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</section>
-
-<!-- ==========================================
-     SEKSI 4: PANTAUAN UTAMA (HORIZONTAL CAROUSEL)
-=========================================== -->
-<section class="py-12 bg-white dark:bg-[#0a0f1c] border-y border-slate-200 dark:border-white/5">
-    <div class="max-w-[1400px] mx-auto px-4 md:px-8">
-        
-        <div class="flex justify-between items-end mb-6">
-            <div>
-                <h2 class="font-display font-black text-2xl text-slate-800 dark:text-white tracking-tight">Kamera Unggulan</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Jalur utama dan persimpangan sibuk.</p>
-            </div>
-            <a href="{{ url_for('cctv') }}" class="text-brand-blue dark:text-blue-400 text-sm font-bold hover:underline">Lihat Semua</a>
-        </div>
-
-        <!-- Horizontal Scroll Container -->
-        <div class="flex overflow-x-auto hide-scrollbar gap-4 md:gap-6 pb-6 snap-x snap-mandatory">
-            
-            <!-- Camera Card 1 -->
-            <div class="min-w-[280px] md:min-w-[340px] snap-start bg-slate-50 dark:bg-brand-navy rounded-[1.5rem] border border-slate-200 dark:border-slate-700 overflow-hidden group cursor-pointer flex-shrink-0">
-                <div class="aspect-video bg-black relative overflow-hidden">
-                    <div class="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-md uppercase z-20 flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> LIVE</div>
-                    <div class="absolute inset-0 bg-slate-800/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[2px]">
-                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md border border-white/40"><i class="fa-solid fa-play ml-1"></i></div>
-                    </div>
-                    <img src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80" class="w-full h-full object-cover opacity-80" alt="CCTV Thumbnail">
-                </div>
-                <div class="p-5">
-                    <h3 class="font-display font-bold text-slate-800 dark:text-white text-base truncate">Simpang Grogolan</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> Jl. Jenderal Sudirman</p>
-                </div>
-            </div>
-
-            <!-- Camera Card 2 -->
-            <div class="min-w-[280px] md:min-w-[340px] snap-start bg-slate-50 dark:bg-brand-navy rounded-[1.5rem] border border-slate-200 dark:border-slate-700 overflow-hidden group cursor-pointer flex-shrink-0">
-                <div class="aspect-video bg-black relative overflow-hidden">
-                    <div class="absolute top-3 left-3 bg-blue-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-md uppercase z-20 flex items-center gap-1.5"><i class="fa-solid fa-microchip text-yellow-300"></i> AI ACTIVE</div>
-                    <div class="absolute inset-0 bg-slate-800/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[2px]">
-                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md border border-white/40"><i class="fa-solid fa-play ml-1"></i></div>
-                    </div>
-                    <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80" class="w-full h-full object-cover opacity-80" alt="CCTV Thumbnail">
-                </div>
-                <div class="p-5">
-                    <h3 class="font-display font-bold text-slate-800 dark:text-white text-base truncate">Kawasan Jetayu</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> Pusat Kota & Heritage</p>
-                </div>
-            </div>
-
-            <!-- Camera Card 3 -->
-            <div class="min-w-[280px] md:min-w-[340px] snap-start bg-slate-50 dark:bg-brand-navy rounded-[1.5rem] border border-slate-200 dark:border-slate-700 overflow-hidden group cursor-pointer flex-shrink-0">
-                <div class="aspect-video bg-black relative overflow-hidden">
-                    <div class="absolute top-3 left-3 bg-red-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-md uppercase z-20 flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span> LIVE</div>
-                    <div class="absolute inset-0 bg-slate-800/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 backdrop-blur-[2px]">
-                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md border border-white/40"><i class="fa-solid fa-play ml-1"></i></div>
-                    </div>
-                    <img src="https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&fit=crop&q=80" class="w-full h-full object-cover opacity-80 grayscale" alt="CCTV Thumbnail">
-                </div>
-                <div class="p-5">
-                    <h3 class="font-display font-bold text-slate-800 dark:text-white text-base truncate">Simpang THR</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> Jl. Perintis Kemerdekaan</p>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</section>
-
-<!-- ==========================================
-     SEKSI 5: FEED INFORMASI (INSTAGRAM STYLE)
-=========================================== -->
-<section id="feed-informasi" class="py-12 md:py-20">
-    <div class="max-w-[1400px] mx-auto px-4 md:px-8">
-        
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 relative z-10">
         <div class="text-center mb-10">
-            <h2 class="font-display font-black text-2xl md:text-3xl text-slate-800 dark:text-white tracking-tight">Informasi & Kegiatan</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-lg mx-auto">Pengumuman resmi, info rekayasa lalu lintas, dan edukasi keselamatan dari Dinas Perhubungan.</p>
+            <h2 class="font-display font-black text-2xl md:text-3xl text-white tracking-tight">Layanan Pengaduan Terpadu</h2>
+            <p class="text-sm text-blue-200 mt-2 max-w-lg mx-auto">Sampaikan keluhan dan laporan terkait infrastruktur lalu lintas, PJU mati, atau gangguan transportasi.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Card JNN -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-1 rounded-2xl hover:scale-[1.02] transition-transform duration-300">
+                <div class="bg-white/5 backdrop-blur-md rounded-xl p-6 md:p-8 h-full flex flex-col justify-between border border-white/10">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-display font-black text-2xl text-white italic tracking-tighter">JNN<span class="text-yellow-400 text-3xl">.</span></h3>
+                            <span class="bg-yellow-500/20 text-yellow-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase border border-yellow-500/30">Provinsi Jateng</span>
+                        </div>
+                        <h4 class="font-bold text-lg text-white mb-2">Jateng Ngopeni Nglakoni</h4>
+                        <p class="text-sm text-slate-400 mb-6">Layanan pengaduan terintegrasi Pemerintah Provinsi Jawa Tengah untuk merespons cepat keluhan warga Pekalongan.</p>
+                    </div>
+                    <a href="https://laporgub.jatengprov.go.id/" target="_blank" class="w-full py-4 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 text-brand-navy font-bold text-sm uppercase tracking-widest text-center shadow-lg hover:shadow-yellow-500/30 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Akses Aplikasi JNN
+                    </a>
+                </div>
+            </div>
+
+            <!-- Card SP4N LAPOR -->
+            <div class="bg-gradient-to-br from-red-900 to-slate-800 p-1 rounded-2xl hover:scale-[1.02] transition-transform duration-300">
+                <div class="bg-white/5 backdrop-blur-md rounded-xl p-6 md:p-8 h-full flex flex-col justify-between border border-white/10">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="font-display font-black text-2xl text-white tracking-tighter">SP4N <span class="text-red-500">LAPOR!</span></h3>
+                            <span class="bg-red-500/20 text-red-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase border border-red-500/30">Nasional</span>
+                        </div>
+                        <h4 class="font-bold text-lg text-white mb-2">Sistem Pengelolaan Pengaduan Nasional</h4>
+                        <p class="text-sm text-slate-300 mb-6">Layanan Aspirasi dan Pengaduan Online Rakyat. Laporan Anda akan diteruskan langsung ke instansi terkait.</p>
+                    </div>
+                    <a href="https://www.lapor.go.id/" target="_blank" class="w-full py-4 rounded-xl bg-gradient-to-r from-red-600 to-red-700 text-white font-bold text-sm uppercase tracking-widest text-center shadow-lg hover:shadow-red-600/30 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bullhorn animate-pulse"></i> Buat Laporan
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ==========================================
+     SEKSI 4: FEED IG RESMI (DISHUB & PJU)
+=========================================== -->
+<section id="feed-informasi" class="py-12 md:py-20 bg-slate-50 dark:bg-brand-dark">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8">
+        
+        <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4 text-center md:text-left">
+            <div>
+                <h2 class="font-display font-black text-2xl md:text-3xl text-slate-800 dark:text-white tracking-tight">Kabar Terbaru</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Pembaruan resmi dari Instagram @dishub_kotapekalongan & @pjukotapekalongan</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="https://www.instagram.com/dishub_kotapekalongan" target="_blank" class="bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white text-[11px] font-bold px-4 py-2.5 rounded-full uppercase tracking-wider flex items-center gap-2 hover:opacity-90 transition-opacity">
+                    <i class="fa-brands fa-instagram text-sm"></i> Dishub
+                </a>
+                <a href="https://www.instagram.com/pjukotapekalongan" target="_blank" class="bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white text-[11px] font-bold px-4 py-2.5 rounded-full uppercase tracking-wider flex items-center gap-2 hover:opacity-90 transition-opacity">
+                    <i class="fa-brands fa-instagram text-sm"></i> PJU
+                </a>
+            </div>
         </div>
 
         <!-- Feed Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-5xl mx-auto">
             
-            <!-- Feed Post 1 -->
+            <!-- Feed Post 1: DISHUB -->
             <div class="bg-white dark:bg-brand-navy rounded-[1.5rem] border border-slate-200 dark:border-white/5 overflow-hidden shadow-sm flex flex-col">
-                <!-- IG Header Style -->
                 <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden bg-white">
-                            <img src="https://iili.io/nZeOBqJ.md.png" alt="Avatar" class="w-full h-full object-cover p-1">
+                    <a href="https://www.instagram.com/dishub_kotapekalongan" target="_blank" class="flex items-center gap-3 group">
+                        <div class="story-ring">
+                            <div class="w-8 h-8 rounded-full border border-white dark:border-brand-navy overflow-hidden bg-white">
+                                <img src="https://iili.io/nZeOBqJ.md.png" alt="Avatar Dishub" class="w-full h-full object-cover p-1">
+                            </div>
                         </div>
                         <div>
-                            <h4 class="text-xs font-bold text-slate-800 dark:text-white">dishub_kotapekalongan</h4>
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-white group-hover:text-blue-500 transition-colors">dishub_kotapekalongan</h4>
                             <p class="text-[10px] text-slate-500">Dishub Kota Pekalongan <i class="fa-solid fa-circle-check text-blue-500 ml-0.5"></i></p>
                         </div>
-                    </div>
-                    <i class="fa-solid fa-ellipsis text-slate-400"></i>
+                    </a>
+                    <i class="fa-solid fa-ellipsis text-slate-400 cursor-pointer"></i>
                 </div>
-                <!-- Image -->
                 <div class="aspect-square bg-slate-100 dark:bg-slate-800 relative">
-                    <img src="https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80" alt="Post Image" class="w-full h-full object-cover">
-                    <div class="absolute top-3 right-3 bg-brand-blue text-white text-[9px] font-bold px-2 py-1 rounded shadow-md uppercase">REKAYASA LALIN</div>
+                    <!-- Dummy Image - Replace with real IG integration later -->
+                    <img src="https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80" alt="Post Image" class="w-full h-full object-cover shimmer">
                 </div>
-                <!-- IG Actions -->
                 <div class="p-4 flex flex-col flex-grow">
                     <div class="flex justify-between items-center mb-3">
                         <div class="flex gap-4 text-xl text-slate-700 dark:text-slate-300">
@@ -368,39 +298,33 @@
                         </div>
                         <i class="fa-regular fa-bookmark text-xl text-slate-700 dark:text-slate-300 hover:text-blue-500 cursor-pointer transition-colors"></i>
                     </div>
-                    <!-- Caption -->
-                    <p class="text-sm text-slate-800 dark:text-slate-200 line-clamp-3">
+                    <p class="text-sm text-slate-800 dark:text-slate-200 line-clamp-2">
                         <span class="font-bold mr-1">dishub_kotapekalongan</span>
-                        Pemberitahuan: Akan dilakukan rekayasa lalu lintas di kawasan Alun-Alun terkait penyelenggaraan festival budaya akhir pekan ini. Pengendara diimbau menggunakan jalur alternatif.
+                        Pantauan arus lalu lintas terkini melalui Command Center Sudut Kota. Selalu patuhi rambu dan berhati-hati di jalan! #DishubPekalongan #SudutKota #ATCS
                     </p>
-                    <p class="text-[10px] text-slate-400 mt-2 uppercase font-medium">Diposting 2 hari yang lalu</p>
+                    <p class="text-[10px] text-slate-400 mt-2 uppercase font-medium">BARU SAJA</p>
                 </div>
             </div>
 
-            <!-- Feed Post 2 -->
+            <!-- Feed Post 2: PJU -->
             <div class="bg-white dark:bg-brand-navy rounded-[1.5rem] border border-slate-200 dark:border-white/5 overflow-hidden shadow-sm flex flex-col">
-                <!-- IG Header Style -->
                 <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden bg-white">
-                            <img src="https://iili.io/nZeOBqJ.md.png" alt="Avatar" class="w-full h-full object-cover p-1">
+                    <a href="https://www.instagram.com/pjukotapekalongan" target="_blank" class="flex items-center gap-3 group">
+                        <div class="story-ring">
+                            <div class="w-8 h-8 rounded-full border border-white dark:border-brand-navy overflow-hidden bg-slate-900 flex items-center justify-center">
+                                <i class="fa-solid fa-lightbulb text-yellow-400 text-sm"></i>
+                            </div>
                         </div>
                         <div>
-                            <h4 class="text-xs font-bold text-slate-800 dark:text-white">dishub_kotapekalongan</h4>
-                            <p class="text-[10px] text-slate-500">Dishub Kota Pekalongan <i class="fa-solid fa-circle-check text-blue-500 ml-0.5"></i></p>
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-white group-hover:text-blue-500 transition-colors">pjukotapekalongan</h4>
+                            <p class="text-[10px] text-slate-500">PJU Dishub Pekalongan <i class="fa-solid fa-circle-check text-blue-500 ml-0.5"></i></p>
                         </div>
-                    </div>
-                    <i class="fa-solid fa-ellipsis text-slate-400"></i>
+                    </a>
+                    <i class="fa-solid fa-ellipsis text-slate-400 cursor-pointer"></i>
                 </div>
-                <!-- Image -->
                 <div class="aspect-square bg-slate-100 dark:bg-slate-800 relative">
-                    <div class="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-blue-900 to-brand-navy">
-                        <i class="fa-solid fa-server text-white text-5xl mb-4"></i>
-                        <h3 class="text-white font-display font-black text-xl">MAINTENANCE SISTEM ATCS</h3>
-                    </div>
-                    <div class="absolute top-3 right-3 bg-yellow-500 text-white text-[9px] font-bold px-2 py-1 rounded shadow-md uppercase">INFO GANGGUAN</div>
+                    <img src="https://images.unsplash.com/photo-1519817758364-e0ce1db3a479?auto=format&fit=crop&q=80" alt="Post Image" class="w-full h-full object-cover shimmer">
                 </div>
-                <!-- IG Actions -->
                 <div class="p-4 flex flex-col flex-grow">
                     <div class="flex justify-between items-center mb-3">
                         <div class="flex gap-4 text-xl text-slate-700 dark:text-slate-300">
@@ -410,36 +334,31 @@
                         </div>
                         <i class="fa-regular fa-bookmark text-xl text-slate-700 dark:text-slate-300 hover:text-blue-500 cursor-pointer transition-colors"></i>
                     </div>
-                    <!-- Caption -->
-                    <p class="text-sm text-slate-800 dark:text-slate-200 line-clamp-3">
-                        <span class="font-bold mr-1">dishub_kotapekalongan</span>
-                        Mohon maaf atas ketidaknyamanan Anda. Saat ini beberapa titik CCTV sedang dalam tahap pemeliharaan rutin jaringan Fiber Optic (FO). Streaming akan kembali normal secepatnya.
+                    <p class="text-sm text-slate-800 dark:text-slate-200 line-clamp-2">
+                        <span class="font-bold mr-1">pjukotapekalongan</span>
+                        Tindak lanjut perbaikan Penerangan Jalan Umum (PJU) di Jl. Urip Sumoharjo hasil laporan warga via JNN. Pekalongan terang, warga aman! 💡🔧 #PJUPekalongan #TerangSlamet
                     </p>
-                    <p class="text-[10px] text-slate-400 mt-2 uppercase font-medium">Diposting 5 hari yang lalu</p>
+                    <p class="text-[10px] text-slate-400 mt-2 uppercase font-medium">3 JAM YANG LALU</p>
                 </div>
             </div>
 
-            <!-- Feed Post 3 (Hidden on Tablet, visible on Desktop) -->
+            <!-- Feed Post 3: DISHUB EDUKASI (Hidden on Mobile, Visible Desktop) -->
             <div class="bg-white dark:bg-brand-navy rounded-[1.5rem] border border-slate-200 dark:border-white/5 overflow-hidden shadow-sm flex-col hidden xl:flex">
-                <!-- IG Header Style -->
                 <div class="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-                    <div class="flex items-center gap-3">
+                    <a href="https://www.instagram.com/dishub_kotapekalongan" target="_blank" class="flex items-center gap-3 group">
                         <div class="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 overflow-hidden bg-white">
-                            <img src="https://iili.io/nZeOBqJ.md.png" alt="Avatar" class="w-full h-full object-cover p-1">
+                            <img src="https://iili.io/nZeOBqJ.md.png" alt="Avatar Dishub" class="w-full h-full object-cover p-1">
                         </div>
                         <div>
-                            <h4 class="text-xs font-bold text-slate-800 dark:text-white">dishub_kotapekalongan</h4>
-                            <p class="text-[10px] text-slate-500">Dishub Kota Pekalongan <i class="fa-solid fa-circle-check text-blue-500 ml-0.5"></i></p>
+                            <h4 class="text-xs font-bold text-slate-800 dark:text-white group-hover:text-blue-500 transition-colors">dishub_kotapekalongan</h4>
+                            <p class="text-[10px] text-slate-500">Dishub Kota Pekalongan</p>
                         </div>
-                    </div>
-                    <i class="fa-solid fa-ellipsis text-slate-400"></i>
+                    </a>
+                    <i class="fa-solid fa-ellipsis text-slate-400 cursor-pointer"></i>
                 </div>
-                <!-- Image -->
                 <div class="aspect-square bg-slate-100 dark:bg-slate-800 relative">
-                    <img src="https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&q=80" alt="Post Image" class="w-full h-full object-cover">
-                    <div class="absolute top-3 right-3 bg-green-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-md uppercase">EDUKASI KESELAMATAN</div>
+                    <img src="https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&q=80" alt="Post Image" class="w-full h-full object-cover shimmer">
                 </div>
-                <!-- IG Actions -->
                 <div class="p-4 flex flex-col flex-grow">
                     <div class="flex justify-between items-center mb-3">
                         <div class="flex gap-4 text-xl text-slate-700 dark:text-slate-300">
@@ -449,23 +368,70 @@
                         </div>
                         <i class="fa-regular fa-bookmark text-xl text-slate-700 dark:text-slate-300 hover:text-blue-500 cursor-pointer transition-colors"></i>
                     </div>
-                    <!-- Caption -->
-                    <p class="text-sm text-slate-800 dark:text-slate-200 line-clamp-3">
+                    <p class="text-sm text-slate-800 dark:text-slate-200 line-clamp-2">
                         <span class="font-bold mr-1">dishub_kotapekalongan</span>
-                        Ingat, berhenti di belakang garis putih saat lampu merah menyala. Patuhi rambu lalu lintas demi keselamatan bersama. Pantauan CCTV ATCS kami rekam 24 jam penuh!
+                        Berhenti di belakang garis putih saat lampu merah! Keselamatan Anda prioritas utama. #EdukasiLalin
                     </p>
-                    <p class="text-[10px] text-slate-400 mt-2 uppercase font-medium">Diposting 1 minggu yang lalu</p>
+                    <p class="text-[10px] text-slate-400 mt-2 uppercase font-medium">1 HARI YANG LALU</p>
                 </div>
             </div>
 
-        </div>
-        
-        <div class="text-center mt-10">
-            <a href="#" class="inline-block border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-widest px-6 py-3 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                Lihat Semua Postingan
-            </a>
         </div>
     </div>
 </section>
+
+<!-- ==========================================
+     SCRIPT LOGIKA KHUSUS HALAMAN INI
+=========================================== -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Fungsi Fetch Cuaca Kota Pekalongan Menggunakan Open-Meteo API (Gratis, Tanpa API Key)
+        async function fetchWeather() {
+            const tempEl = document.getElementById('weather-temp');
+            const iconEl = document.getElementById('weather-icon');
+            const descEl = document.getElementById('weather-desc');
+            
+            try {
+                // Koordinat Pekalongan (Lat: -6.8898, Lon: 109.6746)
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-6.8898&longitude=109.6746&current=temperature_2m,weather_code&timezone=Asia%2FJakarta');
+                const data = await res.json();
+                
+                if (data && data.current) {
+                    const temp = Math.round(data.current.temperature_2m);
+                    const code = data.current.weather_code;
+                    
+                    tempEl.innerText = temp + '°C';
+                    tempEl.classList.remove('shimmer', 'text-transparent');
+                    
+                    // Interpretasi WMO Weather Code Sederhana
+                    let iconClass = 'fa-cloud-sun text-yellow-500';
+                    let descText = 'Cerah Berawan';
+                    
+                    if (code === 0) { iconClass = 'fa-sun text-yellow-400'; descText = 'Cerah'; }
+                    else if (code >= 1 && code <= 3) { iconClass = 'fa-cloud-sun text-yellow-500'; descText = 'Berawan'; }
+                    else if (code >= 45 && code <= 48) { iconClass = 'fa-smog text-slate-400'; descText = 'Berkabut'; }
+                    else if (code >= 51 && code <= 67) { iconClass = 'fa-cloud-rain text-blue-400'; descText = 'Hujan'; }
+                    else if (code >= 95) { iconClass = 'fa-cloud-bolt text-purple-500'; descText = 'Badai Petir'; }
+
+                    iconEl.className = `fa-solid ${iconClass} text-sm`;
+                    descEl.innerText = descText;
+                }
+            } catch (error) {
+                console.error('Gagal mengambil data cuaca:', error);
+                tempEl.innerText = '--°C';
+                tempEl.classList.remove('shimmer', 'text-transparent');
+                descEl.innerText = 'Offline';
+            }
+        }
+
+        // Jalankan fetch cuaca
+        fetchWeather();
+        
+        // Hapus kelas shimmer pada gambar statis (Simulasi load gambar IG)
+        setTimeout(() => {
+            document.querySelectorAll('.shimmer').forEach(el => el.classList.remove('shimmer'));
+        }, 1500);
+    });
+</script>
 
 {% endblock %}
