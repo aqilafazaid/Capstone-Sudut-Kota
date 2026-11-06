@@ -1,7 +1,6 @@
 /* ===================================================
    DATABASE CCTV KOTA PEKALONGAN (50 TITIK ATCS)
 =================================================== */
-
 const cctvDatabase = [
     { id: "cam1", nama: "Simpang Ponolawen (AI)", tipe: "ai", url: "https://www.atcskotapekalongan.com/streaming-mse.php?id=1", status: "Aktif", publik: true },
     { id: "cam2", nama: "Simpang Grogolan (AI)", tipe: "ai", url: "https://www.atcskotapekalongan.com/streaming-mse.php?id=2", status: "Aktif", publik: true },
@@ -118,7 +117,11 @@ function renderCCTVGrid() {
         container.innerHTML += cardHTML;
     });
 
-    document.getElementById('stream-count').innerHTML = `<i class="fa-solid fa-video"></i> ${renderedCount} Stream`;
+    const streamCountEl = document.getElementById('stream-count');
+    if(streamCountEl) {
+        streamCountEl.innerHTML = `<i class="fa-solid fa-video"></i> ${renderedCount} Stream Aktif`;
+    }
+    
     initHLSPlayers(filterValue);
 }
 
@@ -177,9 +180,7 @@ function updateAppHeader() {
 
 // Menjalankan fungsi setelah elemen halaman dirender oleh browser
 document.addEventListener('DOMContentLoaded', () => {
-    if(document.getElementById('cctv-grid-container')) {
-        setInterval(updateAppHeader, 1000);
-        updateAppHeader();
-        renderCCTVGrid(); 
-    }
+    setInterval(updateAppHeader, 1000);
+    updateAppHeader();
+    renderCCTVGrid(); 
 });
