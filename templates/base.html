@@ -3,41 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>{% block title %}Sudut Kota - Bidang Infrastruktur Command Center{% endblock %}</title>
+    <title>{% block title %}Sudut Kota - Dinas Perhubungan Kota Pekalongan{% endblock %}</title>
     
-    <!-- 1 & 2. Favicon Tab PC & Mobile menggunakan Logo Baru -->
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://iili.io/nZeOBqJ.md.png">
     <link rel="apple-touch-icon" href="https://iili.io/nZeOBqJ.md.png">
     
+    <!-- Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     
+    <!-- Security Script -->
     <script>
         (function() {
             const ua = navigator.userAgent.toLowerCase();
             const forbidden = ['tools', 'toolsbrowser', 'kiwi', 'inspect', 'debugger', 'bot', 'crawler', 'spider'];
             if (forbidden.some(x => ua.includes(x))) {
                 window.stop();
-                document.documentElement.innerHTML = `<div style="background:#0a143c; color:#ff3b30; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;"><h1>AKSES DITOLAK</h1></div>`;
+                document.documentElement.innerHTML = `<div style="background:#0a143c; color:#ff3b30; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:20px;"><h1 style="font-family:sans-serif;">AKSES DITOLAK</h1></div>`;
                 throw new Error("Security Violation");
             }
         })();
     </script>
 
+    <!-- Tailwind Config based on Design System -->
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-                    colors: { brand: { navy: '#0a143c', blue: '#2563eb', sky: '#3b82f6', red: '#ed1c24' } },
+                    fontFamily: { 
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
+                    },
+                    colors: { 
+                        brand: { 
+                            navy: '#0a143c', 
+                            blue: '#2563eb', 
+                            cyan: '#06b6d4', 
+                            white: '#ffffff',
+                            grey: '#f8fafc',
+                            dark: '#0f172a'
+                        } 
+                    },
                     padding: { 'safe': 'env(safe-area-inset-bottom)' }
                 }
             }
         }
         
+        // Theme Initialization
         if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -45,204 +64,243 @@
         }
     </script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-        .privacy-blur > *:not(#security-overlay):not(#penalty-overlay):not(.bg-base) {
-            filter: blur(30px) grayscale(100%); pointer-events: none; opacity: 0.1; transition: 0s; 
+        body { -webkit-tap-highlight-color: transparent; }
+        
+        /* Premium Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        
+        /* Skeleton Loading Utilities */
+        .skeleton { animation: pulse-bg 1.5s infinite; }
+        @keyframes pulse-bg { 
+            0% { background-color: #e2e8f0; } 
+            50% { background-color: #f1f5f9; } 
+            100% { background-color: #e2e8f0; } 
         }
-        .bg-base { transition: background-color 0.3s ease; }
-        
-        /* Animasi Running Text MySF Style */
-        .ticker-wrap { overflow: hidden; white-space: nowrap; position: relative; width: 100%; display: flex; align-items: center; }
-        .ticker-move { display: inline-block; white-space: nowrap; animation: ticker 25s linear infinite; padding-left: 100%; }
-        @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        
-        .ios-bubble-menu { animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-origin: top right; }
-        @keyframes bubblePop { 0% { opacity: 0; transform: scale(0.9) translate(10px, -10px); } 100% { opacity: 1; transform: scale(1) translate(0, 0); } }
+        .dark .skeleton { animation: pulse-bg-dark 1.5s infinite; }
+        @keyframes pulse-bg-dark { 
+            0% { background-color: #1e293b; } 
+            50% { background-color: #334155; } 
+            100% { background-color: #1e293b; } 
+        }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-[#0a143c] text-slate-800 dark:text-slate-200 flex flex-col min-h-screen relative pb-[180px] lg:pb-[100px] font-sans z-0 transition-colors duration-300">
+<body class="bg-brand-grey dark:bg-brand-dark text-slate-800 dark:text-slate-200 flex flex-col min-h-screen font-sans antialiased transition-colors duration-300">
 
-    <div class="bg-base fixed inset-0 z-[-2] bg-gradient-to-br from-blue-100 to-slate-50 dark:from-[#0a143c] dark:to-[#1e3a8a]"></div>
-    <div class="fixed inset-0 z-[-1] opacity-10 dark:opacity-30 mix-blend-multiply dark:mix-blend-screen bg-[url('https://images.unsplash.com/photo-1518605368461-1e122b10287b?auto=format&fit=crop&q=80')] bg-cover bg-center"></div>
-
-    <!-- LOADING SCREEN DENGAN LOGO BARU -->
-    <div id="initial-loader" class="fixed inset-0 z-[9999] bg-white dark:bg-[#0a143c] flex flex-col justify-center items-center transition-opacity duration-400">
-        <img src="https://iili.io/nZeOBqJ.md.png" alt="Logo Sudut Kota" class="h-24 md:h-32 w-auto animate-pulse drop-shadow-2xl mb-6">
-        <div class="flex items-center gap-2">
-            <div class="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0s"></div>
-            <div class="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-            <div class="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+    <!-- INITIAL LOADER -->
+    <div id="initial-loader" class="fixed inset-0 z-[9999] bg-white dark:bg-brand-navy flex flex-col justify-center items-center transition-opacity duration-500">
+        <div class="flex items-center gap-4 mb-6">
+            <img src="https://iili.io/nZeOBqJ.md.png" alt="Logo" class="h-16 md:h-20 w-auto animate-pulse">
+            <div class="h-12 w-[3px] bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+            <h1 class="font-display font-black text-3xl md:text-4xl text-brand-navy dark:text-white tracking-tight">SUDUT KOTA</h1>
         </div>
-        <p class="text-blue-600 dark:text-blue-300 font-bold tracking-[0.25em] text-[10px] uppercase mt-4">Memuat Infrastruktur...</p>
+        <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+            <div class="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+            <div class="w-2.5 h-2.5 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+        </div>
     </div>
 
-    <!-- 3. NAVBAR GLASSMORPHISM PROFESIONAL -->
-    <nav class="fixed top-4 left-0 right-0 w-full z-50 px-3 lg:px-6">
-        <div class="max-w-[1400px] mx-auto bg-white/85 dark:bg-[#0a143c]/90 backdrop-blur-lg shadow-xl rounded-2xl lg:rounded-[2rem] border border-slate-200 dark:border-white/10 transition-colors duration-300 relative">
-            <div class="flex justify-between items-center h-16 md:h-20 px-4 md:px-6 w-full">
-                
-                <!-- BRANDING LOGO DI NAVBAR -->
-                <div class="flex items-center gap-3 md:gap-5 border-r border-slate-300 dark:border-white/10 pr-4 md:pr-6">
-                    <a href="{{ url_for('index') }}" class="flex items-center gap-2 hover:scale-105 transition-transform duration-300">
-                        <img src="https://iili.io/nZeOBqJ.md.png" alt="Sudut Kota Logo" class="h-10 md:h-12 w-auto drop-shadow-sm">
-                    </a>
-                </div>
-
-                <div class="flex items-center gap-2 lg:gap-4 justify-end">
-                    <div class="hidden xl:flex items-center space-x-1 mr-4 bg-slate-100/50 dark:bg-black/20 p-1 rounded-full border border-slate-200 dark:border-white/5">
-                        <a href="{{ url_for('index') }}" class="font-bold text-xs uppercase tracking-wider text-slate-600 hover:text-blue-600 hover:bg-white dark:hover:bg-white/10 dark:text-slate-300 dark:hover:text-white px-5 py-2.5 rounded-full transition-all">Beranda</a>
-                        <a href="{{ url_for('cctv') }}" class="font-bold text-xs uppercase tracking-wider text-slate-600 hover:text-blue-600 hover:bg-white dark:hover:bg-white/10 dark:text-slate-300 dark:hover:text-white px-5 py-2.5 rounded-full transition-all">Kamera</a>
-                        <a href="{{ url_for('dashboard') }}" class="font-bold text-xs uppercase tracking-wider text-slate-600 hover:text-blue-600 hover:bg-white dark:hover:bg-white/10 dark:text-slate-300 dark:hover:text-white px-5 py-2.5 rounded-full transition-all">Dashboard</a>
-                    </div>
-
-                    <!-- TOMBOL MODE GELAP/TERANG -->
-                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white flex items-center justify-center transition-all border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/20 shadow-sm">
-                        <i id="theme-toggle-dark-icon" class="fa-solid fa-moon hidden text-sm"></i>
-                        <i id="theme-toggle-light-icon" class="fa-solid fa-sun hidden text-sm text-yellow-400"></i>
-                    </button>
-
-                    <!-- TOMBOL MENU MOBILE -->
-                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="xl:hidden w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center transition-all shadow-md hover:bg-blue-700">
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
-                </div>
-            </div>
+    <!-- ==========================================
+         TOP NAVBAR (DESKTOP & MOBILE HEADER)
+    =========================================== -->
+    <nav class="fixed top-0 left-0 right-0 w-full z-50 bg-white/90 dark:bg-brand-navy/90 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 shadow-sm transition-colors duration-300">
+        <div class="max-w-[1600px] mx-auto px-4 md:px-8 h-16 md:h-20 flex justify-between items-center">
             
-            <!-- MOBILE MENU DROPDOWN -->
-            <div id="mobile-menu" class="hidden xl:hidden absolute top-full left-0 right-0 mt-3 bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-4 flex flex-col gap-2 ios-bubble-menu">
-                <div class="flex justify-center mb-2 pb-4 border-b border-slate-200 dark:border-white/10">
-                    <img src="https://iili.io/nZeOBqJ.md.png" alt="Sudut Kota Logo" class="h-8 w-auto opacity-80">
+            <!-- INSTITUTIONAL BRANDING LOGO (Sesuai Prompt) -->
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3 md:gap-4 group hover:opacity-90 transition-opacity">
+                <img src="https://iili.io/nZeOBqJ.md.png" alt="Logo Dishub Pekalongan" class="h-10 md:h-12 w-auto drop-shadow-sm">
+                <div class="h-8 md:h-10 w-[2px] bg-slate-300 dark:bg-slate-700 rounded-full group-hover:bg-blue-500 transition-colors"></div>
+                <div class="flex flex-col justify-center">
+                    <h1 class="font-display font-black text-lg md:text-2xl text-brand-navy dark:text-white leading-none tracking-tight">SUDUT KOTA</h1>
+                    <span class="text-[8px] md:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1 hidden sm:block">Dinas Perhubungan Kota Pekalongan</span>
                 </div>
-                <a href="{{ url_for('index') }}" class="p-3.5 rounded-xl hover:bg-blue-50 dark:hover:bg-white/5 font-bold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors uppercase tracking-widest"><i class="fa-solid fa-house w-5 text-blue-500"></i> Beranda</a>
-                <a href="{{ url_for('cctv') }}" class="p-3.5 rounded-xl hover:bg-blue-50 dark:hover:bg-white/5 font-bold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors uppercase tracking-widest"><i class="fa-solid fa-video w-5 text-blue-500"></i> Live Kamera</a>
-                <a href="{{ url_for('dashboard') }}" class="p-3.5 rounded-xl hover:bg-blue-50 dark:hover:bg-white/5 font-bold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors uppercase tracking-widest"><i class="fa-solid fa-chart-pie w-5 text-blue-500"></i> Dashboard</a>
+            </a>
+
+            <!-- DESKTOP NAVIGATION (MySmartfren Premium Style) -->
+            <div class="hidden md:flex items-center gap-2 lg:gap-4">
+                <div class="flex items-center gap-1 bg-slate-100/80 dark:bg-black/30 p-1.5 rounded-full border border-slate-200 dark:border-white/5 mr-4">
+                    <a href="{{ url_for('index') }}" class="font-display font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 px-5 py-2.5 rounded-full transition-all">Beranda</a>
+                    <a href="#" class="font-display font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 px-5 py-2.5 rounded-full transition-all">Explore</a>
+                    <a href="{{ url_for('cctv') }}" class="font-display font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 px-5 py-2.5 rounded-full transition-all">CCTV Live</a>
+                    <a href="#" class="font-display font-bold text-xs uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 px-5 py-2.5 rounded-full transition-all">Informasi</a>
+                </div>
+
+                <!-- Theme Toggle & Profile -->
+                <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white flex items-center justify-center transition-all border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/20 shadow-sm">
+                    <i id="theme-toggle-dark-icon" class="fa-solid fa-moon hidden text-sm"></i>
+                    <i id="theme-toggle-light-icon" class="fa-solid fa-sun hidden text-sm text-yellow-400"></i>
+                </button>
+                
+                <a href="#" class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-lg hover:shadow-cyan-500/30 transition-all border-2 border-white dark:border-brand-navy">
+                    <i class="fa-solid fa-user text-sm"></i>
+                </a>
+            </div>
+
+            <!-- MOBILE RIGHT ACTION (Theme Toggle Only) -->
+            <div class="flex md:hidden items-center gap-3">
+                <button id="theme-toggle-mobile" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white flex items-center justify-center transition-all border border-slate-200 dark:border-white/10">
+                    <i id="theme-toggle-dark-icon-mobile" class="fa-solid fa-moon hidden text-xs"></i>
+                    <i id="theme-toggle-light-icon-mobile" class="fa-solid fa-sun hidden text-xs text-yellow-400"></i>
+                </button>
             </div>
         </div>
     </nav>
 
-    <!-- KONTEN UTAMA FLASK -->
-    <main class="flex-grow z-10 relative pt-[100px] md:pt-[130px]">
-        <div class="bg-white dark:bg-[#0b1121] w-full min-h-screen rounded-t-[2.5rem] md:rounded-t-[3rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] relative overflow-hidden border-t border-slate-200 dark:border-white/5 transition-colors duration-300">
-            <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 relative z-10">
-                {% block content %}{% endblock %}
-            </div>
-        </div>
+    <!-- ==========================================
+         MAIN CONTENT WRAPPER
+    =========================================== -->
+    <!-- pt-16/20 for top navbar, pb-20 for mobile bottom nav -->
+    <main class="flex-grow z-10 relative pt-16 md:pt-20 pb-20 md:pb-0">
+        {% block content %}{% endblock %}
     </main>
 
-    <!-- FOOTER -->
-    <footer class="bg-white dark:bg-[#0b1121] text-slate-500 dark:text-slate-400 pt-8 pb-28 border-t border-slate-200 dark:border-white/5 transition-colors duration-300">
-        <div class="text-center flex flex-col items-center gap-4">
-            <img src="https://iili.io/nZeOBqJ.md.png" alt="Sudut Kota Logo" class="h-6 w-auto opacity-50 grayscale hover:grayscale-0 transition-all">
-            <p class="text-[10px] font-bold uppercase tracking-widest">&copy; {{ year | default('2026') }} Command Center Sudut Kota. <br class="md:hidden">Universitas Diponegoro.</p>
+    <!-- ==========================================
+         FOOTER RESMI INSTANSI (Sesuai Prompt)
+    =========================================== -->
+    <footer class="bg-white dark:bg-[#050b14] border-t border-slate-200 dark:border-white/5 pt-16 pb-28 md:pb-12 transition-colors duration-300">
+        <div class="max-w-[1400px] mx-auto px-6 md:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+                
+                <!-- Kolom 1: Branding -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <img src="https://iili.io/nZeOBqJ.md.png" alt="Logo Dishub" class="h-10 w-auto grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all">
+                        <div class="h-6 w-[2px] bg-slate-300 dark:bg-slate-700"></div>
+                        <h2 class="font-display font-black text-xl text-brand-navy dark:text-white tracking-tight">SUDUT KOTA</h2>
+                    </div>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm font-medium italic">"Pantau Kotamu, Kenali Sekitarmu."</p>
+                </div>
+
+                <!-- Kolom 2: Navigasi -->
+                <div>
+                    <h3 class="font-display font-bold text-brand-navy dark:text-white text-sm uppercase tracking-widest mb-6">Navigasi</h3>
+                    <ul class="space-y-3 text-sm text-slate-500 dark:text-slate-400">
+                        <li><a href="{{ url_for('index') }}" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Beranda</a></li>
+                        <li><a href="{{ url_for('cctv') }}" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">CCTV Live</a></li>
+                        <li><a href="#" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Explore</a></li>
+                        <li><a href="#" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Informasi</a></li>
+                        <li><a href="#" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Tentang Kami</a></li>
+                    </ul>
+                </div>
+
+                <!-- Kolom 3: Instansi -->
+                <div>
+                    <h3 class="font-display font-bold text-brand-navy dark:text-white text-sm uppercase tracking-widest mb-6">Instansi</h3>
+                    <ul class="space-y-3 text-sm text-slate-500 dark:text-slate-400">
+                        <li class="font-semibold text-slate-700 dark:text-slate-300">Dinas Perhubungan Kota Pekalongan</li>
+                        <li>Pemerintah Kota Pekalongan</li>
+                        <li><a href="https://dishub.pekalongankota.go.id/" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2"><i class="fa-solid fa-globe"></i> Website Resmi Dishub</a></li>
+                    </ul>
+                </div>
+
+                <!-- Kolom 4: Kontak -->
+                <div>
+                    <h3 class="font-display font-bold text-brand-navy dark:text-white text-sm uppercase tracking-widest mb-6">Kontak</h3>
+                    <ul class="space-y-3 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                        <li><i class="fa-solid fa-location-dot w-5 text-slate-400"></i> Jl. Seruni No. 66, Kel. Poncol<br><span class="ml-6">Kec. Pekalongan Timur, Kota Pekalongan</span><br><span class="ml-6">Jawa Tengah 51122</span></li>
+                        <li><i class="fa-solid fa-phone w-5 text-slate-400"></i> (0285) 421600</li>
+                        <li><i class="fa-solid fa-envelope w-5 text-slate-400"></i> dishubpekalongan@gmail.com</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Disclaimer & Copyright -->
+            <div class="border-t border-slate-200 dark:border-white/10 pt-8 flex flex-col lg:flex-row justify-between items-center gap-6 text-center lg:text-left">
+                <p class="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 max-w-3xl leading-relaxed">
+                    <strong>Disclaimer:</strong> Informasi tayangan CCTV merupakan relay dari berbagai sumber pengelola, termasuk instansi pemerintah, vendor, dan masyarakat. Ketersediaan serta kualitas tayangan bergantung pada kondisi perangkat dan jaringan sumber.
+                </p>
+                <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap uppercase tracking-wider">
+                    &copy; 2026 Sudut Kota.<br class="md:hidden"> Dinas Perhubungan Kota Pekalongan.
+                </p>
+            </div>
         </div>
     </footer>
 
     <!-- ==========================================
-         DESKTOP BOTTOM BAR (Gaya MySmartfren / IM3)
+         MOBILE BOTTOM NAVIGATION (Instagram Style)
     =========================================== -->
-    <div class="hidden lg:flex desktop-bottom-bar bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 h-[56px] w-[calc(100%-48px)] max-w-[1200px] fixed bottom-6 left-1/2 -translate-x-1/2 z-60 rounded-full shadow-[0_10px_40px_rgba(37,99,235,0.15)] items-center px-2">
-        
-        <!-- Badge Info -->
-        <div class="bg-gradient-to-r from-blue-600 to-blue-700 h-10 flex items-center px-5 rounded-full z-20 shrink-0 text-white text-[10px] font-black uppercase tracking-widest gap-2 ml-1 shadow-md">
-            <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> INFO
-        </div>
-        
-        <!-- Running Text -->
-        <div class="ticker-wrap relative flex-1 text-slate-800 dark:text-white px-2">
-            <div class="ticker-move text-[11px] font-bold uppercase tracking-wider opacity-80">
-                🔥 TETAP PATUHI RAMBU LALU LINTAS &nbsp; | &nbsp; 📹 PANTAUAN CCTV ATCS AKTIF 24 JAM &nbsp; | &nbsp; 🚨 LAPORKAN GANGGUAN INFRASTRUKTUR KE COMMAND CENTER.
-            </div>
-        </div>
-        
-        <!-- Sapaan & Jam Real-Time -->
-        <div class="flex items-center gap-2 bg-slate-50 dark:bg-black/30 p-1 rounded-full border border-slate-200 dark:border-white/5 mr-1">
-            <div class="bg-white dark:bg-white/10 h-8 px-4 rounded-full flex items-center gap-2 text-slate-700 dark:text-slate-200 text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                <i id="base-greeting-icon" class="fa-solid fa-sun text-yellow-500"></i>
-                <span id="base-greeting-text">Admin</span>
-            </div>
-            <div class="bg-blue-50 dark:bg-blue-900/40 h-8 px-4 rounded-full border border-blue-100 dark:border-blue-500/30 flex items-center text-blue-700 dark:text-blue-300 font-mono text-[11px] font-bold shadow-sm">
-                <span id="base-realtime-clock">00:00:00 WIB</span>
-            </div>
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-brand-navy/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 z-[100] pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+        <div class="flex justify-around items-center h-16 px-2">
+            <!-- Menu 1: Home -->
+            <a href="{{ url_for('index') }}" class="flex flex-col items-center justify-center w-full h-full gap-1 text-blue-600 dark:text-blue-400 transition-colors">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-[9px] font-display font-bold uppercase tracking-widest">Home</span>
+            </a>
+            
+            <!-- Menu 2: Explore -->
+            <a href="#" class="flex flex-col items-center justify-center w-full h-full gap-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <i class="fa-solid fa-compass text-lg"></i>
+                <span class="text-[9px] font-display font-bold uppercase tracking-widest">Explore</span>
+            </a>
+            
+            <!-- Menu 3: CCTV (Center Highlight) -->
+            <a href="{{ url_for('cctv') }}" class="flex flex-col items-center justify-center w-full h-full transform -translate-y-2">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 border-4 border-white dark:border-brand-navy">
+                    <i class="fa-solid fa-video text-lg"></i>
+                </div>
+            </a>
+            
+            <!-- Menu 4: Feed -->
+            <a href="#" class="flex flex-col items-center justify-center w-full h-full gap-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <i class="fa-solid fa-newspaper text-lg"></i>
+                <span class="text-[9px] font-display font-bold uppercase tracking-widest">Feed</span>
+            </a>
+            
+            <!-- Menu 5: Profile -->
+            <a href="#" class="flex flex-col items-center justify-center w-full h-full gap-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <i class="fa-regular fa-user text-lg"></i>
+                <span class="text-[9px] font-display font-bold uppercase tracking-widest">Profile</span>
+            </a>
         </div>
     </div>
 
-    <!-- SCRIPT UTAMA -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- MAIN SCRIPT -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             /* --- Sembunyikan Loader --- */
-            setTimeout(function() {
-                var loader = document.getElementById('initial-loader');
-                if(loader) {
+            setTimeout(() => {
+                const loader = document.getElementById('initial-loader');
+                if (loader) {
                     loader.style.opacity = '0';
-                    setTimeout(function() { loader.style.display = 'none'; }, 400);
+                    setTimeout(() => { loader.style.display = 'none'; }, 500);
                 }
             }, 600);
 
-            /* --- Fitur Mode Gelap/Terang (Dark Mode) --- */
-            var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            var themeToggleBtn = document.getElementById('theme-toggle');
+            /* --- Fitur Mode Gelap/Terang (Desktop & Mobile) --- */
+            const setupThemeToggle = (btnId, darkIconId, lightIconId) => {
+                const btn = document.getElementById(btnId);
+                const darkIcon = document.getElementById(darkIconId);
+                const lightIcon = document.getElementById(lightIconId);
 
-            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
+                if (!btn) return;
 
-            themeToggleBtn.addEventListener('click', function() {
-                themeToggleDarkIcon.classList.toggle('hidden');
-                themeToggleLightIcon.classList.toggle('hidden');
-
-                if (localStorage.getItem('color-theme')) {
-                    if (localStorage.getItem('color-theme') === 'light') {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    }
+                // Set initial icon
+                if (document.documentElement.classList.contains('dark')) {
+                    lightIcon.classList.remove('hidden');
                 } else {
+                    darkIcon.classList.remove('hidden');
+                }
+
+                btn.addEventListener('click', () => {
+                    document.documentElement.classList.toggle('dark');
+                    darkIcon.classList.toggle('hidden');
+                    lightIcon.classList.toggle('hidden');
+                    
+                    // Sync localStorage
                     if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
                         localStorage.setItem('color-theme', 'dark');
+                    } else {
+                        localStorage.setItem('color-theme', 'light');
                     }
-                }
-            });
+                });
+            };
 
-            /* --- Jam & Sapaan Bottom Bar (Desktop) --- */
-            function updateBaseHeader() {
-                const now = new Date();
-                const hours = now.getHours();
-                
-                let greeting = "Malam";
-                let iconClass = "fa-moon";
-                let iconColor = "text-blue-500 dark:text-blue-300";
-
-                if (hours >= 4 && hours < 11) { greeting = "Pagi"; iconClass = "fa-cloud-sun"; iconColor = "text-yellow-500 dark:text-yellow-400"; } 
-                else if (hours >= 11 && hours < 15) { greeting = "Siang"; iconClass = "fa-sun"; iconColor = "text-yellow-500 dark:text-yellow-300"; } 
-                else if (hours >= 15 && hours < 18.5) { greeting = "Sore"; iconClass = "fa-sun"; iconColor = "text-orange-500 dark:text-orange-400"; }
-
-                const greetTextEl = document.getElementById('base-greeting-text');
-                const greetIconEl = document.getElementById('base-greeting-icon');
-                const clockEl = document.getElementById('base-realtime-clock');
-
-                if(greetTextEl) greetTextEl.innerText = greeting;
-                if(greetIconEl) greetIconEl.className = `fa-solid ${iconClass} ${iconColor}`;
-                
-                if(clockEl) {
-                    const timeString = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' }).format(now);
-                    clockEl.innerText = timeString + ' WIB';
-                }
-            }
-
-            setInterval(updateBaseHeader, 1000);
-            updateBaseHeader();
+            setupThemeToggle('theme-toggle', 'theme-toggle-dark-icon', 'theme-toggle-light-icon');
+            setupThemeToggle('theme-toggle-mobile', 'theme-toggle-dark-icon-mobile', 'theme-toggle-light-icon-mobile');
         });
     </script>
 </body>
