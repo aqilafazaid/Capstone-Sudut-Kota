@@ -4,13 +4,11 @@
 
 {% block content %}
 <style>
-    /* Premium Scrollbar */
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
     .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
     
-    /* Glassmorphism Card */
     .glass-card-premium {
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(24px);
@@ -23,24 +21,19 @@
         box-shadow: 0 10px 40px -10px rgba(0,0,0,0.3);
     }
 
-    /* YouTube/Vidio Style Player Hover */
     .player-container:hover .player-controls { opacity: 1; transform: translateY(0); }
     .player-controls { opacity: 0; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     
-    /* Toggle Switch Styles */
     .yt-toggle { transition: all 0.2s; }
     .yt-toggle.active { background: #2563eb; color: white; border-color: #3b82f6; }
     
-    /* Loading Spinner untuk Iframe */
     .loader-ring { border: 3px solid rgba(255,255,255,0.1); border-top-color: #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 
 <div class="max-w-[1600px] mx-auto pt-2 pb-10 px-4 md:px-6">
 
-    <!-- ==========================================
-         BAGIAN 1: EXECUTIVE HEADER
-    =========================================== -->
+    <!-- BAGIAN 1: EXECUTIVE HEADER -->
     <div class="glass-card-premium rounded-[2rem] p-6 md:p-8 mb-8 relative overflow-hidden group">
         <div class="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] pointer-events-none"></div>
         <div class="absolute -bottom-10 left-10 w-56 h-56 bg-cyan-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[60px] pointer-events-none"></div>
@@ -73,12 +66,10 @@
         </div>
     </div>
 
-    <!-- ==========================================
-         BAGIAN 2: GRID LAYOUT (FILTER & KAMERA)
-    =========================================== -->
+    <!-- BAGIAN 2: GRID LAYOUT -->
     <div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
         
-        <!-- SIDEBAR FILTER -->
+        <!-- SIDEBAR KONTROL -->
         <div class="w-full lg:w-[280px] flex-shrink-0">
             <div class="glass-card-premium rounded-3xl p-6 sticky top-[100px]">
                 <h3 class="font-display font-black text-slate-800 dark:text-white text-sm uppercase tracking-widest mb-5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -89,7 +80,7 @@
                     <div>
                         <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-widest">Aksi Massal</label>
                         <button type="button" onclick="stopAllStreams()" class="w-full text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 font-bold rounded-xl text-[10px] px-4 py-3 uppercase tracking-widest flex justify-center items-center gap-2 transition-all active:scale-95 mt-1">
-                            <i class="fa-solid fa-stop"></i> Matikan Semua Layar
+                            <i class="fa-solid fa-trash-can"></i> Bersihkan Memori (Stop)
                         </button>
                     </div>
 
@@ -116,18 +107,17 @@
 
             <!-- CONTAINER KAMERA -->
             <div id="cctv-grid-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 h-[750px] overflow-y-auto custom-scrollbar pr-2 pb-10">
-                <!-- Javascript akan memproses grid di sini -->
+                <!-- Javascript -->
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    /* Konfigurasi Database Kamera */
     const ATCS_WEB_URL = "https://www.atcskotapekalongan.com/streaming-mse.php?id=";
     const cctvDatabase = [];
 
-    // Auto-generate 50 Kamera
+    // Generate 50 Kamera
     for (let i = 1; i <= 50; i++) {
         cctvDatabase.push({
             id: `cam_${i}`,
@@ -136,42 +126,38 @@
         });
     }
 
-    // Fungsi Render Grid CCTV Ala YouTube/Vidio
+    // Fungsi Render Grid (Merender kontainer ringan, TANPA iframe bawaan)
     function renderCCTVGrid() {
         const container = document.getElementById('cctv-grid-container');
         container.innerHTML = ''; 
 
         cctvDatabase.forEach((cam) => {
-            // Kontainer player utama dengan aspect-video (16:9 Mutlak)
             const cardHTML = `
                 <div class="glass-card-premium rounded-2xl overflow-hidden shadow-sm flex flex-col relative border border-slate-200 dark:border-white/10 group player-container">
                     
                     <!-- 16:9 Video Container -->
-                    <div class="relative w-full aspect-video bg-[#050b14] flex items-center justify-center overflow-hidden">
+                    <div id="video-container-${cam.id}" class="relative w-full aspect-video bg-[#050b14] flex items-center justify-center overflow-hidden">
                         
                         <!-- Latar Belakang Standby (Logo Sudut Kota) -->
-                        <div id="standby-bg-${cam.id}" class="absolute inset-0 flex flex-col items-center justify-center z-0 opacity-40">
+                        <div id="standby-bg-${cam.id}" class="absolute inset-0 flex flex-col items-center justify-center z-0 opacity-40 transition-opacity">
                             <img src="https://iili.io/nZeOBqJ.md.png" class="w-20 md:w-24 h-auto mb-3 grayscale" alt="Logo Sudut Kota">
-                            <span class="text-white text-[9px] font-bold tracking-[0.3em] uppercase mt-2">Standby</span>
+                            <span class="text-white text-[9px] font-bold tracking-[0.3em] uppercase mt-2">Standby Mode</span>
                         </div>
 
-                        <!-- Loading Spinner (muncul saat proses memuat) -->
+                        <!-- Loading Spinner -->
                         <div id="loader-${cam.id}" class="absolute z-10 hidden flex-col items-center">
                             <div class="loader-ring mb-2"></div>
                             <span class="text-white text-[9px] font-bold tracking-widest uppercase mt-2">Menghubungkan...</span>
                         </div>
                         
-                        <!-- Iframe (Lazy Load) - Bebas Gepeng karena dibungkus aspect-video -->
-                        <iframe id="iframe-${cam.id}" src="" class="absolute inset-0 w-full h-full border-0 hidden z-10" allowfullscreen referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin" onload="hideLoader('${cam.id}')"></iframe>
-                        
-                        <!-- Overlay Putar (YouTube Style Big Play Button) -->
+                        <!-- Overlay Putar (Big Play Button) -->
                         <div id="overlay-${cam.id}" class="absolute inset-0 bg-transparent flex items-center justify-center cursor-pointer z-20 hover:bg-white/5 transition-colors" onclick="playWebStream('${cam.id}', '${cam.url}')">
                             <div class="w-14 h-14 rounded-full bg-red-600/90 text-white flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(220,38,38,0.6)] backdrop-blur-md transform transition-transform group-hover:scale-110">
                                 <i class="fa-solid fa-play ml-1"></i>
                             </div>
                         </div>
 
-                        <!-- Control Bar (YouTube/Vidio Style Hover Menu) -->
+                        <!-- Control Bar -->
                         <div class="player-controls absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/90 to-transparent flex items-end justify-between px-3 pb-2 z-30 pointer-events-none">
                             <div class="flex items-center gap-2 pointer-events-auto">
                                 <div class="bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase flex items-center gap-1">
@@ -180,20 +166,14 @@
                                 <span class="text-white text-[10px] font-bold truncate max-w-[120px] drop-shadow-md">${cam.nama}</span>
                             </div>
                             
-                            <!-- Toggle AI & MirNet di dalam Player -->
                             <div class="flex items-center gap-1.5 pointer-events-auto">
-                                <button id="btn-yolo-${cam.id}" onclick="toggleFeature('${cam.id}', 'yolo', '${cam.url}')" class="yt-toggle text-[8px] font-bold px-2 py-1 rounded bg-white/20 text-white border border-white/30 hover:bg-white/30 tracking-wider">
-                                    YOLOv8
-                                </button>
-                                <button id="btn-mirnet-${cam.id}" onclick="toggleFeature('${cam.id}', 'mirnet', '${cam.url}')" class="yt-toggle text-[8px] font-bold px-2 py-1 rounded bg-white/20 text-white border border-white/30 hover:bg-white/30 tracking-wider">
-                                    MIRNET
-                                </button>
+                                <button id="btn-yolo-${cam.id}" onclick="toggleFeature('${cam.id}', 'yolo', '${cam.url}')" class="yt-toggle text-[8px] font-bold px-2 py-1 rounded bg-white/20 text-white border border-white/30 hover:bg-white/30 tracking-wider">YOLOv8</button>
+                                <button id="btn-mirnet-${cam.id}" onclick="toggleFeature('${cam.id}', 'mirnet', '${cam.url}')" class="yt-toggle text-[8px] font-bold px-2 py-1 rounded bg-white/20 text-white border border-white/30 hover:bg-white/30 tracking-wider">MIRNET</button>
                             </div>
                         </div>
-
                     </div>
                     
-                    <!-- Keterangan Footer Kartu -->
+                    <!-- Footer Keterangan -->
                     <div class="p-3 md:p-4 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-brand-navy">
                         <div class="flex justify-between items-center">
                             <div>
@@ -201,7 +181,7 @@
                                 <p class="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">ID CH: ${cam.id.replace('cam_', '')}</p>
                             </div>
                             <span id="status-${cam.id}" class="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-bold px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 uppercase tracking-wider transition-colors">
-                                Standby
+                                Irit Memori
                             </span>
                         </div>
                     </div>
@@ -214,51 +194,54 @@
         document.getElementById('stream-count').innerHTML = `<i class="fa-solid fa-video text-blue-500"></i> ${cctvDatabase.length} Titik Ditemukan`;
     }
 
-    // Menyembunyikan Loader saat Iframe selesai dirender
-    window.hideLoader = function(id) {
-        const loader = document.getElementById(`loader-${id}`);
-        if(loader) loader.style.display = 'none';
-    };
-
-    // Fungsi Play Stream
+    // Injeksi Iframe Dinamis (Super Ringan)
     window.playWebStream = function(id, url) {
-        const iframe = document.getElementById(`iframe-${id}`);
+        const vidContainer = document.getElementById(`video-container-${id}`);
         const overlay = document.getElementById(`overlay-${id}`);
         const standbyBg = document.getElementById(`standby-bg-${id}`);
         const loader = document.getElementById(`loader-${id}`);
         const statusBadge = document.getElementById(`status-${id}`);
         
-        // Tampilkan Loader
-        loader.style.display = 'flex';
-        
-        // Set URL dan hilangkan penyembunyi
-        iframe.src = url;
-        iframe.classList.remove('hidden');
         overlay.style.display = 'none';
         standbyBg.style.display = 'none';
+        loader.style.display = 'flex';
 
-        // Update Badge Status
+        let existingIframe = document.getElementById(`iframe-${id}`);
+        if(existingIframe) {
+            existingIframe.remove();
+        }
+
+        const iframe = document.createElement('iframe');
+        iframe.id = `iframe-${id}`;
+        iframe.src = url;
+        iframe.className = "absolute inset-0 w-full h-full border-0 z-10 opacity-0 transition-opacity duration-500";
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('referrerpolicy', 'no-referrer');
+        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups');
+
+        iframe.onload = function() {
+            loader.style.display = 'none';
+            iframe.style.opacity = '1';
+        };
+
+        vidContainer.appendChild(iframe);
+
         statusBadge.className = "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[9px] font-bold px-2 py-1.5 rounded border border-red-200 dark:border-red-800/50 uppercase tracking-wider";
         statusBadge.innerHTML = `<span class="w-1.5 h-1.5 bg-red-600 rounded-full inline-block animate-pulse mr-1"></span> LIVE`;
     };
 
-    // Fungsi Toggle Fitur AI Ringan (YOLO / MirNet)
+    // Toggle Fitur AI
     window.toggleFeature = function(id, feature, baseUrl) {
         const btn = document.getElementById(`btn-${feature}-${id}`);
         const iframe = document.getElementById(`iframe-${id}`);
         
-        // Toggle class 'active' untuk merubah warna tombol
-        const isActive = btn.classList.contains('active');
-        if (isActive) {
-            btn.classList.remove('active');
-        } else {
-            btn.classList.add('active');
-        }
+        if (btn.classList.contains('active')) btn.classList.remove('active');
+        else btn.classList.add('active');
 
-        // Jika kamera sedang dimainkan, refresh iframe dengan menyisipkan query string
-        if (!iframe.classList.contains('hidden')) {
+        if (iframe) {
             const loader = document.getElementById(`loader-${id}`);
-            loader.style.display = 'flex'; // Tampilkan loading sebentar saat pindah mode
+            loader.style.display = 'flex';
+            iframe.style.opacity = '0';
             
             const yoloActive = document.getElementById(`btn-yolo-${id}`).classList.contains('active');
             const mirnetActive = document.getElementById(`btn-mirnet-${id}`).classList.contains('active');
@@ -267,35 +250,32 @@
             if (yoloActive) queryParams.push('yolo=1');
             if (mirnetActive) queryParams.push('mirnet=1');
             
-            const finalUrl = queryParams.length > 0 ? `${baseUrl}&${queryParams.join('&')}` : baseUrl;
-            iframe.src = finalUrl;
+            iframe.src = queryParams.length > 0 ? `${baseUrl}&${queryParams.join('&')}` : baseUrl;
         }
     };
 
-    // Fungsi Stop Semua Layar
+    // Pemusnah Iframe (Membersihkan RAM Browser Total)
     window.stopAllStreams = function() {
         cctvDatabase.forEach((cam) => {
             const iframe = document.getElementById(`iframe-${cam.id}`);
-            const overlay = document.getElementById(`overlay-${cam.id}`);
-            const standbyBg = document.getElementById(`standby-bg-${cam.id}`);
-            const loader = document.getElementById(`loader-${cam.id}`);
-            const statusBadge = document.getElementById(`status-${cam.id}`);
-            
-            if (iframe && !iframe.classList.contains('hidden')) {
-                iframe.src = ""; // Putus koneksi
-                iframe.classList.add('hidden');
-                overlay.style.display = 'flex';
-                standbyBg.style.display = 'flex';
-                loader.style.display = 'none';
+            if (iframe) {
+                iframe.remove(); 
                 
-                // Reset Badge
+                document.getElementById(`overlay-${cam.id}`).style.display = 'flex';
+                document.getElementById(`standby-bg-${cam.id}`).style.display = 'flex';
+                document.getElementById(`loader-${cam.id}`).style.display = 'none';
+                
+                const statusBadge = document.getElementById(`status-${cam.id}`);
                 statusBadge.className = "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[9px] font-bold px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 uppercase tracking-wider transition-colors";
-                statusBadge.innerHTML = `Standby`;
+                statusBadge.innerHTML = `Irit Memori`;
+                
+                document.getElementById(`btn-yolo-${cam.id}`).classList.remove('active');
+                document.getElementById(`btn-mirnet-${cam.id}`).classList.remove('active');
             }
         });
     }
 
-    // Jam Realtime Dinamis
+    // Jam Realtime
     function updateClock() {
         const now = new Date();
         const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':');
