@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}Sudut Kota - Bidang Infrastruktur Command Center{% endblock %}</title>
     
-    <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Logo_Kementerian_Perhubungan_Republik_Indonesia.png/64px-Logo_Kementerian_Perhubungan_Republik_Indonesia.png">
+    <!-- 1 & 2. Favicon Tab PC & Mobile menggunakan Logo Baru -->
+    <link rel="icon" type="image/png" href="https://iili.io/nZeOBqJ.md.png">
+    <link rel="apple-touch-icon" href="https://iili.io/nZeOBqJ.md.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -65,57 +67,64 @@
     <div class="bg-base fixed inset-0 z-[-2] bg-gradient-to-br from-blue-100 to-slate-50 dark:from-[#0a143c] dark:to-[#1e3a8a]"></div>
     <div class="fixed inset-0 z-[-1] opacity-10 dark:opacity-30 mix-blend-multiply dark:mix-blend-screen bg-[url('https://images.unsplash.com/photo-1518605368461-1e122b10287b?auto=format&fit=crop&q=80')] bg-cover bg-center"></div>
 
+    <!-- LOADING SCREEN DENGAN LOGO BARU -->
     <div id="initial-loader" class="fixed inset-0 z-[9999] bg-white dark:bg-[#0a143c] flex flex-col justify-center items-center transition-opacity duration-400">
-        <div class="relative z-10 font-black text-4xl text-slate-900 dark:text-white animate-bounce mb-8">
-            SUDUT <span class="text-blue-600 dark:text-blue-500 text-5xl">KOTA</span>
+        <img src="https://iili.io/nZeOBqJ.md.png" alt="Logo Sudut Kota" class="h-24 md:h-32 w-auto animate-pulse drop-shadow-2xl mb-6">
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+            <div class="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+            <div class="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
         </div>
-        <p class="text-blue-600 dark:text-blue-200 font-bold tracking-[0.2em] text-xs">MEMUAT SISTEM...</p>
+        <p class="text-blue-600 dark:text-blue-300 font-bold tracking-[0.25em] text-[10px] uppercase mt-4">Memuat Infrastruktur...</p>
     </div>
 
-    <!-- NAVBAR -->
+    <!-- 3. NAVBAR GLASSMORPHISM PROFESIONAL -->
     <nav class="fixed top-4 left-0 right-0 w-full z-50 px-3 lg:px-6">
-        <div class="max-w-[1400px] mx-auto bg-white/80 dark:bg-[#0a143c]/90 backdrop-blur-md shadow-xl rounded-2xl lg:rounded-[2rem] border border-slate-200 dark:border-blue-400/20 transition-colors duration-300 relative">
-            <div class="flex justify-between items-center h-16 md:h-20 px-4 md:px-8 w-full">
+        <div class="max-w-[1400px] mx-auto bg-white/85 dark:bg-[#0a143c]/90 backdrop-blur-lg shadow-xl rounded-2xl lg:rounded-[2rem] border border-slate-200 dark:border-white/10 transition-colors duration-300 relative">
+            <div class="flex justify-between items-center h-16 md:h-20 px-4 md:px-6 w-full">
                 
-                <div class="flex items-center gap-3 md:gap-5 border-r border-slate-300 dark:border-white/10 pr-3 md:pr-5 mr-1 lg:mr-2">
-                    <a href="{{ url_for('index') }}" class="font-black text-xl md:text-2xl text-slate-900 dark:text-white hover:scale-105 transition">
-                        SUDUT <span class="text-blue-600 dark:text-blue-500">KOTA</span>
+                <!-- BRANDING LOGO DI NAVBAR -->
+                <div class="flex items-center gap-3 md:gap-5 border-r border-slate-300 dark:border-white/10 pr-4 md:pr-6">
+                    <a href="{{ url_for('index') }}" class="flex items-center gap-2 hover:scale-105 transition-transform duration-300">
+                        <img src="https://iili.io/nZeOBqJ.md.png" alt="Sudut Kota Logo" class="h-10 md:h-12 w-auto drop-shadow-sm">
                     </a>
                 </div>
 
                 <div class="flex items-center gap-2 lg:gap-4 justify-end">
-                    <div class="hidden xl:flex items-center space-x-2 mr-4">
-                        <a href="{{ url_for('index') }}" class="font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white px-3 py-2 transition">Beranda</a>
-                        <a href="{{ url_for('cctv') }}" class="font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white px-3 py-2 transition">Kamera</a>
-                        <a href="{{ url_for('dashboard') }}" class="font-semibold text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-white px-3 py-2 transition">Dashboard</a>
+                    <div class="hidden xl:flex items-center space-x-1 mr-4 bg-slate-100/50 dark:bg-black/20 p-1 rounded-full border border-slate-200 dark:border-white/5">
+                        <a href="{{ url_for('index') }}" class="font-bold text-xs uppercase tracking-wider text-slate-600 hover:text-blue-600 hover:bg-white dark:hover:bg-white/10 dark:text-slate-300 dark:hover:text-white px-5 py-2.5 rounded-full transition-all">Beranda</a>
+                        <a href="{{ url_for('cctv') }}" class="font-bold text-xs uppercase tracking-wider text-slate-600 hover:text-blue-600 hover:bg-white dark:hover:bg-white/10 dark:text-slate-300 dark:hover:text-white px-5 py-2.5 rounded-full transition-all">Kamera</a>
+                        <a href="{{ url_for('dashboard') }}" class="font-bold text-xs uppercase tracking-wider text-slate-600 hover:text-blue-600 hover:bg-white dark:hover:bg-white/10 dark:text-slate-300 dark:hover:text-white px-5 py-2.5 rounded-full transition-all">Dashboard</a>
                     </div>
 
                     <!-- TOMBOL MODE GELAP/TERANG -->
-                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-white flex items-center justify-center transition border border-slate-300 dark:border-white/10 hover:bg-slate-300 dark:hover:bg-white/20">
-                        <i id="theme-toggle-dark-icon" class="fa-solid fa-moon hidden"></i>
-                        <i id="theme-toggle-light-icon" class="fa-solid fa-sun hidden"></i>
+                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white flex items-center justify-center transition-all border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/20 shadow-sm">
+                        <i id="theme-toggle-dark-icon" class="fa-solid fa-moon hidden text-sm"></i>
+                        <i id="theme-toggle-light-icon" class="fa-solid fa-sun hidden text-sm text-yellow-400"></i>
                     </button>
 
                     <!-- TOMBOL MENU MOBILE -->
-                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="xl:hidden w-10 h-10 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white flex items-center justify-center transition">
+                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="xl:hidden w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center transition-all shadow-md hover:bg-blue-700">
                         <i class="fa-solid fa-bars"></i>
                     </button>
                 </div>
             </div>
             
-            <!-- Mobile Menu Dropdown -->
-            <div id="mobile-menu" class="hidden xl:hidden absolute top-full left-0 right-0 mt-2 bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-blue-400/20 rounded-2xl shadow-2xl p-4 flex flex-col gap-2 ios-bubble-menu">
-                <a href="{{ url_for('index') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-house w-5 text-blue-500"></i> Beranda</a>
-                <a href="{{ url_for('cctv') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-video w-5 text-blue-500"></i> Live Kamera</a>
-                <a href="{{ url_for('dashboard') }}" class="p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-blue-900/30 font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3"><i class="fa-solid fa-chart-pie w-5 text-blue-500"></i> Dashboard</a>
+            <!-- MOBILE MENU DROPDOWN -->
+            <div id="mobile-menu" class="hidden xl:hidden absolute top-full left-0 right-0 mt-3 bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl p-4 flex flex-col gap-2 ios-bubble-menu">
+                <div class="flex justify-center mb-2 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <img src="https://iili.io/nZeOBqJ.md.png" alt="Sudut Kota Logo" class="h-8 w-auto opacity-80">
+                </div>
+                <a href="{{ url_for('index') }}" class="p-3.5 rounded-xl hover:bg-blue-50 dark:hover:bg-white/5 font-bold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors uppercase tracking-widest"><i class="fa-solid fa-house w-5 text-blue-500"></i> Beranda</a>
+                <a href="{{ url_for('cctv') }}" class="p-3.5 rounded-xl hover:bg-blue-50 dark:hover:bg-white/5 font-bold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors uppercase tracking-widest"><i class="fa-solid fa-video w-5 text-blue-500"></i> Live Kamera</a>
+                <a href="{{ url_for('dashboard') }}" class="p-3.5 rounded-xl hover:bg-blue-50 dark:hover:bg-white/5 font-bold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-3 transition-colors uppercase tracking-widest"><i class="fa-solid fa-chart-pie w-5 text-blue-500"></i> Dashboard</a>
             </div>
         </div>
     </nav>
 
     <!-- KONTEN UTAMA FLASK -->
     <main class="flex-grow z-10 relative pt-[100px] md:pt-[130px]">
-        <div class="bg-white dark:bg-[#111827] w-full min-h-screen rounded-t-[2.5rem] md:rounded-t-[4rem] shadow-2xl relative overflow-hidden border-t-4 border-blue-600 transition-colors duration-300">
-            <div class="absolute inset-0 z-0 opacity-[0.35] dark:opacity-10" style="background-image: radial-gradient(#94a3b8 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
+        <div class="bg-white dark:bg-[#0b1121] w-full min-h-screen rounded-t-[2.5rem] md:rounded-t-[3rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] relative overflow-hidden border-t border-slate-200 dark:border-white/5 transition-colors duration-300">
             <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 relative z-10">
                 {% block content %}{% endblock %}
             </div>
@@ -123,34 +132,39 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="bg-slate-900 dark:bg-[#0a143c] text-slate-400 dark:text-slate-300 pt-16 pb-24 border-t border-slate-800 dark:border-blue-900 transition-colors duration-300">
-        <div class="text-center"><p class="text-xs">&copy; {{ year | default('2026') }} Tim Capstone TA - Universitas Diponegoro.</p></div>
+    <footer class="bg-white dark:bg-[#0b1121] text-slate-500 dark:text-slate-400 pt-8 pb-28 border-t border-slate-200 dark:border-white/5 transition-colors duration-300">
+        <div class="text-center flex flex-col items-center gap-4">
+            <img src="https://iili.io/nZeOBqJ.md.png" alt="Sudut Kota Logo" class="h-6 w-auto opacity-50 grayscale hover:grayscale-0 transition-all">
+            <p class="text-[10px] font-bold uppercase tracking-widest">&copy; {{ year | default('2026') }} Command Center Sudut Kota. <br class="md:hidden">Universitas Diponegoro.</p>
+        </div>
     </footer>
 
     <!-- ==========================================
-         DESKTOP BOTTOM BAR (Gaya MySmartfren)
+         DESKTOP BOTTOM BAR (Gaya MySmartfren / IM3)
     =========================================== -->
-    <div class="hidden lg:flex desktop-bottom-bar bg-white/90 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-white/15 h-[52px] w-[calc(100%-40px)] max-w-[1600px] fixed bottom-6 left-1/2 -translate-x-1/2 z-60 rounded-full shadow-2xl items-center px-4">
+    <div class="hidden lg:flex desktop-bottom-bar bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 h-[56px] w-[calc(100%-48px)] max-w-[1200px] fixed bottom-6 left-1/2 -translate-x-1/2 z-60 rounded-full shadow-[0_10px_40px_rgba(37,99,235,0.15)] items-center px-2">
         
         <!-- Badge Info -->
-        <div class="bg-blue-600 h-8 flex items-center px-4 rounded-full z-20 shrink-0 text-white text-[10px] font-black uppercase tracking-widest gap-2 mr-4">
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 h-10 flex items-center px-5 rounded-full z-20 shrink-0 text-white text-[10px] font-black uppercase tracking-widest gap-2 ml-1 shadow-md">
             <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> INFO
         </div>
         
         <!-- Running Text -->
-        <div class="ticker-wrap relative flex-1 text-slate-800 dark:text-white">
-            <div class="ticker-move text-[11px] font-bold uppercase tracking-wide">
-                🔥 TETAP PATUHI RAMBU LALU LINTAS &nbsp; | &nbsp; 📹 PANTAUAN CCTV AKTIF 24 JAM &nbsp; | &nbsp; 🚨 LAPORKAN GANGGUAN INFRASTRUKTUR KE COMMAND CENTER DISHUB PEKALONGAN.
+        <div class="ticker-wrap relative flex-1 text-slate-800 dark:text-white px-2">
+            <div class="ticker-move text-[11px] font-bold uppercase tracking-wider opacity-80">
+                🔥 TETAP PATUHI RAMBU LALU LINTAS &nbsp; | &nbsp; 📹 PANTAUAN CCTV ATCS AKTIF 24 JAM &nbsp; | &nbsp; 🚨 LAPORKAN GANGGUAN INFRASTRUKTUR KE COMMAND CENTER.
             </div>
         </div>
         
         <!-- Sapaan & Jam Real-Time -->
-        <div class="bg-slate-100 dark:bg-black/40 h-8 px-4 rounded-full border border-slate-200 dark:border-white/20 z-20 flex items-center gap-2 ml-4 text-slate-700 dark:text-white text-[11px] font-bold">
-            <i id="base-greeting-icon" class="fa-solid fa-sun text-yellow-500"></i>
-            <span id="base-greeting-text">Siang, Admin</span>
-        </div>
-        <div class="bg-blue-50 dark:bg-blue-900/30 h-8 px-4 rounded-full border border-blue-200 dark:border-blue-500/50 z-20 flex items-center ml-2 text-blue-700 dark:text-blue-300 font-mono text-xs font-bold shadow-sm">
-            <span id="base-realtime-clock">00:00:00 WIB</span>
+        <div class="flex items-center gap-2 bg-slate-50 dark:bg-black/30 p-1 rounded-full border border-slate-200 dark:border-white/5 mr-1">
+            <div class="bg-white dark:bg-white/10 h-8 px-4 rounded-full flex items-center gap-2 text-slate-700 dark:text-slate-200 text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                <i id="base-greeting-icon" class="fa-solid fa-sun text-yellow-500"></i>
+                <span id="base-greeting-text">Admin</span>
+            </div>
+            <div class="bg-blue-50 dark:bg-blue-900/40 h-8 px-4 rounded-full border border-blue-100 dark:border-blue-500/30 flex items-center text-blue-700 dark:text-blue-300 font-mono text-[11px] font-bold shadow-sm">
+                <span id="base-realtime-clock">00:00:00 WIB</span>
+            </div>
         </div>
     </div>
 
@@ -165,21 +179,19 @@
                     loader.style.opacity = '0';
                     setTimeout(function() { loader.style.display = 'none'; }, 400);
                 }
-            }, 500);
+            }, 600);
 
             /* --- Fitur Mode Gelap/Terang (Dark Mode) --- */
             var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
             var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
             var themeToggleBtn = document.getElementById('theme-toggle');
 
-            // Cek tema yang sedang aktif dan ubah ikonnya
             if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 themeToggleLightIcon.classList.remove('hidden');
             } else {
                 themeToggleDarkIcon.classList.remove('hidden');
             }
 
-            // Fungsi klik tombol tema
             themeToggleBtn.addEventListener('click', function() {
                 themeToggleDarkIcon.classList.toggle('hidden');
                 themeToggleLightIcon.classList.toggle('hidden');
@@ -208,13 +220,13 @@
                 const now = new Date();
                 const hours = now.getHours();
                 
-                let greeting = "Malam, Admin";
+                let greeting = "Malam";
                 let iconClass = "fa-moon";
                 let iconColor = "text-blue-500 dark:text-blue-300";
 
-                if (hours >= 4 && hours < 11) { greeting = "Pagi, Admin"; iconClass = "fa-cloud-sun"; iconColor = "text-yellow-500 dark:text-yellow-400"; } 
-                else if (hours >= 11 && hours < 15) { greeting = "Siang, Admin"; iconClass = "fa-sun"; iconColor = "text-yellow-500 dark:text-yellow-300"; } 
-                else if (hours >= 15 && hours < 18.5) { greeting = "Sore, Admin"; iconClass = "fa-sun"; iconColor = "text-orange-500 dark:text-orange-400"; }
+                if (hours >= 4 && hours < 11) { greeting = "Pagi"; iconClass = "fa-cloud-sun"; iconColor = "text-yellow-500 dark:text-yellow-400"; } 
+                else if (hours >= 11 && hours < 15) { greeting = "Siang"; iconClass = "fa-sun"; iconColor = "text-yellow-500 dark:text-yellow-300"; } 
+                else if (hours >= 15 && hours < 18.5) { greeting = "Sore"; iconClass = "fa-sun"; iconColor = "text-orange-500 dark:text-orange-400"; }
 
                 const greetTextEl = document.getElementById('base-greeting-text');
                 const greetIconEl = document.getElementById('base-greeting-icon');
