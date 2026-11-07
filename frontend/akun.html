@@ -181,23 +181,17 @@
                        class="glass-input w-full p-4 outline-none font-bold" placeholder="Contoh: Admin Dishub">
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="field-nip" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">NIP <span class="text-slate-500 normal-case">(opsional)</span></label>
-                    <input id="field-nip" name="nip" type="text" autocomplete="off"
-                           class="glass-input w-full p-4 outline-none font-bold" placeholder="ADM-002">
+            <div>
+                <label for="field-role" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Peran</label>
+                <div class="relative">
+                    <select id="field-role" name="role" class="glass-input w-full p-4 pr-10 outline-none font-bold cursor-pointer appearance-none">
+                        <option value="admin">Administrator</option>
+                        <option value="teknisi">Teknisi</option>
+                        <option value="visitor">Visitor</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none"></i>
                 </div>
-                <div>
-                    <label for="field-role" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Peran</label>
-                    <div class="relative">
-                        <select id="field-role" name="role" class="glass-input w-full p-4 pr-10 outline-none font-bold cursor-pointer appearance-none">
-                            <option value="admin">Administrator</option>
-                            <option value="teknisi">Teknisi</option>
-                            <option value="visitor">Visitor</option>
-                        </select>
-                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none"></i>
-                    </div>
-                </div>
+                <p class="text-[10px] text-slate-500 mt-1.5 pl-1">NIP dibuat otomatis mengikuti peran: ADM-… / TKS-… / VST-…</p>
             </div>
 
             <div>

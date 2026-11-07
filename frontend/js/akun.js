@@ -37,7 +37,6 @@
         form: document.getElementById('user-form'),
         uid: document.getElementById('field-uid'),
         nama: document.getElementById('field-nama'),
-        nip: document.getElementById('field-nip'),
         email: document.getElementById('field-email'),
         roleField: document.getElementById('field-role'),
         password: document.getElementById('field-password'),
@@ -201,7 +200,6 @@
             el.modalIcon.className = 'fa-solid fa-user-pen text-lg';
             el.uid.value = user.uid;
             el.nama.value = user.nama;
-            el.nip.value = user.nip || '';
             el.email.value = user.email || '';
             el.roleField.value = user.role;
             el.passwordHint.textContent = '(kosongkan bila tidak diubah)';
@@ -238,7 +236,6 @@
 
         const payload = {
             nama: el.nama.value,
-            nip: el.nip.value,
             email: el.email.value,
             peran: el.roleField.value,
             password: el.password.value

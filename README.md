@@ -223,9 +223,15 @@ dengan profil di RTDB `/akun/<uid>`:
 | Teknisi | `teknisi` | beranda, stream, statistik, dashboard node, kontrol AI |
 | Visitor | `visitor` | beranda, stream, statistik; tanpa dashboard |
 
-Pendaftaran mandiri (`register.html`) membuat akun Visitor: Firebase Auth membuat user,
-lalu `POST /api/akun/self` menulis profilnya. Administrator menaikkan peran lewat
-`akun.html`.
+Pendaftaran mandiri (`register.html`) selalu membuat akun Visitor: Firebase Auth membuat
+user, lalu `POST /api/akun/self` menulis profilnya. Body `peran` maupun `nip` dari peramban
+diabaikan. Akun `admin`/`teknisi` hanya bisa dibuat Administrator lewat `akun.html`
+(`POST /api/akun`, role-gated).
+
+NIP dibuat otomatis dan unik saat akun dibuat — juga untuk akun Visitor dari pendaftaran
+mandiri: nomor urut per awalan, `ADM-001` (Administrator), `TKS-001` (Teknisi),
+`VST-001` (Visitor). NIP tidak bisa diisi dari UI maupun dari body API, dan dibuat ulang
+mengikuti peran baru saat peran diubah.
 
 **Akun pertama harus dibuat dari terminal**, karena belum ada admin yang bisa membuka
 halaman Kelola Akun:

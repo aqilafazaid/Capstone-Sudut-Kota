@@ -6,16 +6,24 @@ yang memakai Admin SDK, sehingga rules RTDB boleh menolak seluruh akses klien.
 Profil disimpan di ``<RTDB_ROOT>/akun/<uid>``:
 
     { nama, nip, username, email, peran, created_at, updated_at }
+
+NIP tidak pernah diisi pengguna: selalu dibuat server saat akun dibuat
+(``ADM-001``, ``TKS-001``, ``VST-001``) dan dibuat ulang setiap peran berubah.
+Nilai ``nip`` di body permintaan diabaikan.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any
 
 import auth
 import firebase_init
+
+NIP_PREFIX = {"admin": "ADM-", "teknisi": "TKS-", "visitor": "VST-"}
+_NIP_AUTO_RE = re.compile(r"^(ADM|TKS|VST)-(\d{1,6})$", re.IGNORECASE)
 
 
 class AccountError(Exception):
@@ -77,6 +85,21 @@ def _peran(value: Any, default: str = "visitor") -> str:
     return text
 
 
+def _nip_prefix(peran: str) -> str:
+    return NIP_PREFIX.get(peran, NIP_PREFIX["visitor"])
+
+
+def _auto_nip(peran: str, accounts: list[dict[str, Any]]) -> str:
+    """NIP berikutnya untuk peran: nomor urut terpisah per awalan."""
+    prefix = _nip_prefix(peran)
+    highest = 0
+    for account in accounts:
+        match = _NIP_AUTO_RE.match(str(account.get("nip") or "").strip())
+        if match and match.group(1).upper() == prefix.rstrip("-"):
+            highest = max(highest, int(match.group(2)))
+    return f"{prefix}{highest + 1:03d}"
+
+
 def _profile(uid: str, raw: dict[str, Any] | None) -> dict[str, Any]:
     data = raw or {}
     return {
@@ -120,22 +143,27 @@ def _unique(accounts: list[dict[str, Any]], field: str, value: str, skip_uid: st
 
 
 def ensure_self_profile(uid: str, email: str, payload: Any) -> dict[str, Any]:
-    """Buat profil sendiri saat pendaftaran; peran selalu visitor."""
+    """Buat profil sendiri saat pendaftaran; peran selalu visitor.
+
+    ``peran`` dan ``nip`` dari body diabaikan: pendaftaran mandiri tidak boleh
+    menaikkan hak akses maupun memilih NIP. Hanya Administrator yang bisa
+    membuat akun ``admin``/``teknisi`` (lewat ``POST /api/akun``).
+    """
     existing = _ref("akun", uid).get()
     if isinstance(existing, dict) and existing:
         return _profile(uid, existing)
 
     body = payload if isinstance(payload, dict) else {}
     nama = _text(body.get("nama") or email.split("@")[0], "Nama", required=True)
-    nip = _text(body.get("nip"), "NIP", max_len=30)
     username = _text(body.get("username") or email.split("@")[0], "Username", max_len=40).lower()
 
-    _unique(list_accounts(), "username", username)
+    accounts = list_accounts()
+    _unique(accounts, "username", username)
 
     now = _now()
     profile = {
         "nama": nama,
-        "nip": nip,
+        "nip": _auto_nip("visitor", accounts),
         "username": username,
         "email": email.lower(),
         "peran": "visitor",
@@ -153,7 +181,6 @@ def create_account(payload: Any) -> dict[str, Any]:
     from firebase_admin import auth as fb_auth
 
     nama = _text(payload.get("nama"), "Nama", required=True)
-    nip = _text(payload.get("nip"), "NIP", max_len=30)
     email = _email(payload.get("email"))
     username = _text(payload.get("username") or email.split("@")[0], "Username", max_len=40).lower()
     password = _password(payload.get("password"), required=True)
@@ -161,8 +188,9 @@ def create_account(payload: Any) -> dict[str, Any]:
 
     accounts = list_accounts()
     _unique(accounts, "username", username)
-    _unique(accounts, "nip", nip)
     _unique(accounts, "email", email)
+    nip = _auto_nip(peran, accounts)
+    _unique(accounts, "nip", nip)
 
     try:
         record = fb_auth.create_user(
@@ -195,9 +223,13 @@ def update_account(uid: str, payload: Any) -> dict[str, Any]:
     accounts = list_accounts()
 
     nama = _text(payload.get("nama", current["nama"]), "Nama", required=True)
-    nip = _text(payload.get("nip", current["nip"]), "NIP", max_len=30)
     username = _text(payload.get("username", current["username"]), "Username", max_len=40).lower()
     peran = _peran(payload.get("peran", current["peran"]))
+
+    # NIP selalu turunan peran: dibuat ulang saat peran berubah (atau belum punya).
+    nip = current["nip"]
+    if peran != current["peran"] or not nip:
+        nip = _auto_nip(peran, accounts)
 
     _unique(accounts, "username", username, skip_uid=uid)
     _unique(accounts, "nip", nip, skip_uid=uid)

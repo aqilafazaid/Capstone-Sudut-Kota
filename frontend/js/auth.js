@@ -22,6 +22,7 @@
     let currentUser = null;
     let readyPromise = null;
     let firstResolve = null;
+    let lastProfileError = null;
 
     function firebaseAuth() {
         return global.SK_FIREBASE && global.SK_FIREBASE.auth ? global.SK_FIREBASE.auth : null;
@@ -64,11 +65,21 @@
         if (token) headers.Authorization = 'Bearer ' + token;
         opts.headers = headers;
 
-        const response = await fetch(api(path), opts);
+        const url = api(path);
+        let response;
+        try {
+            response = await fetch(url, opts);
+        } catch (cause) {
+            const error = new Error('Tidak dapat menghubungi ' + url);
+            error.url = url;
+            error.cause = cause;
+            throw error;
+        }
         const data = await response.json().catch(function () { return {}; });
         if (!response.ok) {
             const error = new Error(data.error || ('HTTP ' + response.status));
             error.status = response.status;
+            error.url = url;
             throw error;
         }
         return data;
@@ -91,9 +102,11 @@
     async function loadProfile() {
         const auth = firebaseAuth();
         if (!auth || !auth.currentUser) return null;
+        lastProfileError = null;
         try {
             return normalize(await request('akun/me'), auth.currentUser);
         } catch (err) {
+            lastProfileError = err;
             if (err.status === 404) {
                 console.warn('[Auth] Profil belum dibuat untuk uid', auth.currentUser.uid);
             } else {
@@ -101,6 +114,22 @@
             }
             return null;
         }
+    }
+
+    /* Pesan login gagal yang menyebut URL backend + status, supaya kasus
+       "backend tidak terjangkau" tidak tertukar dengan "profil belum dibuat". */
+    function profileErrorHint() {
+        const err = lastProfileError;
+        if (!err) return 'Login berhasil, tetapi profil akun belum dibuat. Hubungi Administrator.';
+        const url = err.url || api('akun/me');
+        if (err.status === 404) {
+            return 'Login berhasil, tetapi endpoint profil tidak ditemukan di ' + url +
+                ' (404). Periksa alamat backend (SK_CONFIG.backendBase) atau apakah profil akun ini ada.';
+        }
+        if (err.status === 401 || err.status === 403) {
+            return 'Login berhasil, tetapi backend menolak token (' + err.status + ') di ' + url + '.';
+        }
+        return 'Login berhasil, tetapi backend ' + url + ' tidak bisa dihubungi (' + err.message + ').';
     }
 
     function emit() {
@@ -174,7 +203,7 @@
                 currentUser = user;
                 emit();
                 if (!user) {
-                    return { ok: false, error: 'Login berhasil, tetapi profil akun belum dibuat. Hubungi Administrator.' };
+                    return { ok: false, error: profileErrorHint() };
                 }
                 return { ok: true, user: user };
             } catch (err) {
@@ -187,7 +216,6 @@
             if (!auth) return { ok: false, error: 'Firebase belum dikonfigurasi di backend.' };
 
             const nama = String((payload && payload.nama) || '').trim();
-            const nip = String((payload && payload.nip) || '').trim();
             const email = String((payload && payload.email) || '').trim().toLowerCase();
             const password = String((payload && payload.password) || '');
 
@@ -201,7 +229,7 @@
                 }
                 const profile = await request('akun/self', {
                     method: 'POST',
-                    body: JSON.stringify({ nama: nama, nip: nip, email: email })
+                    body: JSON.stringify({ nama: nama, email: email })
                 });
                 currentUser = normalize(profile, cred.user);
                 emit();

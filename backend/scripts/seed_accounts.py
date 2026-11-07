@@ -28,7 +28,6 @@ def main() -> int:
     parser.add_argument("--email", required=True)
     parser.add_argument("--nama", required=True)
     parser.add_argument("--peran", default="admin", choices=list(auth.VALID_ROLES))
-    parser.add_argument("--nip", default="")
     args = parser.parse_args()
 
     missing = firebase_init.missing_keys()
@@ -45,7 +44,6 @@ def main() -> int:
         profile = accounts.create_account(
             {
                 "nama": args.nama,
-                "nip": args.nip,
                 "email": args.email,
                 "peran": args.peran,
                 "password": password,

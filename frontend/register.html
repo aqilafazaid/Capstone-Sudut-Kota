@@ -57,14 +57,6 @@
 
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-id-badge text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
-                        </div>
-                        <input type="text" id="reg-nip" placeholder="NIP (opsional)"
-                            class="w-full pl-11 pr-4 py-3.5 bg-[#050a1f] border border-blue-900/50 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600 shadow-inner">
-                    </div>
-
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fa-solid fa-envelope text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
                         </div>
                         <input type="email" id="reg-email" placeholder="Email" required autocomplete="email"
@@ -101,7 +93,8 @@
                 </form>
 
                 <p class="mt-4 text-[10px] text-slate-500 leading-relaxed">
-                    Akun baru tidak langsung memiliki akses. Administrator harus memberi peran
+                    Pendaftaran hanya membuat akun <b class="text-slate-400">Visitor</b> dengan NIP otomatis
+                    (<b class="text-slate-400">VST-001</b>, dst). Administrator harus menaikkan peran menjadi
                     <b class="text-slate-400">Teknisi</b> atau <b class="text-slate-400">Administrator</b> sebelum dashboard dapat dibuka.
                 </p>
 
@@ -160,7 +153,6 @@
         event.preventDefault();
 
         const nama = document.getElementById('reg-nama').value.trim();
-        const nip = document.getElementById('reg-nip').value.trim();
         const email = document.getElementById('reg-email').value.trim();
         const password = document.getElementById('password_reg').value;
         const confirm = document.getElementById('password_confirm').value;
@@ -170,7 +162,7 @@
             return;
         }
 
-        const result = await Auth.register({ nama, nip, email, password });
+        const result = await Auth.register({ nama, email, password });
         if (!result.ok) {
             showAlert(result.error, 'error');
             return;
