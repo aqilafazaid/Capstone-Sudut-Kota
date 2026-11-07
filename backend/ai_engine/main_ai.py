@@ -1,27 +1,3 @@
-"""Sudut Kota — engine AI lokal.
-
-Alur satu frame:
-
-    RTSP -> [low-light enhancement] -> [YOLOv8] -> anotasi -> ffmpeg -> HLS (m3u8)
-                                              -> Firebase RTDB (angka + status)
-
-Low-light BUKAN satu fungsi generik: tiap model punya arsitektur dan resep
-inferensi berbeda, dan perbedaan itu hidup di `ai_engine/enhancers/`:
-
-    enhancers/mirnet.py    rekonstruksi gambar, padding kelipatan 8
-    enhancers/zerodce.py   parameter kurva + iterasi 8x
-    enhancers/classical.py CLAHE, dipakai bila bobot model belum tersedia
-    enhancers/null.py      passthrough (mode mati)
-
-Model dipilih dari RTDB (`ai_status.lowlight_model`) dan bisa berganti saat
-program berjalan tanpa restart. YOLO sengaja hanya satu model: file `.pt`
-pertama di `model_ai/Yolo/`.
-
-Contoh:
-    python -m ai_engine.main_ai --channel 29
-    python -m ai_engine.main_ai --channel 29 --no-stream --lowlight zerodce
-"""
-
 from __future__ import annotations
 
 import argparse
