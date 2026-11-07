@@ -77,8 +77,8 @@ Capstone-Sudut-Kota/
 ├── docs/                      catatan desain lokal (gitignored)
 ├── vercel.json                deploy: framework Other, output frontend/
 ├── .vercelignore              backend/, docs/, tools/ tidak ikut upload
-├── start-backend.bat          Windows: backend Flask untuk terminal 1
-├── start-frontend.bat         Windows: server statis 8787 untuk terminal 2
+├── start-backend.bat          Windows: backend + Tailscale Funnel (satu klik)
+├── start-frontend.bat         Windows: server statis 8787 untuk mode lokal
 └── README.md
 ```
 
@@ -101,6 +101,19 @@ Keduanya berhenti dengan `Ctrl+C`. `start-frontend.bat` menerima port lain
 (`start-frontend.bat 8788`) dan tidak membuka browser bila `SK_NO_OPEN=1`;
 `start-backend.bat` mengikuti `API_PORT` bila diset. Keduanya menolak jalan kalau
 port tujuannya sudah dipakai, dan menyebutkan perintah untuk memeriksanya.
+
+**Mode Vercel — cukup satu terminal.** `start-backend.bat` menjalankan
+`backend/scripts/funnel_serve.py`, yang:
+
+1. menulis `PUBLIC_BACKEND_URL` di `backend/.env` sesuai nama node Tailscale,
+2. menjalankan ulang `scripts/sync_public_config.py` bila `frontend/js/public-config.js`
+   belum memuat alamat itu (ikuti perintah commit & push yang dicetak),
+3. menyalakan `tailscale funnel --bg 5000`, dan mematikannya lagi saat backend berhenti.
+
+Funnel harus diaktifkan sekali per mesin di konsol admin Tailscale; bila belum, skrip
+mencetak tautannya dan backend tetap jalan — halaman 8787 memakai
+`http://127.0.0.1:5000` (`js/config.js` memilih sendiri), jadi mode lokal tidak
+terpengaruh.
 
 Langkah manualnya:
 
@@ -273,8 +286,9 @@ Kata sandi diminta lewat prompt, tidak masuk riwayat shell.
    di root sudah mengunci `framework: null`, `buildCommand: null`, dan
    `outputDirectory: "frontend"`. Framework preset yang tersimpan sebagai Flask akan
    ditimpa, sehingga `backend/app.py` tidak lagi dicari sebagai entrypoint.
-3. Isi `PUBLIC_BACKEND_URL` di `backend/.env` dengan hostname Tailscale Funnel, lalu
-   jalankan `python backend/scripts/sync_public_config.py` dan commit hasilnya.
+3. `start-backend.bat` mengisi `PUBLIC_BACKEND_URL` di `backend/.env` dari nama node
+   Tailscale dan menjalankan `scripts/sync_public_config.py`; commit
+   `frontend/js/public-config.js` bila berubah (manual: isi sendiri lalu jalankan skripnya).
 4. Tambahkan domain Vercel ke `ALLOWED_ORIGINS` di `backend/.env`, lalu restart Flask.
 5. `cleanUrls` aktif, jadi `/cctv` dan `/cctv.html` sama-sama bekerja.
 
