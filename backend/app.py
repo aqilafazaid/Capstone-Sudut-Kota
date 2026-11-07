@@ -23,6 +23,7 @@ detail yang dilindungi.
 from __future__ import annotations
 
 import atexit
+import logging
 import os
 import time
 from datetime import datetime, timezone
@@ -382,7 +383,31 @@ def start_active_streams() -> list[str]:
     return started
 
 
+def _access_log_handler() -> Path | None:
+    """Access log werkzeug ke berkas, bukan ke konsol.
+
+    Konsol Windows berhenti menerima tulisan saat jendelanya sedang diseleksi
+    (QuickEdit/Mark). ``logging`` menahan lock saat menulis, jadi satu baris log
+    yang macet membuat seluruh thread request ikut menunggu dan server tampak
+    mati walau socket-nya masih LISTENING. Menulis ke berkas menghilangkan
+    ketergantungan itu.
+    """
+    log_dir = BASE_DIR / "logs"
+    try:
+        log_dir.mkdir(exist_ok=True)
+        handler = logging.FileHandler(log_dir / "backend.log", encoding="utf-8")
+    except OSError:
+        return None
+    handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    logger = logging.getLogger("werkzeug")
+    logger.handlers = [handler]
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    return log_dir / "backend.log"
+
+
 if __name__ == "__main__":
+    access_log = _access_log_handler()
     if _truthy(os.environ.get("STREAM_AUTOSTART", "true")):
         print(f"[STREAM] Autostart: {', '.join(start_active_streams()) or '-'}")
     if not _truthy(os.environ.get("STATS_COLLECTOR", "true")):
@@ -390,4 +415,6 @@ if __name__ == "__main__":
     else:
         stats_store.start_collector()
     print(f"Sudut Kota API v{APP_VERSION} -> http://{HOST}:{PORT}")
+    if access_log:
+        print(f"[backend] access log: {access_log}  (jangan menyeleksi jendela ini)")
     app.run(host=HOST, port=PORT, debug=False)
