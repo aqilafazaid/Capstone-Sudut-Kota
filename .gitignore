@@ -20,21 +20,7 @@ ENV/
 .venv/
 
 # ==========================================
-# 3. KECERDASAN BUATAN (YOLO, PyTorch, OpenCV)
-# ==========================================
-# Mengabaikan file bobot model AI yang ukurannya raksasa
-*.pt
-*.pth
-*.weights
-# Mengabaikan folder output bawaan Ultralytics YOLO
-runs/
-# Mengabaikan dataset gambar/video lokal
-datasets/
-images/
-labels/
-
-# ==========================================
-# 4. OUTPUT VIDEO & STREAMING (HLS)
+# 3. OUTPUT VIDEO & STREAMING (HLS)
 # ==========================================
 # Mengabaikan file hasil transkoding FFmpeg agar tidak memenuhi repository
 *.m3u8
@@ -44,20 +30,20 @@ labels/
 *.mkv
 
 # ==========================================
-# 5. IDE & EDITOR (VS Code)
+# 4. IDE & EDITOR (VS Code)
 # ==========================================
 .vscode/
 .idea/
 
 # ==========================================
-# 6. FLASK & LOGS
+# 5. FLASK & LOGS
 # ==========================================
 instance/
 .webassets-cache
 *.log
 
 # ==========================================
-# 7. DEPLOY
+# 6. DEPLOY
 # ==========================================
 .vercel/
 .output/
@@ -66,14 +52,14 @@ instance/
 backend/media/
 
 # ==========================================
-# 8. RUNTIME BACKEND
+# 7. RUNTIME BACKEND
 # ==========================================
 # Database konfigurasi kamera (SQLite) dan log/pid nginx
 backend/data/
 logs/
 
 # ==========================================
-# 9. ALAT LOKAL (tidak pernah ikut deploy)
+# 8. ALAT LOKAL (tidak pernah ikut deploy)
 # ==========================================
 # Distribusi nginx Windows, log, dan temp: hanya ada di mesin operator.
 tools/
@@ -82,7 +68,7 @@ backend/gateway/logs/
 backend/gateway/temp/
 
 # ==========================================
-# 10. DOKUMEN LOKAL
+# 9. DOKUMEN LOKAL
 # ==========================================
 # Catatan desain hanya ada di mesin operator, tidak ikut repo.
 docs/
