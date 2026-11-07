@@ -528,3 +528,5 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
 8. **Kredensial awal.** Halaman login tidak lagi menampilkan akun demo. Kata sandi akun
    bootstrap harus diganti setelah serah terima, tidak boleh ditulis di repo, dan akun
    yatim dapat diperiksa dengan `python scripts/audit_accounts.py`.
+
+Test
