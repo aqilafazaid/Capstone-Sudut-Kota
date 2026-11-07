@@ -1,0 +1,6 @@
+# Berkas yang tidak perlu di-upload ke Vercel.
+# Situs yang disajikan hanya frontend/ (lihat vercel.json → outputDirectory).
+backend/
+docs/
+tools/
+.vscode/

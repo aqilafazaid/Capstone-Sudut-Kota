@@ -7,11 +7,6 @@ serviceAccountKey.json
 credentials.json
 *.pem
 *.key
-# Dokumen desain dilacak; isi docs/ lainnya diabaikan.
-docs/*
-!docs/superpowers/
-docs/superpowers/*
-!docs/superpowers/specs/
 
 # ==========================================
 # 2. PYTHON & ENVIRONMENT
@@ -85,3 +80,9 @@ tools/
 backend/gateway/tools/
 backend/gateway/logs/
 backend/gateway/temp/
+
+# ==========================================
+# 10. DOKUMEN LOKAL
+# ==========================================
+# Catatan desain hanya ada di mesin operator, tidak ikut repo.
+docs/

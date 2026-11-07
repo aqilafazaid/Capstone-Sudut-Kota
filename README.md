@@ -10,7 +10,7 @@ Halaman berjalan tanpa build step dan tanpa server Python: cukup HTML, CSS, dan 
 | Frontend statis (`frontend/`) | **Selesai** — 8 halaman, pemutar HLS, panel kontrol AI, CRUD node, statistik + ekspor |
 | Firebase Auth + Realtime Database | **Ditunda** — digantikan lapisan demo di `js/store.js` dan `js/auth.js` |
 | Backend AI lokal (`ai_engine/`) | Belum dipindah/diubah pada tahap ini |
-| Deployment Vercel | Siap, Root Directory diarahkan ke `frontend/` |
+| Deployment Vercel | Siap — `vercel.json` di root, `outputDirectory: frontend` |
 
 ## Navigasi
 
@@ -53,7 +53,6 @@ Capstone-Sudut-Kota/
 │   │   ├── app.js             navbar, tema, jam, toast
 │   │   └── …                  main.js, dashboard.js, add-data.js, akun.js, statistik.js
 │   ├── asset/
-│   └── vercel.json
 ├── backend/                   ← jalan di PC operator, tidak pernah di-deploy
 │   ├── app.py                 Flask API (127.0.0.1:5000)
 │   ├── auth.py                verifikasi Firebase ID token + peran
@@ -74,12 +73,17 @@ Capstone-Sudut-Kota/
 │   ├── tests/
 │   ├── .env / .env.example
 │   └── requirements.txt
-├── docs/superpowers/specs/    dokumen desain
+├── docs/                      catatan desain lokal (gitignored)
+├── vercel.json                deploy: framework Other, output frontend/
+├── .vercelignore              backend/, docs/, tools/ tidak ikut upload
 └── README.md
 ```
 
-Tidak ada `vercel.json` di root. Proyek Vercel memakai **Root Directory = `frontend`**,
-jadi yang di-upload hanya isi folder itu — bukan `backend/.venv`, model AI, atau nginx.
+Satu `vercel.json` di root menetapkan `framework: null` (preset *Other*), tanpa build step,
+dan `outputDirectory: "frontend"`. Itu yang menentukan apa yang disajikan, jadi Vercel tidak
+lagi memindai `backend/` dan tidak mencari entrypoint Python. `backend/`, `docs/`, dan
+`tools/` dibuang dari upload lewat `.vercelignore`. **Root Directory proyek dibiarkan kosong**
+(root repo) — mengarahkannya ke `frontend` membuat `vercel.json` di root tidak terbaca.
 
 ## Menjalankan lokal
 
@@ -235,14 +239,15 @@ Kata sandi diminta lewat prompt, tidak masuk riwayat shell.
 
 ## Deploy ke Vercel
 
-1. Import repo ini.
-2. **Root Directory: `frontend`** — bukan root repo. Tanpa ini Vercel mencari entrypoint
-   di root dan ikut meng-upload `backend/`.
-3. Framework preset: *Other*. Tidak ada build command, output directory = `.`.
-4. Isi `PUBLIC_BACKEND_URL` di `backend/.env` dengan hostname Tailscale Funnel, lalu
+1. Import repo ini dengan **Root Directory kosong** (root repo, bukan `frontend`).
+2. Jangan isi Framework Preset / Build Command / Output Directory di dashboard: `vercel.json`
+   di root sudah mengunci `framework: null`, `buildCommand: null`, dan
+   `outputDirectory: "frontend"`. Framework preset yang tersimpan sebagai Flask akan
+   ditimpa, sehingga `backend/app.py` tidak lagi dicari sebagai entrypoint.
+3. Isi `PUBLIC_BACKEND_URL` di `backend/.env` dengan hostname Tailscale Funnel, lalu
    jalankan `python backend/scripts/sync_public_config.py` dan commit hasilnya.
-5. Tambahkan domain Vercel ke `ALLOWED_ORIGINS` di `backend/.env`, lalu restart Flask.
-6. `cleanUrls` aktif, jadi `/cctv` dan `/cctv.html` sama-sama bekerja.
+4. Tambahkan domain Vercel ke `ALLOWED_ORIGINS` di `backend/.env`, lalu restart Flask.
+5. `cleanUrls` aktif, jadi `/cctv` dan `/cctv.html` sama-sama bekerja.
 
 ## Data awal
 
@@ -347,8 +352,8 @@ mengirim `Cache-Control` untuk aset, sehingga peramban bisa menyajikan versi lam
 diubah. **Setiap kali `css/` atau `js/` diedit, naikkan angka versi itu di kesembilan halaman**
 (cari `?v=`); cukup satu penggantian global.
 
-Di Vercel tidak diperlukan karena `vercel.json` sudah memasang `max-age=0, must-revalidate` untuk
-`/js/`.
+Di Vercel tidak diperlukan karena `vercel.json` (root) sudah memasang `max-age=0, must-revalidate`
+untuk `/js/`.
 
 ## Responsif
 
