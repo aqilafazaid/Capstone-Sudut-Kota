@@ -40,73 +40,78 @@ variabel CSS `--sk-*` sehingga tidak ada lagi panel gelap yang tertinggal saat m
 
 ```text
 Capstone-Sudut-Kota/
-├── frontend/              ← yang dideploy ke Vercel
-│   ├── index.html         Beranda
-│   ├── cctv.html          Pemutar + panel kontrol AI (menu "Stream")
-│   ├── statistik.html     Statistik + ekspor PDF/CSV
-│   ├── dashboard.html     Manajemen node (khusus operator)
-│   ├── add-data.html      Form tambah/ubah node (satu URL RTSP)
-│   ├── akun.html          Manajemen akun petugas (khusus Administrator)
-│   ├── login.html / register.html / forgot-password.html
-│   ├── asset/             logo, favicon, lambang kop PDF
+├── frontend/                  ← satu-satunya yang dideploy ke Vercel
+│   ├── *.html                 beranda, stream, statistik, dashboard, akun, auth
 │   ├── css/style.css
 │   ├── js/
-│   │   ├── config.js          alamat API/HLS (same-origin lewat nginx)
+│   │   ├── config.js          alamat API/HLS (same-origin atau public-config)
+│   │   ├── public-config.js   DIHASILKAN: alamat backend untuk halaman Vercel
+│   │   ├── firebase-config.js DIHASILKAN: konfigurasi Firebase Web SDK
+│   │   ├── firebase-client.js inisialisasi Firebase App + Auth
+│   │   ├── auth.js            sesi, peran, ID token (Firebase Auth)
 │   │   ├── store.js           klien /api/nodes + cache baca
-│   │   ├── auth.js            autentikasi demo (localStorage)
 │   │   ├── app.js             navbar, tema, jam, toast
-│   │   ├── main.js            pemutar HLS + kontrol AI
-│   │   ├── dashboard.js       tabel & filter node
-│   │   ├── statistik.js       agregasi + ekspor PDF/CSV
-│   │   ├── add-data.js        form node (hanya RTSP)
-│   │   ├── akun.js            CRUD akun petugas
-│   │   └── firebase-config.js dihasilkan dari backend/.env
+│   │   └── …                  main.js, dashboard.js, add-data.js, akun.js, statistik.js
+│   ├── asset/
 │   └── vercel.json
-├── backend/                    ← jalan di PC lokal, tidak dideploy
-│   ├── app.py                  Flask API: node CRUD, HLS, status (port 5000)
-│   ├── nodes.py                penyimpanan SQLite + validasi RTSP
-│   ├── firebase_init.py        Admin SDK opsional untuk engine AI
-│   ├── .env / .env.example     Firebase Web SDK + setelan backend
-│   ├── requirements.txt
-│   ├── scripts/
-│   │   └── sync_firebase_config.py  .env → frontend/js/firebase-config.js
-│   ├── nginx/
-│   │   ├── nginx.conf          serve frontend/ + proxy /api,/hls
-│   │   └── start/stop-nginx.*
-│   ├── data/sudutkota.db       konfigurasi kamera (gitignored)
-│   ├── media/hls/              keluaran ffmpeg (gitignored)
-│   ├── streamer/hls.py         RTSP → HLS
-│   ├── ai_engine/              loop AI + enhancer low-light
-│   └── aws_streamer/           arsip konfigurasi AWS
-├── tools/nginx/                distribusi nginx Windows
-├── docs/superpowers/specs/
+├── backend/                   ← jalan di PC operator, tidak pernah di-deploy
+│   ├── app.py                 Flask API (127.0.0.1:5000)
+│   ├── auth.py                verifikasi Firebase ID token + peran
+│   ├── accounts.py            CRUD akun lewat Admin SDK + RTDB
+│   ├── nodes.py               penyimpanan SQLite + validasi RTSP
+│   ├── firebase_init.py       Admin SDK dari backend/.env
+│   ├── streamer/hls.py        RTSP → HLS (ffmpeg)
+│   ├── ai_engine/
+│   ├── gateway/               SATU-SATUNYA konfigurasi edge
+│   │   ├── nginx.conf         serve frontend/ + proxy /api + /hls dari disk
+│   │   ├── start/stop-nginx.*
+│   │   ├── tools/nginx/       distribusi nginx Windows (gitignored)
+│   │   ├── logs/              (gitignored)
+│   │   └── temp/              (gitignored)
+│   ├── data/sudutkota.db      konfigurasi kamera (gitignored)
+│   ├── media/hls/             keluaran ffmpeg (gitignored)
+│   ├── scripts/               sync_public_config.py, seed_accounts.py, apply_rtdb_rules.py
+│   ├── tests/
+│   ├── .env / .env.example
+│   └── requirements.txt
+├── docs/superpowers/specs/    dokumen desain
 └── README.md
 ```
 
-## Menjalankan lokal
+Tidak ada `vercel.json` di root. Proyek Vercel memakai **Root Directory = `frontend`**,
+jadi yang di-upload hanya isi folder itu — bukan `backend/.venv`, model AI, atau nginx.
 
-Dua proses: backend Flask dan nginx. nginx menyajikan `frontend/` sekaligus
-mem-proxy `/api` dan `/hls` ke Flask, jadi peramban hanya mengenal satu origin
-(tidak ada CORS dan tidak ada mixed content di lokal).
+## Menjalankan lokal
 
 **Terminal 1 — backend (Flask):**
 
 ```bash
 cd backend
-.venv/Scripts/activate        # Windows: venv yang sudah dibuat di backend/.venv
+.venv/Scripts/activate
 python app.py
 # API langsung: http://127.0.0.1:5000/api/health
 ```
 
-**Terminal 2 — nginx** (dari root repo):
+**Terminal 2 — frontend statis:**
 
 ```bash
-bash backend/nginx/start-nginx.sh      # Git Bash
-# atau klik dua kali backend\nginx\start-nginx.bat
-# buka http://127.0.0.1:8080
+cd frontend
+python -m http.server 8787
+# buka http://127.0.0.1:8787
 ```
 
-Hentikan dengan `bash backend/nginx/stop-nginx.sh` (atau `stop-nginx.bat`).
+`js/config.js` mengarahkan halaman 8787 ke `http://127.0.0.1:5000`, dan Flask ikut
+menyajikan `/hls`, jadi stream tetap bisa diputar tanpa nginx.
+
+**nginx (opsional, meniru jalur produksi):**
+
+```bash
+bash backend/gateway/start-nginx.sh      # http://127.0.0.1:8080
+bash backend/gateway/stop-nginx.sh
+```
+
+nginx menyajikan `frontend/` sekaligus `/api` dan `/hls` dari satu origin; pada jalur ini
+segmen `.ts` dilayani langsung dari disk, tidak melewati Python.
 
 Bila `backend/.venv` belum ada:
 
@@ -118,32 +123,25 @@ python -m venv .venv
 
 Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 
-**Token operator.** CRUD node memakai header `X-SK-Token`. Nilainya ada di
-`backend/.env` (`API_WRITE_TOKEN`); dashboard memintanya sekali saat penyimpanan
-pertama lalu menyimpannya di `localStorage`. Buat token baru bila perlu:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-
 ### Penyimpanan data
 
 | Data | Lokasi | Catatan |
 |---|---|---|
 | Konfigurasi kamera (RTSP) | `backend/data/sudutkota.db` (SQLite) | sumber kebenaran; RTSP tidak pernah dikirim ke peramban |
-| Akun | `localStorage` (demo) → `/akun/{uid}` di Firebase nanti | masih demo, bukan otorisasi produksi |
-| Statistik | simulasi `Store.stats()` → `/statistik/...` di Firebase nanti | belum tersambung |
-| Konfigurasi Firebase Web SDK | `backend/.env` → `frontend/js/firebase-config.js` | kunci publik; jalankan `sync_firebase_config.py` |
+| Identitas operator | Firebase Authentication | email + kata sandi |
+| Profil & peran operator | RTDB `<RTDB_ROOT>/akun/<uid>` | ditulis backend lewat Admin SDK, bukan klien |
+| Statistik | simulasi `Store.stats()` | belum tersambung ke RTDB |
+| Konfigurasi Firebase Web SDK | `backend/.env` → `frontend/js/firebase-config.js` | kunci publik; hasil `sync_public_config.py` |
+| Alamat backend untuk Vercel | `backend/.env` (`PUBLIC_BACKEND_URL`) → `frontend/js/public-config.js` | hasil skrip yang sama |
 
-`frontend/js/firebase-config.js` **dihasilkan** dari `backend/.env`:
+Klien tidak pernah membaca atau menulis RTDB. Semua akses data lewat backend, sehingga
+rules RTDB dapat menolak seluruh akses klien:
 
 ```bash
-backend/.venv/Scripts/python.exe backend/scripts/sync_firebase_config.py
+cd backend
+python scripts/apply_rtdb_rules.py            # terapkan scripts/rtdb-rules.json
+python scripts/apply_rtdb_rules.py --show     # lihat aturan aktif
 ```
-
-`FIREBASE_READY` false selama `apiKey` kosong, sehingga halaman tetap memakai lapisan
-demo. Blok service account Admin SDK sudah tidak ada di `.env`; engine AI akan mencetak
-`Firebase tidak aktif` dan tetap berjalan tanpa telemetri RTDB.
 
 ### Engine AI — satu folder per cara inferensi
 
@@ -169,77 +167,82 @@ python -m ai_engine.main_ai --channel 29 --no-stream --lowlight zerodce
 ## Alur stream
 
 ```text
-CCTV → RTSP → backend lokal (ffmpeg) → HLS (m3u8) → Vercel → HLS → client
+CCTV → RTSP (Tailscale) → backend lokal (ffmpeg) → HLS di disk
+                                   ↓
+Peramban (Vercel, HTTPS) → Tailscale Funnel → nginx:8080 → /hls (file) + /api (Flask)
 ```
 
-Satu jalur untuk mode AI maupun non-AI: FFmpeg menulis `index.m3u8` + segmen ke
-`backend/media/hls/<cam>/`, Flask menyajikannya di `/hls/<cam>/...`, peramban memutar
-m3u8 itu. RTMP/AWS sudah tidak dipakai (folder `aws_streamer/` dibiarkan sebagai arsip).
+Vercel hanya menyajikan HTML/CSS/JS. Playlist dan segmen diambil peramban langsung dari
+backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panjang.
 
-| Method | Endpoint | Fungsi |
-|---|---|---|
-| GET | `/api/nodes` | daftar node (tanpa RTSP) |
-| GET | `/api/nodes/<id>` | detail + RTSP untuk form edit (butuh `X-SK-Token`) |
-| POST | `/api/nodes` | tambah node (butuh token) |
-| PUT | `/api/nodes/<id>` | ubah node (butuh token) |
-| DELETE | `/api/nodes/<id>` | hapus node + hentikan stream (butuh token) |
-| GET | `/api/streams` | daftar proses ffmpeg + status |
-| POST | `/api/streams/<cam>` | mulai manual: `{"rtsp": "…"}` (butuh token) |
-| DELETE | `/api/streams/<cam>` | hentikan (butuh token) |
-| GET | `/hls/<cam>/index.m3u8` | playlist HLS (tanpa cache) |
-| GET | `/hls/<cam>/seg_XXXXX.ts` | segmen HLS |
+| Method | Endpoint | Akses | Fungsi |
+|---|---|---|---|
+| GET | `/api/health`, `/api/config` | publik | status runtime & konfigurasi publik |
+| GET | `/api/nodes` | publik | daftar node (tanpa RTSP) |
+| GET | `/hls/<cam>/index.m3u8`, `/hls/<cam>/seg_*.ts` | publik | playlist & segmen |
+| GET | `/api/streams` | publik | status proses ffmpeg |
+| GET | `/api/nodes/<id>` | teknisi, admin | detail + RTSP untuk form edit |
+| POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node |
+| POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
+| GET | `/api/status` | teknisi, admin | path database, daftar model |
+| POST | `/api/nodes/reset` | admin | reset node ke seed |
+| GET/PUT/DELETE | `/api/akun[/<uid>]` | admin | kelola akun petugas |
+| GET | `/api/akun/me` | login | profil sendiri |
+| POST | `/api/akun/self` | login | buat profil saat pendaftaran (peran visitor) |
+
+Otorisasi memakai header `Authorization: Bearer <idToken>` (Firebase). Peran diambil dari
+RTDB dan di-cache 60 detik di backend; pemeriksaan peran **tidak** terjadi di peramban.
+Halaman yang butuh peran tetap memanggil `Auth.requireOperator()`/`requireAdmin()`, tetapi
+itu hanya untuk tampilan — endpoint tetap menolak sendiri.
 
 `copy: true` meneruskan video apa adanya (hemat CPU); `copy: false` men-transcode H.264
-(wajib bila sumber bukan H.264). Engine AI selalu memakai jalur transcode karena frame
-sudah dimodifikasi.
+(wajib bila sumber bukan H.264). Engine AI selalu memakai jalur transcode.
 
-**Alamat server dari sisi frontend.** Lewat nginx (`http://localhost:8080`),
-`js/config.js` memakai `backendBase = ''`, jadi `/api` dan `/hls` same-origin. Hanya
-`python -m http.server 8787` yang memakai `http://127.0.0.1:5000` sebagai default.
+**Alamat server dari sisi frontend.** Tiga kasus, ditangani `js/config.js`:
 
-Di Vercel, halaman HTTPS harus memanggil nginx HTTPS (domain + sertifikat, atau
-Cloudflare Tunnel). Isi:
+| Halaman dibuka dari | backendBase |
+|---|---|
+| `http://localhost:8080` (nginx) | `''` — same-origin |
+| `http://localhost:8787` (`http.server`) | `http://127.0.0.1:5000` |
+| domain Vercel | `window.SK_PUBLIC.backendBase` (dari `PUBLIC_BACKEND_URL`) |
 
-```js
-localStorage.setItem('sudutkota.backend', 'https://<endpoint-nginx>')
-```
+Tanpa `PUBLIC_BACKEND_URL` terisi, halaman Vercel tidak tahu harus memanggil ke mana.
 
-`ALLOWED_ORIGINS` di `backend/.env` harus memuat domain Vercel; tanpa itu panggilan API
-dari Vercel ditolak CORS. HLS mengirim `Access-Control-Allow-Origin: *`, tetapi endpoint
-HTTPS tetap wajib agar tidak diblokir mixed content.
+### Akun dan peran
 
-Halaman tidak butuh server khusus. Membuka `frontend/index.html` langsung lewat `file://`
-sebagian besar berfungsi, tetapi `localStorage`, API, dan pemutaran HLS lebih andal lewat nginx.
-
-### Akun demo
-
-| ID | Sandi | Peran |
-|----|-------|-------|
-| `admin` | `admin123` | Administrator — akses penuh |
-| `teknisi` | `teknisi123` | Teknisi — akses dashboard + kontrol AI |
-| akun hasil registrasi | — | Peran awal **Visitor**, belum bisa membuka dashboard |
-
-Peran yang dikenal sistem hanya tiga:
+Akun tidak lagi disimpan di peramban. Semua akun adalah user Firebase Authentication
+dengan profil di RTDB `/akun/<uid>`:
 
 | Peran | Kode | Akses |
-|-------|------|-------|
-| Administrator | `admin` | Semua halaman, termasuk Kelola Akun |
-| Teknisi | `teknisi` | Beranda, Stream, Statistik, Dashboard node, kontrol AI |
-| Visitor | `visitor` | Beranda, Stream, Statistik, termasuk panel Kontrol Modul AI; tanpa dashboard |
+|---|---|---|
+| Administrator | `admin` | semua halaman, termasuk Kelola Akun dan reset node |
+| Teknisi | `teknisi` | beranda, stream, statistik, dashboard node, kontrol AI |
+| Visitor | `visitor` | beranda, stream, statistik; tanpa dashboard |
 
-Visitor (tanpa login) boleh membuka beranda dan halaman CCTV, menonton stream, dan melihat
-angka telemetri; tombol kontrol AI tampil nonaktif.
+Pendaftaran mandiri (`register.html`) membuat akun Visitor: Firebase Auth membuat user,
+lalu `POST /api/akun/self` menulis profilnya. Administrator menaikkan peran lewat
+`akun.html`.
 
-> **Penting:** `js/auth.js` versi sekarang menyimpan sesi di `localStorage` dan kata sandi
-> tanpa hash. Itu hanya untuk demo frontend, **bukan** otorisasi produksi — penjaga halaman
-> bisa dilewati dari konsol peramban. Ganti dengan Firebase Auth sebelum dipakai sungguhan.
+**Akun pertama harus dibuat dari terminal**, karena belum ada admin yang bisa membuka
+halaman Kelola Akun:
+
+```bash
+cd backend
+python scripts/seed_accounts.py --email admin@contoh.go.id --nama "Admin Dishub" --peran admin
+```
+
+Kata sandi diminta lewat prompt, tidak masuk riwayat shell.
 
 ## Deploy ke Vercel
 
 1. Import repo ini.
-2. **Root Directory: `frontend`** (bukan root repo). Tanpa ini Vercel mencari entrypoint di root.
+2. **Root Directory: `frontend`** — bukan root repo. Tanpa ini Vercel mencari entrypoint
+   di root dan ikut meng-upload `backend/`.
 3. Framework preset: *Other*. Tidak ada build command, output directory = `.`.
-4. `cleanUrls` aktif, jadi `/cctv` dan `/cctv.html` sama-sama bekerja.
+4. Isi `PUBLIC_BACKEND_URL` di `backend/.env` dengan hostname Tailscale Funnel, lalu
+   jalankan `python backend/scripts/sync_public_config.py` dan commit hasilnya.
+5. Tambahkan domain Vercel ke `ALLOWED_ORIGINS` di `backend/.env`, lalu restart Flask.
+6. `cleanUrls` aktif, jadi `/cctv` dan `/cctv.html` sama-sama bekerja.
 
 ## Data awal
 
@@ -415,18 +418,20 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
 
 ## Kendala yang masih terbuka
 
-1. **Mixed content.** Halaman Vercel berjalan di HTTPS; endpoint nginx harus HTTPS
-   (domain + sertifikat, atau Cloudflare Tunnel). Tanpa itu `/api` dan `/hls` diblokir.
-2. **Stream Pekalongan belum menyala.** Node `cam_29`, `cam_35`, `cam_43` masih
-   `aktif: false`; ffmpeg baru dijalankan setelah node diaktifkan dan RTSP-nya dapat
-   dijangkau dari PC operator.
-3. **Rules RTDB.** Konfigurasi kamera tidak lagi di RTDB. Rules baru relevan saat akun
-   dan statistik dipindah ke Firebase; sampai itu, auth frontend masih demo.
-4. **Kredensial RTSP.** URL RTSP sekarang tersimpan di `backend/data/sudutkota.db`
-   (plaintext) dan tidak pernah dikirim ke peramban. Kata sandi lama yang pernah
-   tertulis di kode masih ada di riwayat git — ganti kata sandi perangkat bila repo
-   pernah dibagikan. Enkripsi kolom adalah pengerasan opsional.
-5. **Token operator bersama.** `X-SK-Token` melindungi tulis dari anonim, tetapi bukan
-   autentikasi per pengguna. Saat Firebase Auth aktif, ganti dengan verifikasi ID token.
-6. **Process list.** ffmpeg menerima URL RTSP sebagai argumen, jadi URL itu terlihat di
+1. **Provider Email/Password harus diaktifkan** di Firebase Console → Authentication →
+   Sign-in method. Tanpa itu login membalas `auth/operation-not-allowed`.
+2. **Ingress publik.** Halaman Vercel berjalan di HTTPS; backend harus dijangkau lewat
+   HTTPS juga. Rencana: Tailscale Funnel (`tailscale funnel --bg 8080`) → nginx:8080.
+3. **Stream Pekalongan belum menyala.** Node `cam_29`, `cam_35`, `cam_43` masih
+   `aktif: false`; ffmpeg baru dijalankan setelah node diaktifkan dan RTSP-nya terjangkau.
+4. **Kredensial RTSP.** URL RTSP tersimpan plaintext di `backend/data/sudutkota.db` dan
+   tidak pernah dikirim ke peramban. Kata sandi lama yang pernah tertulis di kode masih
+   ada di riwayat git — ganti kata sandi perangkat bila repo pernah dibagikan. Enkripsi
+   kolom adalah pengerasan opsional.
+5. **Process list.** ffmpeg menerima URL RTSP sebagai argumen, jadi URL itu terlihat di
    daftar proses mesin. Jangan jalankan backend di mesin multi-user.
+6. **Dependensi `requirements.txt`.** `Flask-Mail`, `google-generativeai`, `feedparser`,
+   dan `pytz` tidak dipakai kode saat ini; `firebase-admin` sudah dipakai. Merapikannya
+   belum termasuk pekerjaan ini.
+7. **CSP belum dipasang.** Situs memuat `cdn.tailwindcss.com` (JIT, butuh `unsafe-eval`)
+   dan banyak script inline; CSP yang benar menuntut build step lebih dulu.

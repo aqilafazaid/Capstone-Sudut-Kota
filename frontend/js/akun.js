@@ -6,13 +6,16 @@
    halaman ini tidak perlu diubah.
    ========================================================================== */
 
-(function () {
+(async function () {
     'use strict';
 
     App.init({ active: 'akun' });
 
-    const admin = Auth.requireAdmin();
+    const admin = await Auth.requireAdmin();
     if (!admin) return; // requireAdmin sudah mengalihkan ke login.html
+
+    /** Cache daftar akun dari /api/akun; halaman ini tidak menulis RTDB. */
+    let accounts = [];
 
     const el = {
         total: document.getElementById('sum-total'),
@@ -35,7 +38,7 @@
         uid: document.getElementById('field-uid'),
         nama: document.getElementById('field-nama'),
         nip: document.getElementById('field-nip'),
-        username: document.getElementById('field-username'),
+        email: document.getElementById('field-email'),
         roleField: document.getElementById('field-role'),
         password: document.getElementById('field-password'),
         passwordHint: document.getElementById('password-hint'),
@@ -79,15 +82,20 @@
         const q = el.search.value.trim().toLowerCase();
         const role = el.role.value;
 
-        return Auth.list().filter(user => {
+        return accounts.filter(user => {
             if (role && user.role !== role) return false;
             if (!q) return true;
-            return [user.nama, user.nip, user.username].some(v => String(v || '').toLowerCase().includes(q));
+            return [user.nama, user.nip, user.username, user.email].some(v => String(v || '').toLowerCase().includes(q));
         });
     }
 
     function paintSummary() {
-        const c = Auth.count();
+        const c = {
+            total: accounts.length,
+            admin: accounts.filter(u => u.role === 'admin').length,
+            teknisi: accounts.filter(u => u.role === 'teknisi').length,
+            visitor: accounts.filter(u => u.role === 'visitor').length
+        };
         el.total.textContent = c.total;
         el.admin.textContent = c.admin;
         el.teknisi.textContent = c.teknisi;
@@ -116,7 +124,7 @@
 
     function paintList() {
         const rows = filtered();
-        const total = Auth.list().length;
+        const total = accounts.length;
 
         if (rows.length === 0) {
             el.tableBody.innerHTML = `
@@ -160,7 +168,13 @@
             : `Menampilkan ${rows.length} dari ${total} akun.`;
     }
 
-    function refresh() {
+    async function refresh() {
+        try {
+            accounts = await Auth.list();
+        } catch (err) {
+            accounts = [];
+            App.toast('Gagal memuat akun: ' + err.message, 'error');
+        }
         paintSummary();
         paintList();
     }
@@ -188,7 +202,7 @@
             el.uid.value = user.uid;
             el.nama.value = user.nama;
             el.nip.value = user.nip || '';
-            el.username.value = user.username;
+            el.email.value = user.email || '';
             el.roleField.value = user.role;
             el.passwordHint.textContent = '(kosongkan bila tidak diubah)';
             el.save.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan';
@@ -219,14 +233,14 @@
     }
 
     /* --- Aksi ------------------------------------------------------------ */
-    function submitForm(event) {
+    async function submitForm(event) {
         event.preventDefault();
 
         const payload = {
             nama: el.nama.value,
             nip: el.nip.value,
-            username: el.username.value,
-            role: el.roleField.value,
+            email: el.email.value,
+            peran: el.roleField.value,
             password: el.password.value
         };
 
@@ -236,9 +250,9 @@
         if (uid) {
             const patch = { ...payload };
             if (!patch.password) delete patch.password; // biarkan kata sandi lama
-            result = Auth.update(uid, patch);
+            result = await Auth.update(uid, patch);
         } else {
-            result = Auth.create(payload);
+            result = await Auth.create(payload);
         }
 
         if (!result.ok) {
@@ -252,10 +266,10 @@
     }
 
     function findUser(uid) {
-        return Auth.list().find(u => u.uid === uid) || null;
+        return accounts.find(u => u.uid === uid) || null;
     }
 
-    function handleAction(event) {
+    async function handleAction(event) {
         const editBtn = event.target.closest('[data-edit]');
         if (editBtn) {
             const user = findUser(editBtn.dataset.edit);
@@ -271,7 +285,7 @@
 
         if (!confirm(`Hapus akun "${user.nama}" (${user.username})? Tindakan ini tidak bisa dibatalkan.`)) return;
 
-        const result = Auth.remove(user.uid);
+        const result = await Auth.remove(user.uid);
         if (!result.ok) {
             App.toast(result.error, 'error');
             return;
@@ -306,10 +320,11 @@
     el.tableBody.addEventListener('click', handleAction);
     el.cards.addEventListener('click', handleAction);
 
-    el.resetBtn.addEventListener('click', () => {
+    el.resetBtn.addEventListener('click', async () => {
         if (!confirm('Kembalikan daftar akun ke kondisi demo awal? Akun tambahan akan hilang.')) return;
-        Auth.resetAccounts();
-        refresh();
+        const result = await Auth.resetAccounts();
+        if (!result.ok) { App.toast(result.error, 'error'); return; }
+        await refresh();
         App.toast('Akun demo dipulihkan.', 'info');
     });
 

@@ -14,7 +14,7 @@
 
     App.init({ active: 'dashboard' });
 
-    const user = Auth.requireOperator();
+    const user = await Auth.requireOperator();
     if (!user) return;
 
     await Store.ready();

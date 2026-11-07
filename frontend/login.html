@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261106h">
+    <link rel="stylesheet" href="css/style.css?v=20261107a">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -50,7 +50,7 @@
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fa-solid fa-id-badge text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
                         </div>
-                        <input type="text" id="login-identifier" name="identifier" placeholder="Username / NIP" required autocomplete="username"
+                        <input type="email" id="login-identifier" name="email" placeholder="Email" required autocomplete="email"
                             class="w-full pl-11 pr-4 py-3.5 bg-[#050a1f] border border-blue-900/50 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600 shadow-inner">
                     </div>
 
@@ -98,11 +98,16 @@
 <div id="site-footer"></div>
 <div id="site-bottombar"></div>
 
-<script src="js/config.js?v=20261106h"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="js/public-config.js?v=20261107a"></script>
+<script src="js/firebase-config.js?v=20261107a"></script>
+<script src="js/firebase-client.js?v=20261107a"></script>
+<script src="js/config.js?v=20261107a"></script>
 
-<script src="js/store.js?v=20261106h"></script>
-<script src="js/auth.js?v=20261106h"></script>
-<script src="js/app.js?v=20261106h"></script>
+<script src="js/store.js?v=20261107a"></script>
+<script src="js/auth.js?v=20261107a"></script>
+<script src="js/app.js?v=20261107a"></script>
 <script>
     App.init({ active: 'login' });
 
@@ -136,12 +141,12 @@
         icon.classList.toggle('fa-eye-slash', plain);
     });
 
-    document.getElementById('login-form').addEventListener('submit', (event) => {
+    document.getElementById('login-form').addEventListener('submit', async (event) => {
         event.preventDefault();
-        const identifier = document.getElementById('login-identifier').value.trim();
+        const email = document.getElementById('login-identifier').value.trim();
         const password = document.getElementById('password').value;
 
-        const result = Auth.login(identifier, password);
+        const result = await Auth.login(email, password);
         if (!result.ok) {
             showAlert(result.error, 'error');
             return;

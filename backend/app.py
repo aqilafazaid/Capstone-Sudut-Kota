@@ -6,30 +6,34 @@ Dijalankan di terminal terpisah dari frontend:
     python app.py          # http://127.0.0.1:5000
 
 nginx menjadi satu-satunya pintu masuk HTTP: ia menyajikan `frontend/` dan
-mem-proxy `/api` + `/hls` ke proses ini. Flask tetap bind 127.0.0.1 supaya
-tidak pernah terekspos langsung.
+mem-proxy `/api` ke proses ini (playlist & segmen HLS dilayani nginx langsung
+dari disk). Flask tetap bind 127.0.0.1 supaya tidak pernah terekspos langsung.
 
-Konfigurasi kamera disimpan di SQLite (`NODE_DB`). URL RTSP tidak pernah
-dikirim ke peramban kecuali lewat endpoint detail yang dilindungi
-`X-SK-Token`; daftar node hanya memuat `hls_url`.
+Otorisasi:
+
+- Baca publik: daftar node (tanpa RTSP), status stream, playlist/segmen HLS.
+- Tulis (`admin`, `teknisi`): CRUD node, start/stop stream, detail node.
+- `admin` saja: reset node, CRUD akun.
+
+Identitas operator diverifikasi dari Firebase ID token (lihat `auth.py`), bukan
+token bersama. URL RTSP tidak pernah dikirim ke peramban kecuali lewat endpoint
+detail yang dilindungi.
 """
 
 from __future__ import annotations
 
 import atexit
-import hmac
 import os
 import time
 from datetime import datetime, timezone
-from functools import wraps
 from pathlib import Path
-from urllib.parse import quote, urljoin, urlparse
-from urllib.request import urlopen
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
+import accounts
+import auth
 import nodes as node_store
 from streamer import MEDIA_ROOT as HLS_ROOT
 from streamer import manager as hls_manager
@@ -37,7 +41,7 @@ from streamer import manager as hls_manager
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 STARTED_AT = time.time()
 HOST = os.environ.get("API_HOST", "127.0.0.1")
 PORT = int(os.environ.get("API_PORT", "5000"))
@@ -46,11 +50,6 @@ FFMPEG_OK = hls_manager.ffmpeg_tersedia()
 MODELS_DIR = BASE_DIR / "ai_engine" / "model_ai"
 LOWLIGHT_DIR = MODELS_DIR / "LowLight"
 YOLO_DIR = MODELS_DIR / "Yolo"
-
-# Host yang boleh diproksikan. Kosong = hanya localhost (aman untuk pengujian).
-PROXY_ALLOWED_HOSTS = {
-    h.strip() for h in os.environ.get("PROXY_ALLOWED_HOSTS", "").split(",") if h.strip()
-} or {"127.0.0.1", "localhost"}
 
 
 def _truthy(value: object) -> bool:
@@ -66,7 +65,7 @@ def _origins() -> list[str]:
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
-# Origin frontend yang diizinkan (Vercel ditambahkan lewat ALLOWED_ORIGINS).
+# Origin frontend yang diizinkan (domain Vercel ditambahkan lewat ALLOWED_ORIGINS).
 ALLOWED_ORIGINS = _origins()
 
 # Kunci Web SDK bersifat publik; endpoint config hanya melaporkan ada/tidak.
@@ -107,40 +106,19 @@ def _stop_node(node_id: str) -> None:
     hls_manager.get(node_id).stop()
 
 
-def _write_failure():
-    """None bila token benar; response error bila tidak."""
-    expected = os.environ.get("API_WRITE_TOKEN", "").strip()
-    if not expected:
-        return jsonify(error="API_WRITE_TOKEN belum diatur di backend/.env."), 503
-    supplied = request.headers.get("X-SK-Token", "")
-    if not hmac.compare_digest(supplied, expected):
-        return jsonify(error="Token operator tidak valid atau belum diisi."), 401
-    return None
-
-
-def require_write_token(view):
-    """Lindungi POST/PUT/DELETE dengan header X-SK-Token."""
-
-    @wraps(view)
-    def wrapper(*args, **kwargs):
-        failure = _write_failure()
-        if failure is not None:
-            return failure
-        return view(*args, **kwargs)
-
-    return wrapper
-
-
 def create_app() -> Flask:
     app = Flask(__name__)
     CORS(
         app,
         resources={r"/api/*": {"origins": ALLOWED_ORIGINS}},
-        allow_headers=["Content-Type", "X-SK-Token"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
     node_store.init_db()
     node_store.seed_defaults()
+
+    auth.register_error_handlers(app)
+    accounts.register_error_handlers(app)
 
     @app.errorhandler(node_store.NodeError)
     def handle_node_error(error: node_store.NodeError):
@@ -149,6 +127,7 @@ def create_app() -> Flask:
     @app.after_request
     def hls_cors(response):
         # hls.js mengambil playlist & segmen dari origin lain (halaman Vercel).
+        # Endpoint ini publik; yang dilindungi adalah endpoint tulis.
         if request.path.startswith("/hls/"):
             response.headers["Access-Control-Allow-Origin"] = "*"
         return response
@@ -168,14 +147,15 @@ def create_app() -> Flask:
         return jsonify(
             env_file=(BASE_DIR / ".env").exists(),
             configured={key: bool(os.environ.get(key)) for key in REQUIRED_ENV},
+            auth_configured=auth.configured(),
             allow_test_sources=node_store.allow_test_sources(),
             stream_autostart=_truthy(os.environ.get("STREAM_AUTOSTART", "true")),
-            write_token_required=bool(os.environ.get("API_WRITE_TOKEN", "").strip()),
         )
 
     @app.get("/api/status")
+    @auth.require_role(*auth.WRITE_ROLES)
     def status():
-        """Ringkasan kesiapan backend: model, .env, database, dan runtime."""
+        """Ringkasan kesiapan backend. Operator saja: memuat path & daftar model."""
         lowlight = sorted(
             p.name for p in LOWLIGHT_DIR.glob("*")
             if p.is_file() and p.suffix in {".pt", ".pth"}
@@ -187,6 +167,7 @@ def create_app() -> Flask:
             uptime_seconds=round(time.time() - STARTED_AT, 1),
             env_file=(BASE_DIR / ".env").exists(),
             configured={key: bool(os.environ.get(key)) for key in REQUIRED_ENV},
+            auth_configured=auth.configured(),
             node_db=str(node_store.db_path()),
             nodes=node_store.count_nodes(),
             models={"lowlight": lowlight, "yolo": yolo},
@@ -195,15 +176,16 @@ def create_app() -> Flask:
     # --- Konfigurasi kamera -------------------------------------------
     @app.get("/api/nodes")
     def nodes_list():
+        """Publik: daftar node tanpa URL RTSP."""
         return jsonify([_with_stream(node) for node in node_store.list_nodes()])
 
     @app.get("/api/nodes/<node_id>")
-    @require_write_token
+    @auth.require_role(*auth.WRITE_ROLES)
     def node_detail(node_id):
         return jsonify(_with_stream(node_store.get_node(node_id)))
 
     @app.post("/api/nodes")
-    @require_write_token
+    @auth.require_role(*auth.WRITE_ROLES)
     def node_create():
         node = node_store.create_node(request.get_json(silent=True))
         if node["aktif"]:
@@ -211,7 +193,7 @@ def create_app() -> Flask:
         return jsonify(_with_stream(_without_rtsp(node))), 201
 
     @app.put("/api/nodes/<node_id>")
-    @require_write_token
+    @auth.require_role(*auth.WRITE_ROLES)
     def node_update(node_id):
         before = node_store.get_node(node_id)
         node = node_store.update_node(node_id, request.get_json(silent=True))
@@ -229,7 +211,7 @@ def create_app() -> Flask:
         return jsonify(_with_stream(_without_rtsp(node)))
 
     @app.delete("/api/nodes/<node_id>")
-    @require_write_token
+    @auth.require_role(*auth.WRITE_ROLES)
     def node_delete(node_id):
         node_store.get_node(node_id)
         _stop_node(node_id)
@@ -237,7 +219,7 @@ def create_app() -> Flask:
         return jsonify(ok=True, id=node_id)
 
     @app.post("/api/nodes/reset")
-    @require_write_token
+    @auth.require_role("admin")
     def node_reset():
         hls_manager.stop_all()
         node_store.reset_nodes()
@@ -251,53 +233,54 @@ def create_app() -> Flask:
             started=started,
         )
 
-    # --- Proxy HLS (playlist + segmen) -------------------------------
-    @app.get("/api/proxy")
-    def proxy():
-        """Proxy HLS agar halaman HTTPS bisa memutar stream HTTP.
+    # --- Akun operator -------------------------------------------------
+    @app.get("/api/akun/me")
+    @auth.require_role()
+    def akun_me():
+        user = auth.authenticate(required=True)
+        profile = auth.profile_of(user["uid"])
+        if profile is None:
+            return jsonify(error="Profil belum dibuat.", uid=user["uid"]), 404
+        return jsonify(profile)
 
-        Hanya host di PROXY_ALLOWED_HOSTS yang dilayani (default: localhost).
-        URI di dalam playlist ditulis ulang supaya segmen juga lewat proxy.
-        """
-        target = request.args.get("url", "")
-        if not target:
-            return jsonify(error="Parameter url wajib diisi."), 400
+    @app.post("/api/akun/self")
+    @auth.require_role()
+    def akun_self():
+        user = auth.authenticate(required=True)
+        profile = accounts.ensure_self_profile(
+            user["uid"], user.get("email", ""), request.get_json(silent=True) or {}
+        )
+        return jsonify(profile), 201
 
-        parsed = urlparse(target)
-        if parsed.scheme not in ("http", "https") or not parsed.hostname:
-            return jsonify(error="URL harus http/https."), 400
-        if parsed.hostname not in PROXY_ALLOWED_HOSTS:
-            return jsonify(error=f"Host {parsed.hostname} tidak diizinkan."), 403
+    @app.get("/api/akun")
+    @auth.require_role("admin")
+    def akun_list():
+        return jsonify(accounts.list_accounts())
 
-        try:
-            with urlopen(target, timeout=10) as upstream:
-                body = upstream.read()
-                content_type = upstream.headers.get("Content-Type", "application/octet-stream")
-        except Exception as exc:
-            return jsonify(error=f"Gagal mengambil {target}: {exc}"), 502
+    @app.post("/api/akun")
+    @auth.require_role("admin")
+    def akun_create():
+        return jsonify(accounts.create_account(request.get_json(silent=True))), 201
 
-        if "mpegurl" in content_type or parsed.path.endswith(".m3u8"):
-            text = body.decode("utf-8", errors="replace")
-            rewritten = []
-            for line in text.splitlines():
-                if line.startswith("#") or not line.strip():
-                    rewritten.append(line)
-                    continue
-                absolute = urljoin(target, line.strip())
-                rewritten.append(f"/api/proxy?url={quote(absolute, safe='')}")
-            body = "\n".join(rewritten).encode("utf-8")
-            content_type = "application/vnd.apple.mpegurl"
+    @app.put("/api/akun/<uid>")
+    @auth.require_role("admin")
+    def akun_update(uid):
+        return jsonify(accounts.update_account(uid, request.get_json(silent=True)))
 
-        response = Response(body, mimetype=content_type)
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        return response
+    @app.delete("/api/akun/<uid>")
+    @auth.require_role("admin")
+    def akun_delete(uid):
+        user = auth.authenticate(required=True)
+        return jsonify(accounts.delete_account(uid, user["uid"]))
 
-    # --- HLS: ffmpeg mengubah RTSP menjadi m3u8 ------------------------
+    # --- HLS: dipakai saat dev tanpa nginx (python -m http.server 8787) --
     @app.get("/hls/<path:filename>")
     def hls_file(filename):
         """Sajikan playlist dan segmen HLS hasil ffmpeg."""
         safe = (HLS_ROOT / filename).resolve()
         if HLS_ROOT.resolve() not in safe.parents or not safe.is_file():
+            return jsonify(error="Berkas HLS tidak ditemukan."), 404
+        if safe.suffix not in {".m3u8", ".ts"}:
             return jsonify(error="Berkas HLS tidak ditemukan."), 404
 
         content_type = "application/vnd.apple.mpegurl" if safe.suffix == ".m3u8" else "video/mp2t"
@@ -315,7 +298,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/streams/<name>")
-    @require_write_token
+    @auth.require_role(*auth.WRITE_ROLES)
     def stream_start(name):
         payload = request.get_json(silent=True) or {}
         rtsp_url = (payload.get("rtsp") or "").strip()
@@ -331,7 +314,7 @@ def create_app() -> Flask:
         return jsonify(result), (200 if result.get("ok") else 502)
 
     @app.delete("/api/streams/<name>")
-    @require_write_token
+    @auth.require_role(*auth.WRITE_ROLES)
     def stream_stop(name):
         return jsonify(hls_manager.stop(name))
 

@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261106h">
+    <link rel="stylesheet" href="css/style.css?v=20261107a">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -201,10 +201,10 @@
             </div>
 
             <div>
-                <label for="field-username" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Username</label>
-                <input id="field-username" name="username" type="text" autocomplete="off" required
-                       class="glass-input w-full p-4 outline-none font-bold" placeholder="admin">
-                <p class="text-[10px] text-slate-500 mt-1.5 pl-1">Dipakai untuk login. Huruf besar/kecil tidak dibedakan.</p>
+                <label for="field-email" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Email</label>
+                <input id="field-email" name="email" type="email" autocomplete="email" required
+                       class="glass-input w-full p-4 outline-none font-bold" placeholder="petugas@pekalongankota.go.id">
+                <p class="text-[10px] text-slate-500 mt-1.5 pl-1">Dipakai untuk login Firebase. Kata sandi minimal 6 karakter.</p>
             </div>
 
             <div>
@@ -240,11 +240,16 @@
 <div id="site-footer"></div>
 <div id="site-bottombar"></div>
 
-<script src="js/config.js?v=20261106h"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="js/public-config.js?v=20261107a"></script>
+<script src="js/firebase-config.js?v=20261107a"></script>
+<script src="js/firebase-client.js?v=20261107a"></script>
+<script src="js/config.js?v=20261107a"></script>
 
-<script src="js/store.js?v=20261106h"></script>
-<script src="js/auth.js?v=20261106h"></script>
-<script src="js/app.js?v=20261106h"></script>
-<script src="js/akun.js?v=20261106h"></script>
+<script src="js/store.js?v=20261107a"></script>
+<script src="js/auth.js?v=20261107a"></script>
+<script src="js/app.js?v=20261107a"></script>
+<script src="js/akun.js?v=20261107a"></script>
 </body>
 </html>

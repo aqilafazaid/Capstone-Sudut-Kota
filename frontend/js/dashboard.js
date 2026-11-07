@@ -6,12 +6,12 @@
    tetap satu.
    ========================================================================== */
 
-(function () {
+(async function () {
     'use strict';
 
     App.init({ active: 'dashboard' });
 
-    const user = Auth.requireOperator();
+    const user = await Auth.requireOperator();
     if (!user) return; // requireOperator sudah mengalihkan ke login.html
 
     const el = {

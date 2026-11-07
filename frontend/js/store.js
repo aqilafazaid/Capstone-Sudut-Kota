@@ -21,7 +21,6 @@
 
     const NODES_CACHE_KEY = 'sudutkota.nodes.cache.v2';
     const AI_KEY = 'sudutkota.ai.v1';
-    const TOKEN_KEY = 'sudutkota.writeToken';
 
     const DEFAULT_AI = {
         lowlight: false,
@@ -51,25 +50,6 @@
         }
     }
 
-    function getToken() {
-        try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (err) { return ''; }
-    }
-
-    function setToken(value) {
-        try {
-            if (value) localStorage.setItem(TOKEN_KEY, value);
-            else localStorage.removeItem(TOKEN_KEY);
-        } catch (err) { /* diabaikan */ }
-    }
-
-    function askToken(message) {
-        const answer = window.prompt(message || 'Token operator (X-SK-Token):');
-        if (answer === null) return '';
-        const value = answer.trim();
-        setToken(value);
-        return value;
-    }
-
     async function readResponse(response) {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -88,21 +68,22 @@
         return readResponse(response);
     }
 
-    /** Request tulis/detail: kirim X-SK-Token, minta sekali bila 401. */
+    /** Request tulis/detail: bawa Firebase ID token (Authorization: Bearer). */
     async function apiRequest(path, options) {
         const opts = Object.assign({ method: 'GET' }, options || {});
         const headers = Object.assign({ 'Accept': 'application/json' }, opts.headers || {});
         if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
-        const token = getToken();
-        if (token) headers['X-SK-Token'] = token;
+
+        const token = global.Auth ? await global.Auth.idToken() : '';
+        if (token) headers['Authorization'] = 'Bearer ' + token;
         opts.headers = headers;
 
-        let response = await fetch(SK_CONFIG.api(path), opts);
-        if (response.status === 401) {
-            const fresh = askToken('Token operator salah atau belum diisi. Masukkan X-SK-Token:');
+        const response = await fetch(SK_CONFIG.api(path), opts);
+        if (response.status === 401 && global.Auth) {
+            const fresh = await global.Auth.idToken(true);
             if (fresh) {
-                opts.headers['X-SK-Token'] = fresh;
-                response = await fetch(SK_CONFIG.api(path), opts);
+                opts.headers['Authorization'] = 'Bearer ' + fresh;
+                return readResponse(await fetch(SK_CONFIG.api(path), opts));
             }
         }
         return readResponse(response);

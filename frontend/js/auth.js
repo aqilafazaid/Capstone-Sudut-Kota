@@ -1,338 +1,317 @@
 /* ==========================================================================
-   AUTH.JS — Autentikasi (versi demo, tanpa Firebase)
+   AUTH.JS — Firebase Authentication + profil operator dari backend
    --------------------------------------------------------------------------
-   Antarmuka modul ini disengaja sama dengan rencana Firebase Auth:
-       Auth.login(identifier, password)
-       Auth.register({ nama, nip, username, password })
-       Auth.logout()
-       Auth.user()            → { uid, nama, username, role } | null
-       Auth.isOperator()      → role admin/teknisi
-       Auth.requireOperator() → tendang ke login.html bila bukan operator
+   Identitas  : Firebase Auth (email + kata sandi).
+   Peran      : RTDB `<RTDB_ROOT>/akun/<uid>/peran`, dibaca backend dan
+                dikirim lewat GET /api/akun/me. Peramban tidak pernah membaca
+                atau menulis RTDB.
+   Otorisasi  : ditegakkan backend pada setiap endpoint tulis. Fungsi di sini
+                hanya mengatur tampilan; bypass di konsol tidak memberi akses.
 
-   Saat Firebase diaktifkan: ganti isi fungsi-fungsi ini dengan
-   signInWithEmailAndPassword / createUserWithEmailAndPassword / onAuthStateChanged,
-   lalu ambil role dari /roles/{uid}. Pemanggilnya tidak perlu diubah.
-
-   PERINGATAN: sesi disimpan di localStorage dan kata sandi tidak di-hash.
-   Ini HANYA untuk demo frontend. Jangan dipakai sebagai otorisasi produksi —
-   penjaga halaman di sini bisa dilewati dari konsol peramban.
+   Semua pemanggil WAJIB menunggu Auth.ready() (atau memakai requireOperator/
+   requireAdmin yang sudah menunggu sendiri) sebelum membaca Auth.user().
    ========================================================================== */
 
 (function (global) {
     'use strict';
 
-    const SESSION_KEY = 'sudutkota.session.v1';
-    const USERS_KEY = 'sudutkota.users.v1';
+    const ROLE_LABEL = { admin: 'Administrator', teknisi: 'Teknisi', visitor: 'Visitor' };
+    const VALID_ROLES = ['admin', 'teknisi', 'visitor'];
+    const ROLE_RANK = { admin: 0, teknisi: 1, visitor: 2 };
 
-    /* Tiga peran saja: Administrator, Teknisi, Visitor. */
-    const ROLE_LABEL = {
-        admin: 'Administrator',
-        teknisi: 'Teknisi',
-        visitor: 'Visitor'
-    };
+    let currentUser = null;
+    let readyPromise = null;
+    let firstResolve = null;
 
-    /* Akun demo bawaan. Role tidak pernah dipilih sendiri oleh pengguna. */
-    const SEED_USERS = [
-        { uid: 'demo-admin', nama: 'Admin Dishub', nip: 'ADM-001', username: 'admin', password: 'admin123', role: 'admin' },
-        { uid: 'demo-teknisi', nama: 'Teknisi Lapangan', nip: 'TKN-001', username: 'teknisi', password: 'teknisi123', role: 'teknisi' }
-    ];
-
-    const ROLES = ['admin', 'teknisi', 'visitor'];
-
-    /** Tulis daftar akun lalu beri tahu seluruh halaman (navbar ikut segar). */
-    function persist(users) {
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        const session = readSession();
-        document.dispatchEvent(new CustomEvent('auth:change', {
-            detail: { user: session ? publicUser(session) : null }
-        }));
+    function firebaseAuth() {
+        return global.SK_FIREBASE && global.SK_FIREBASE.auth ? global.SK_FIREBASE.auth : null;
     }
 
-    function readUsers() {
-        try {
-            const raw = localStorage.getItem(USERS_KEY);
-            const parsed = raw ? JSON.parse(raw) : null;
-            if (Array.isArray(parsed) && parsed.length) {
-                // Dua migrasi data lama: peran 'pending' -> 'visitor',
-                // dan kolom 'email' -> 'username' (akun tidak lagi memakai email).
-                let changed = false;
-                const migrated = parsed.map(u => {
-                    const next = { ...u };
-                    if (next.role === 'pending') { next.role = 'visitor'; changed = true; }
-                    if (!next.username && next.email) next.username = String(next.email).toLowerCase();
-                    if ('email' in next) { delete next.email; changed = true; }
-                    return next;
-                });
-                if (changed) localStorage.setItem(USERS_KEY, JSON.stringify(migrated));
-                return migrated;
-            }
-        } catch (err) {
-            console.warn('[Auth] Data pengguna rusak, memakai akun demo.', err);
+    function api(path) {
+        return global.SK_CONFIG.api(path);
+    }
+
+    function friendly(err) {
+        const code = String((err && (err.code || err.message)) || '');
+        if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) {
+            return 'Email atau kata sandi salah.';
         }
-        localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
-        return SEED_USERS.slice();
+        if (code.includes('invalid-email')) return 'Format email tidak valid.';
+        if (code.includes('too-many-requests')) return 'Terlalu banyak percobaan. Coba lagi nanti.';
+        if (code.includes('email-already-in-use')) return 'Email sudah terdaftar.';
+        if (code.includes('weak-password')) return 'Kata sandi minimal 6 karakter.';
+        if (code.includes('network')) return 'Tidak dapat menghubungi Firebase. Periksa koneksi.';
+        return (err && err.message) || 'Terjadi kesalahan.';
     }
 
-    function readSession() {
+    async function idToken(force) {
+        const auth = firebaseAuth();
+        if (!auth || !auth.currentUser) return '';
         try {
-            const raw = localStorage.getItem(SESSION_KEY);
-            return raw ? JSON.parse(raw) : null;
+            return await auth.currentUser.getIdToken(!!force);
         } catch (err) {
+            console.warn('[Auth] gagal mengambil ID token:', err);
+            return '';
+        }
+    }
+
+    async function request(path, options) {
+        const opts = Object.assign({}, options || {});
+        const headers = Object.assign({ Accept: 'application/json' }, opts.headers || {});
+        if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+
+        const token = await idToken();
+        if (token) headers.Authorization = 'Bearer ' + token;
+        opts.headers = headers;
+
+        const response = await fetch(api(path), opts);
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok) {
+            const error = new Error(data.error || ('HTTP ' + response.status));
+            error.status = response.status;
+            throw error;
+        }
+        return data;
+    }
+
+    function normalize(profile, fallback) {
+        if (!profile) return null;
+        const peran = VALID_ROLES.indexOf(profile.peran) >= 0 ? profile.peran : 'visitor';
+        const email = profile.email || (fallback && fallback.email) || '';
+        return {
+            uid: profile.uid || (fallback && fallback.uid) || '',
+            nama: profile.nama || (fallback && fallback.displayName) || email || 'Petugas',
+            nip: profile.nip || '',
+            username: profile.username || '',
+            email: email,
+            role: peran
+        };
+    }
+
+    async function loadProfile() {
+        const auth = firebaseAuth();
+        if (!auth || !auth.currentUser) return null;
+        try {
+            return normalize(await request('akun/me'), auth.currentUser);
+        } catch (err) {
+            if (err.status === 404) {
+                console.warn('[Auth] Profil belum dibuat untuk uid', auth.currentUser.uid);
+            } else {
+                console.warn('[Auth] Gagal memuat profil:', err.message);
+            }
             return null;
         }
     }
 
-    function writeSession(session) {
-        if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        else localStorage.removeItem(SESSION_KEY);
+    function emit() {
+        document.dispatchEvent(new CustomEvent('auth:change', { detail: { user: currentUser } }));
     }
 
-    function publicUser(account) {
-        if (!account) return null;
-        return {
-            uid: account.uid,
-            nama: account.nama,
-            nip: account.nip,
-            username: account.username,
-            role: account.role
-        };
+    function ready() {
+        if (readyPromise) return readyPromise;
+
+        readyPromise = (async function () {
+            const auth = firebaseAuth();
+            if (!auth) {
+                currentUser = null;
+                emit();
+                return null;
+            }
+
+            const first = new Promise(function (resolve) { firstResolve = resolve; });
+            auth.onAuthStateChanged(async function (firebaseUser) {
+                currentUser = firebaseUser ? await loadProfile() : null;
+                emit();
+                if (firstResolve) {
+                    const done = firstResolve;
+                    firstResolve = null;
+                    done(currentUser);
+                }
+            });
+            return first;
+        })();
+
+        return readyPromise;
     }
 
     const Auth = {
         roles: ROLE_LABEL,
 
+        ready: ready,
+
         user() {
-            return publicUser(readSession());
+            return currentUser ? Object.assign({}, currentUser) : null;
         },
 
         isLoggedIn() {
-            return !!readSession();
+            return !!currentUser;
         },
 
         isOperator() {
-            const user = readSession();
-            return !!user && (user.role === 'admin' || user.role === 'teknisi');
+            return !!currentUser && (currentUser.role === 'admin' || currentUser.role === 'teknisi');
         },
 
         isAdmin() {
-            const user = readSession();
-            return !!user && user.role === 'admin';
+            return !!currentUser && currentUser.role === 'admin';
         },
 
         roleLabel(role) {
             return ROLE_LABEL[role] || 'Visitor';
         },
 
-        /**
-         * Login memakai username atau NIP.
-         * @returns {{ok: boolean, user?: object, error?: string}}
-         */
-        login(identifier, password) {
-            const key = String(identifier || '').trim().toLowerCase();
-            if (!key || !password) return { ok: false, error: 'Isi username dan kata sandi.' };
+        idToken: idToken,
 
-            const account = readUsers().find(u =>
-                String(u.username).toLowerCase() === key ||
-                String(u.nip).toLowerCase() === key
-            );
+        async login(identifier, password) {
+            const auth = firebaseAuth();
+            if (!auth) return { ok: false, error: 'Firebase belum dikonfigurasi di backend.' };
 
-            if (!account || account.password !== password) {
-                return { ok: false, error: 'Username atau kata sandi salah.' };
+            const email = String(identifier || '').trim();
+            if (!email || !password) return { ok: false, error: 'Isi email dan kata sandi.' };
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                const user = await loadProfile();
+                currentUser = user;
+                emit();
+                if (!user) {
+                    return { ok: false, error: 'Login berhasil, tetapi profil akun belum dibuat. Hubungi Administrator.' };
+                }
+                return { ok: true, user: user };
+            } catch (err) {
+                return { ok: false, error: friendly(err) };
             }
-
-            writeSession(publicUser(account));
-            document.dispatchEvent(new CustomEvent('auth:change', { detail: { user: publicUser(account) } }));
-            return { ok: true, user: publicUser(account) };
         },
 
-        register({ nama, nip, username, password }) {
-            const users = readUsers();
-            const key = String(username || '').trim().toLowerCase();
-            if (!nama || !key || !password) return { ok: false, error: 'Nama, username, dan kata sandi wajib diisi.' };
+        async register(payload) {
+            const auth = firebaseAuth();
+            if (!auth) return { ok: false, error: 'Firebase belum dikonfigurasi di backend.' };
+
+            const nama = String((payload && payload.nama) || '').trim();
+            const nip = String((payload && payload.nip) || '').trim();
+            const email = String((payload && payload.email) || '').trim().toLowerCase();
+            const password = String((payload && payload.password) || '');
+
+            if (!nama || !email) return { ok: false, error: 'Nama dan email wajib diisi.' };
             if (password.length < 6) return { ok: false, error: 'Kata sandi minimal 6 karakter.' };
-            if (users.some(u => String(u.username).toLowerCase() === key || String(u.nip).toLowerCase() === String(nip || '').toLowerCase())) {
-                return { ok: false, error: 'Username atau NIP sudah terdaftar.' };
+
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, password);
+                if (cred.user && cred.user.updateProfile) {
+                    await cred.user.updateProfile({ displayName: nama }).catch(function () {});
+                }
+                const profile = await request('akun/self', {
+                    method: 'POST',
+                    body: JSON.stringify({ nama: nama, nip: nip, email: email })
+                });
+                currentUser = normalize(profile, cred.user);
+                emit();
+                return { ok: true, user: currentUser, visitor: true };
+            } catch (err) {
+                return { ok: false, error: friendly(err) };
             }
-
-            /* Akun baru tidak mendapat akses operator sampai dipromosikan. */
-            const account = {
-                uid: 'u-' + Date.now().toString(36),
-                nama: nama.trim(),
-                nip: (nip || '').trim(),
-                username: key,
-                password,
-                role: 'visitor'
-            };
-            users.push(account);
-            localStorage.setItem(USERS_KEY, JSON.stringify(users));
-            return { ok: true, user: publicUser(account), visitor: true };
         },
 
-        logout() {
-            writeSession(null);
-            document.dispatchEvent(new CustomEvent('auth:change', { detail: { user: null } }));
+        async resetPassword(email) {
+            const auth = firebaseAuth();
+            if (!auth) return { ok: false, error: 'Firebase belum dikonfigurasi di backend.' };
+            const address = String(email || '').trim();
+            if (!address) return { ok: false, error: 'Isi email akun.' };
+            try {
+                await auth.sendPasswordResetEmail(address);
+                return { ok: true };
+            } catch (err) {
+                return { ok: false, error: friendly(err) };
+            }
         },
 
-        /** Pagar halaman operator. Mengembalikan user bila lolos. */
-        requireOperator() {
-            const user = readSession();
+        async logout() {
+            const auth = firebaseAuth();
+            currentUser = null;
+            emit();
+            if (auth) {
+                try { await auth.signOut(); } catch (err) { console.warn(err); }
+            }
+        },
+
+        /** Pagar halaman operator. Sudah menunggu Auth.ready(). */
+        async requireOperator() {
+            const user = await ready();
             if (user && (user.role === 'admin' || user.role === 'teknisi')) return user;
-
             const next = encodeURIComponent(location.pathname + location.search);
-            const reason = user ? 'visitor' : 'login';
-            location.replace(`login.html?next=${next}&reason=${reason}`);
+            location.replace('login.html?next=' + next + '&reason=' + (user ? 'visitor' : 'login'));
             return null;
-        },
-
-        /* --- CRUD akun, khusus Administrator ----------------------------- */
-
-        /** Daftar akun tanpa kata sandi, diurutkan peran lalu nama. */
-        list() {
-            const rank = { admin: 0, teknisi: 1, visitor: 2 };
-            return readUsers()
-                .map(publicUser)
-                .sort((a, b) => (rank[a.role] - rank[b.role]) || String(a.nama).localeCompare(String(b.nama), 'id'));
-        },
-
-        count() {
-            const users = readUsers();
-            return {
-                total: users.length,
-                admin: users.filter(u => u.role === 'admin').length,
-                teknisi: users.filter(u => u.role === 'teknisi').length,
-                visitor: users.filter(u => u.role === 'visitor').length
-            };
-        },
-
-        create({ nama, nip, username, password, role }) {
-            const users = readUsers();
-            const namaBersih = String(nama || '').trim();
-            const kunci = String(username || '').trim().toLowerCase();
-            const nipBersih = String(nip || '').trim();
-            const sandi = String(password || '');
-            const peran = ROLES.includes(role) ? role : 'visitor';
-
-            if (!namaBersih || !kunci || !sandi) {
-                return { ok: false, error: 'Nama, username, dan kata sandi wajib diisi.' };
-            }
-            if (kunci.length < 3) return { ok: false, error: 'Username minimal 3 karakter.' };
-            if (sandi.length < 6) return { ok: false, error: 'Kata sandi minimal 6 karakter.' };
-            if (users.some(u => String(u.username).toLowerCase() === kunci)) {
-                return { ok: false, error: 'Username sudah dipakai akun lain.' };
-            }
-            if (nipBersih && users.some(u => String(u.nip).toLowerCase() === nipBersih.toLowerCase())) {
-                return { ok: false, error: 'NIP sudah dipakai akun lain.' };
-            }
-
-            const account = {
-                uid: 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-                nama: namaBersih,
-                nip: nipBersih,
-                username: kunci,
-                password: sandi,
-                role: peran
-            };
-
-            users.push(account);
-            persist(users);
-            return { ok: true, user: publicUser(account) };
-        },
-
-        update(uid, patch) {
-            const users = readUsers();
-            const index = users.findIndex(u => u.uid === uid);
-            if (index === -1) return { ok: false, error: 'Akun tidak ditemukan.' };
-
-            const current = users[index];
-            const namaBersih = patch.nama !== undefined ? String(patch.nama).trim() : current.nama;
-            const kunci = patch.username !== undefined ? String(patch.username).trim().toLowerCase() : current.username;
-            const nipBersih = patch.nip !== undefined ? String(patch.nip).trim() : current.nip;
-            const peran = patch.role && ROLES.includes(patch.role) ? patch.role : current.role;
-            const sandi = patch.password === undefined || patch.password === null ? '' : String(patch.password);
-
-            if (!namaBersih || !kunci) return { ok: false, error: 'Nama dan username wajib diisi.' };
-            if (kunci.length < 3) return { ok: false, error: 'Username minimal 3 karakter.' };
-            if (users.some((u, i) => i !== index && String(u.username).toLowerCase() === kunci)) {
-                return { ok: false, error: 'Username sudah dipakai akun lain.' };
-            }
-            if (nipBersih && users.some((u, i) => i !== index && String(u.nip).toLowerCase() === nipBersih.toLowerCase())) {
-                return { ok: false, error: 'NIP sudah dipakai akun lain.' };
-            }
-            if (sandi && sandi.length < 6) return { ok: false, error: 'Kata sandi minimal 6 karakter.' };
-
-            const admins = users.filter(u => u.role === 'admin').length;
-            if (current.role === 'admin' && peran !== 'admin' && admins <= 1) {
-                return { ok: false, error: 'Minimal harus ada satu Administrator.' };
-            }
-
-            const updated = { ...current, nama: namaBersih, nip: nipBersih, username: kunci, role: peran };
-            if (sandi) updated.password = sandi;
-            users[index] = updated;
-
-            persist(users);
-
-            // Bila akun yang diubah adalah sesi yang sedang aktif, segarkan sesinya.
-            const session = readSession();
-            if (session && session.uid === uid) writeSession(publicUser(updated));
-
-            return { ok: true, user: publicUser(updated) };
-        },
-
-        remove(uid) {
-            const users = readUsers();
-            const index = users.findIndex(u => u.uid === uid);
-            if (index === -1) return { ok: false, error: 'Akun tidak ditemukan.' };
-
-            const session = readSession();
-            if (session && session.uid === uid) {
-                return { ok: false, error: 'Tidak bisa menghapus akun yang sedang dipakai.' };
-            }
-            if (users[index].role === 'admin' && users.filter(u => u.role === 'admin').length <= 1) {
-                return { ok: false, error: 'Minimal harus ada satu Administrator.' };
-            }
-
-            users.splice(index, 1);
-            persist(users);
-            return { ok: true };
-        },
-
-        /** Pulihkan akun demo tanpa memaksa keluar bila sesi masih ada di seed. */
-        resetAccounts() {
-            localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
-            const session = readSession();
-            const stillThere = session ? SEED_USERS.find(u => u.uid === session.uid) : null;
-            writeSession(stillThere ? publicUser(stillThere) : null);
-
-            document.dispatchEvent(new CustomEvent('auth:change', {
-                detail: { user: stillThere ? publicUser(stillThere) : null }
-            }));
-            return { ok: true };
         },
 
         /** Pagar halaman Administrator. */
-        requireAdmin() {
-            const user = readSession();
+        async requireAdmin() {
+            const user = await ready();
             if (user && user.role === 'admin') return user;
-
             const next = encodeURIComponent(location.pathname + location.search);
-            const reason = user ? 'forbidden' : 'login';
-            location.replace(`login.html?next=${next}&reason=${reason}`);
+            location.replace('login.html?next=' + next + '&reason=' + (user ? 'forbidden' : 'login'));
             return null;
         },
 
-        onChange(callback) {
-            const handler = (event) => callback(event.detail.user);
-            document.addEventListener('auth:change', handler);
-            window.addEventListener('storage', (event) => {
-                if (event.key === SESSION_KEY) callback(readSession());
-            });
-            return () => document.removeEventListener('auth:change', handler);
+        /* --- CRUD akun, khusus Administrator (lewat /api/akun) ----------- */
+
+        async list() {
+            const rows = await request('akun');
+            return (Array.isArray(rows) ? rows : [])
+                .map(function (row) { return normalize(row); })
+                .filter(Boolean)
+                .sort(function (a, b) {
+                    const rank = (ROLE_RANK[a.role] || 9) - (ROLE_RANK[b.role] || 9);
+                    return rank || String(a.nama).localeCompare(String(b.nama), 'id');
+                });
         },
 
-        /** Kembalikan akun demo ke kondisi awal (dipakai saat reset data). */
-        resetDemo() {
-            localStorage.setItem(USERS_KEY, JSON.stringify(SEED_USERS));
-            writeSession(null);
+        async count() {
+            const rows = await this.list();
+            return {
+                total: rows.length,
+                admin: rows.filter(function (u) { return u.role === 'admin'; }).length,
+                teknisi: rows.filter(function (u) { return u.role === 'teknisi'; }).length,
+                visitor: rows.filter(function (u) { return u.role === 'visitor'; }).length
+            };
+        },
+
+        async create(payload) {
+            try {
+                const profile = await request('akun', { method: 'POST', body: JSON.stringify(payload) });
+                return { ok: true, user: normalize(profile) };
+            } catch (err) {
+                return { ok: false, error: err.message };
+            }
+        },
+
+        async update(uid, patch) {
+            try {
+                const profile = await request('akun/' + encodeURIComponent(uid), {
+                    method: 'PUT',
+                    body: JSON.stringify(patch)
+                });
+                return { ok: true, user: normalize(profile) };
+            } catch (err) {
+                return { ok: false, error: err.message };
+            }
+        },
+
+        async remove(uid) {
+            try {
+                await request('akun/' + encodeURIComponent(uid), { method: 'DELETE' });
+                return { ok: true };
+            } catch (err) {
+                return { ok: false, error: err.message };
+            }
+        },
+
+        async resetAccounts() {
+            return { ok: false, error: 'Akun kini dikelola Firebase Auth; tidak ada reset demo.' };
+        },
+
+        onChange(callback) {
+            const handler = function (event) { callback(event.detail.user); };
+            document.addEventListener('auth:change', handler);
+            return function () { document.removeEventListener('auth:change', handler); };
         }
     };
 

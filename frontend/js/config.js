@@ -22,8 +22,23 @@
 
     /* Server statis 8787 butuh alamat Flask eksplisit; nginx (:8080/:443)
        memakai origin yang sama supaya tidak ada CORS dan tidak ada mixed content. */
+    /* Prioritas alamat backend:
+       1) dev 8787 (python -m http.server)  -> Flask langsung, beda origin
+       2) localhost/nginx :8080             -> same-origin (backendBase '')
+       3) halaman lain (Vercel)             -> js/public-config.js hasil generator
+       localStorage hanya dipakai sebagai override darurat di lingkungan non-lokal. */
     var devServer = LOCAL && location.port === '8787';
-    var backendBase = (saved || (devServer ? 'http://127.0.0.1:5000' : '')).replace(/\/+$/, '');
+    var publicBase = (global.SK_PUBLIC && global.SK_PUBLIC.backendBase) || '';
+    var backendBase;
+
+    if (devServer) {
+        backendBase = 'http://127.0.0.1:5000';
+    } else if (LOCAL) {
+        backendBase = '';
+    } else {
+        backendBase = publicBase || saved || '';
+    }
+    backendBase = backendBase.replace(/\/+$/, '');
 
     function join(path) {
         var clean = String(path || '').replace(/^\/+/, '');
