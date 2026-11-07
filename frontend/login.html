@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Otorisasi Petugas — Sudut Kota</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="asset/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="asset/favicon-64.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="asset/apple-touch-icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20261106h">
+
+    <script>
+        tailwind.config = { darkMode: 'class' };
+        if (localStorage.getItem('color-theme') !== 'light') {
+            if (localStorage.getItem('color-theme') !== 'light') {
+            document.documentElement.classList.add('dark');
+        }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 dark:bg-[#0a143c] text-slate-800 dark:text-slate-200 flex flex-col min-h-screen font-sans transition-colors duration-300">
+
+<div id="site-nav"></div>
+
+<main class="flex-grow z-10 relative pt-[100px] md:pt-[130px]">
+    <div class="bg-white dark:bg-[#111827] w-full min-h-screen rounded-t-[2.5rem] md:rounded-t-[4rem] shadow-2xl relative overflow-hidden border-t-4 border-blue-600 transition-colors duration-300">
+        <div class="absolute inset-0 z-0 opacity-[0.35] dark:opacity-10" style="background-image: radial-gradient(#94a3b8 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
+
+        <div class="min-h-[80vh] flex items-center justify-center py-12 px-4 relative overflow-hidden">
+            <div class="absolute top-10 left-10 w-96 h-96 bg-blue-700 rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-blob"></div>
+            <div class="absolute top-0 right-20 w-96 h-96 bg-cyan-600 rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-blob animation-delay-2000"></div>
+            <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-blue-900 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-4000"></div>
+
+            <div class="max-w-md w-full bg-[#030718]/90 backdrop-blur-xl rounded-3xl shadow-[0_0_50px_rgba(37,99,235,0.15)] border border-blue-500/30 p-8 relative z-10">
+
+                <div class="text-center mb-8">
+                    <img src="asset/logo-suko.png" class="h-16 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" alt="Logo Sudut Kota">
+                    <h1 class="text-2xl font-black text-white tracking-widest uppercase">Otorisasi Akses</h1>
+                    <p class="text-blue-400 text-[10px] mt-2 font-bold tracking-[0.2em] uppercase">Sistem Command Center Dishub</p>
+                </div>
+
+                <div id="login-alert" class="hidden mb-6 p-3 rounded-xl text-xs font-bold flex items-start gap-3"></div>
+
+                <form id="login-form" class="space-y-5" novalidate>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-id-badge text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
+                        </div>
+                        <input type="text" id="login-identifier" name="identifier" placeholder="Username / NIP" required autocomplete="username"
+                            class="w-full pl-11 pr-4 py-3.5 bg-[#050a1f] border border-blue-900/50 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600 shadow-inner">
+                    </div>
+
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-key text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
+                        </div>
+                        <input type="password" id="password" name="password" placeholder="Kata Sandi" required autocomplete="current-password"
+                            class="w-full pl-11 pr-12 py-3.5 bg-[#050a1f] border border-blue-900/50 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600 shadow-inner">
+                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-slate-500 hover:text-blue-400 transition-colors" id="toggle-password">
+                            <i id="eye-icon" class="fa-solid fa-eye"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <a href="forgot-password.html" class="text-[11px] font-bold text-slate-400 hover:text-blue-400 transition flex items-center gap-1">
+                            <i class="fa-solid fa-unlock-keyhole"></i> Lupa Sandi?
+                        </a>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider py-3.5 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] border border-blue-400/50 transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem
+                    </button>
+                </form>
+
+                <div class="mt-6 p-3 rounded-xl bg-blue-950/60 border border-blue-800/60">
+                    <p class="text-[10px] font-black text-blue-300 uppercase tracking-widest mb-2">Akun Demo</p>
+                    <div class="space-y-1 text-[11px] font-mono text-slate-400">
+                        <div><span class="text-blue-400">admin</span> / admin123 <span class="text-slate-600">→ Administrator</span></div>
+                        <div><span class="text-cyan-400">teknisi</span> / teknisi123 <span class="text-slate-600">→ Teknisi</span></div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-white/10 text-center">
+                    <p class="text-[11px] text-slate-400 font-medium">
+                        Belum memiliki otorisasi akses? <br>
+                        <a href="register.html" class="text-blue-400 font-bold hover:text-blue-300 hover:underline inline-block mt-1">Registrasi Petugas Baru</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div id="site-footer"></div>
+<div id="site-bottombar"></div>
+
+<script src="js/config.js?v=20261106h"></script>
+
+<script src="js/store.js?v=20261106h"></script>
+<script src="js/auth.js?v=20261106h"></script>
+<script src="js/app.js?v=20261106h"></script>
+<script>
+    App.init({ active: 'login' });
+
+    const params = new URLSearchParams(location.search);
+    const alertBox = document.getElementById('login-alert');
+
+    function showAlert(message, type) {
+        const palette = type === 'error'
+            ? 'bg-red-900/50 text-red-300 border border-red-500/50'
+            : 'bg-amber-900/40 text-amber-200 border border-amber-500/50';
+        alertBox.className = `mb-6 p-3 rounded-xl text-xs font-bold flex items-start gap-3 ${palette}`;
+        alertBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation mt-0.5"></i><span>${message}</span>`;
+        alertBox.classList.remove('hidden');
+    }
+
+    const reason = params.get('reason');
+    if (reason === 'visitor' || reason === 'pending') {
+        showAlert('Akun Anda hanya memiliki akses Visitor. Hubungi Administrator untuk dijadikan Teknisi atau Administrator.', 'warning');
+    } else if (reason === 'forbidden') {
+        showAlert('Halaman tersebut hanya untuk Administrator.', 'warning');
+    } else if (reason === 'login') {
+        showAlert('Halaman tersebut memerlukan login sebagai Administrator.', 'warning');
+    }
+
+    document.getElementById('toggle-password').addEventListener('click', () => {
+        const input = document.getElementById('password');
+        const icon = document.getElementById('eye-icon');
+        const plain = input.type === 'password';
+        input.type = plain ? 'text' : 'password';
+        icon.classList.toggle('fa-eye', !plain);
+        icon.classList.toggle('fa-eye-slash', plain);
+    });
+
+    document.getElementById('login-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const identifier = document.getElementById('login-identifier').value.trim();
+        const password = document.getElementById('password').value;
+
+        const result = Auth.login(identifier, password);
+        if (!result.ok) {
+            showAlert(result.error, 'error');
+            return;
+        }
+
+        App.toast(`Selamat datang, ${result.user.nama}.`, 'success', 1800);
+
+        const next = params.get('next');
+        const target = result.user.role === 'admin' || result.user.role === 'teknisi'
+            ? (next ? decodeURIComponent(next) : 'dashboard.html')
+            : 'cctv.html';
+
+        setTimeout(() => { location.href = target; }, 700);
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="referrer" content="no-referrer">
+    <title>Stream — Sudut Kota</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="asset/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="asset/favicon-64.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="asset/apple-touch-icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20261106h">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
+
+    <script>
+        tailwind.config = { darkMode: 'class' };
+        // Bawaan gelap; hanya berubah bila pengguna memilih terang.
+        if (localStorage.getItem('color-theme') !== 'light') {
+            if (localStorage.getItem('color-theme') !== 'light') {
+            document.documentElement.classList.add('dark');
+        }
+        }
+    </script>
+</head>
+<body class="sk-root font-sans antialiased min-h-screen flex flex-col">
+
+<div id="site-nav"></div>
+
+<main class="flex-grow pt-[100px] md:pt-[130px] pb-28">
+    <div class="max-w-[1920px] mx-auto w-full p-4 lg:p-8">
+
+        <div class="layout-grid">
+
+            <!-- KOLOM PEMUTAR -->
+            <section class="col-player">
+
+                <div class="player-card relative z-10">
+                    <div class="player-header">
+                        <div class="flex items-center gap-3 min-w-0 flex-1">
+                            <div class="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-red-500/50 shrink-0 shadow-inner">
+                                <span class="relative flex h-2.5 w-2.5">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                                </span>
+                                <span class="text-[10px] font-black tracking-widest text-white uppercase">LIVE</span>
+                            </div>
+
+                            <div class="cam-info-mobile min-w-0">
+                                <span id="active-cam-city" class="cam-city-label">MEMUAT NODE...</span>
+                                <span id="active-cam-name" class="cam-name-label">Kamera Belum Dipilih</span>
+                            </div>
+                        </div>
+
+                        <div id="ai-status-indicator" class="flex items-center gap-2 text-xs font-bold bg-white/10 px-3 py-1.5 rounded-lg border border-white/20 shrink-0 shadow-md">
+                            <i class="fa-solid fa-power-off text-slate-300"></i>
+                            <span class="hidden sm:inline text-white tracking-wide uppercase">AI INACTIVE</span>
+                        </div>
+                    </div>
+
+                    <div class="video-wrapper group">
+                        <video id="video-element" class="video-element" autoplay muted playsinline crossorigin="anonymous"></video>
+
+                        <div id="desktop-traffic-status" class="absolute top-4 left-4 bg-[#0a143c]/95 text-white px-4 py-2 rounded-lg text-sm font-black border border-blue-800 z-40 hidden backdrop-blur-xl shadow-2xl items-center">
+                            <i class="fa-solid fa-microchip animate-pulse text-blue-400 mr-2 text-lg"></i>
+                            <span id="desktop-traffic-text">Menginisialisasi Engine...</span>
+                        </div>
+
+                        <div id="overlay-loading" class="absolute inset-0 bg-[#030718] z-40 flex flex-col items-center justify-center text-center p-4">
+                            <div class="relative w-24 h-24 mb-6 logo-pulse">
+                                <div class="absolute inset-0 bg-blue-600/50 rounded-full blur-2xl"></div>
+                                <img src="asset/logo-suko.png" alt="Loading" class="w-full h-full object-contain drop-shadow-2xl relative z-10 rounded-full">
+                            </div>
+                            <h3 class="text-white font-black text-xl tracking-[0.2em] mb-2 uppercase">SUDUT KOTA NODE</h3>
+                            <p class="text-blue-400 text-sm font-bold animate-pulse tracking-wide" id="loading-text">Memuat HLS dari server lokal...</p>
+                        </div>
+
+                        <div id="overlay-play" class="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md cursor-pointer transition-all hidden">
+                            <div class="w-20 h-20 bg-white/10 border-4 border-white/50 rounded-full flex items-center justify-center hover:scale-110 hover:bg-blue-600 transition-all shadow-[0_0_30px_rgba(255,255,255,0.3)]">
+                                <i class="fa-solid fa-play text-white text-4xl ml-2"></i>
+                            </div>
+                        </div>
+
+                        <div id="overlay-error" class="absolute inset-0 bg-[#050a1f] z-40 hidden flex-col items-center justify-center text-center px-6">
+                            <i class="fa-solid fa-video-slash text-slate-500 text-5xl mb-4 drop-shadow-lg"></i>
+                            <h4 class="text-white font-black text-xl mb-2">Sinyal Node Terputus</h4>
+                            <p class="text-slate-400 text-sm mb-6 max-w-sm" id="error-detail">Kamera offline atau server lokal belum mengirim playlist HLS.</p>
+                            <button id="btn-retry-overlay" type="button" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-lg shadow-[0_0_20px_rgba(37,99,235,0.5)] transition-all tracking-widest uppercase">Coba Restart Node</button>
+                        </div>
+                    </div>
+
+                    <div class="sk-panel-2 sk-line border-t px-5 py-3 flex items-center justify-between relative z-20">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span id="stream-mode-badge" class="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border sk-line sk-muted shrink-0">MODE: —</span>
+                            <div id="default-status-text" class="text-[11px] sk-muted font-mono font-bold tracking-widest uppercase truncate">STREAMING STANDAR AKTIF</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button id="btn-volume" type="button" title="Mute / Unmute" class="w-10 h-10 flex items-center justify-center sk-muted hover:text-white rounded-full bg-blue-600/10 hover:bg-blue-600 transition-colors shadow-inner">
+                                <i class="fa-solid fa-volume-xmark text-sm"></i>
+                            </button>
+                            <button id="btn-reload" type="button" title="Muat Ulang" class="w-10 h-10 flex items-center justify-center sk-muted hover:text-white rounded-full bg-blue-600/10 hover:bg-blue-600 transition-colors shadow-inner">
+                                <i class="fa-solid fa-rotate-right text-sm"></i>
+                            </button>
+                            <button id="btn-fullscreen" type="button" title="Layar Penuh" class="w-10 h-10 flex items-center justify-center sk-muted hover:text-white rounded-full bg-blue-600/10 hover:bg-blue-600 transition-colors shadow-inner">
+                                <i class="fa-solid fa-expand text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STATISTIK -->
+                <div class="mt-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 relative z-10">
+                    <div class="stat-card p-4">
+                        <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Mobil</div>
+                        <div id="stat-mobil" class="text-2xl font-black sk-ink mt-1">0</div>
+                    </div>
+                    <div class="stat-card p-4">
+                        <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Motor</div>
+                        <div id="stat-motor" class="text-2xl font-black sk-ink mt-1">0</div>
+                    </div>
+                    <div class="stat-card p-4">
+                        <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Truk</div>
+                        <div id="stat-truk" class="text-2xl font-black text-amber-500 mt-1">0</div>
+                    </div>
+                    <div class="stat-card p-4">
+                        <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Bus</div>
+                        <div id="stat-bus" class="text-2xl font-black text-orange-500 mt-1">0</div>
+                    </div>
+                    <div class="stat-card p-4">
+                        <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Total</div>
+                        <div id="stat-total" class="text-2xl font-black text-blue-500 mt-1">0</div>
+                    </div>
+                    <div class="stat-card p-4">
+                        <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Server FPS</div>
+                        <div id="stat-fps" class="text-2xl font-black text-emerald-500 mt-1">0</div>
+                    </div>
+                </div>
+
+                <!-- PANEL KONTROL AI -->
+                <div class="mt-6 sk-panel sk-line border rounded-2xl shadow-xl relative z-10 overflow-hidden">
+                    <div class="px-5 py-3 sk-line border-b flex flex-wrap items-center justify-between gap-3 sk-panel-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-lg bg-blue-600/15 border border-blue-500/40 flex items-center justify-center text-blue-500">
+                                <i class="fa-solid fa-sliders"></i>
+                            </div>
+                            <div>
+                                <h3 class="sk-ink font-black text-sm uppercase tracking-widest leading-none">Kontrol Modul AI</h3>
+                                <p class="text-[10px] sk-muted font-bold mt-1">Parameter dikirim ke engine inferensi pada node terpilih.</p>
+                            </div>
+                        </div>
+                        <div id="operator-badge" class="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border"></div>
+                    </div>
+
+                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <div class="sk-panel-2 sk-line border rounded-xl p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-moon text-blue-500 text-lg"></i>
+                                    <div>
+                                        <div class="sk-ink font-bold text-sm">Low-Light Enhancement</div>
+                                        <div class="text-[11px] sk-muted font-medium">Pencerahan gambar malam (MirNet / Zero-DCE)</div>
+                                    </div>
+                                </div>
+                                <button id="toggle-lowlight" type="button" role="switch" aria-checked="false"
+                                        class="toggle-btn px-4 py-2 rounded-xl bg-blue-600/10 sk-muted text-xs font-bold shrink-0">
+                                    OFF
+                                </button>
+                            </div>
+                            <div class="mt-4 flex items-center gap-2">
+                                <label for="select-lowlight" class="text-[10px] font-bold sk-muted uppercase tracking-widest">Model</label>
+                                <select id="select-lowlight" class="glass-input flex-1 text-xs font-bold px-3 py-2">
+                                    <option value="MirNet">MirNet</option>
+                                    <option value="Zero-DCE">Zero-DCE</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="sk-panel-2 sk-line border rounded-xl p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-microchip text-amber-500 text-lg"></i>
+                                    <div>
+                                        <div class="sk-ink font-bold text-sm">Object Detection</div>
+                                        <div class="text-[11px] sk-muted font-medium">Deteksi &amp; hitung kendaraan (YOLOv8)</div>
+                                    </div>
+                                </div>
+                                <button id="toggle-yolo" type="button" role="switch" aria-checked="false"
+                                        class="toggle-btn px-4 py-2 rounded-xl bg-blue-600/10 sk-muted text-xs font-bold shrink-0">
+                                    OFF
+                                </button>
+                            </div>
+                            <div class="mt-4 flex items-center gap-2">
+                                <label for="select-yolo" class="text-[10px] font-bold sk-muted uppercase tracking-widest">Model</label>
+                                <select id="select-yolo" class="glass-input flex-1 text-xs font-bold px-3 py-2">
+                                    <option value="YOLOv8n">YOLOv8n (Nano)</option>
+                                    <option value="YOLOv8s">YOLOv8s (Small)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 pb-4">
+                        <div class="sk-panel-2 sk-line border rounded-xl px-4 py-3 flex items-center gap-3 shadow-inner">
+                            <i class="fa-solid fa-terminal text-blue-500 text-xs"></i>
+                            <div id="ai-log-text" class="text-[11px] sk-muted font-mono font-bold truncate">> [SYSTEM] Menunggu node dipilih...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TEKS BERJALAN -->
+                <div class="mt-6 relative sk-panel-2 sk-line border rounded-xl h-10 flex items-center overflow-hidden shadow-inner">
+                    <div class="bg-gradient-to-r from-blue-800 to-blue-600 h-full px-4 flex items-center justify-center shrink-0 z-10 shadow-lg">
+                        <i class="fa-solid fa-bullhorn text-white text-sm"></i>
+                    </div>
+                    <div class="marquee-container w-full sk-panel-2">
+                        <div class="ticker-track">
+                            <span class="ticker-item text-sm tracking-wide sk-muted">SELAMAT DATANG DI DASHBOARD ANALITIK SUDUT KOTA  //  SISTEM INI DIBANGUN MENGGUNAKAN TEKNOLOGI OBJECT DETECTION YOLOv8  //  DILENGKAPI DEEP LEARNING MIRNET DAN ZERO-DCE UNTUK MENJERNIHKAN GAMBAR MALAM  //  DILARANG MELAKUKAN TANGKAPAN LAYAR UNTUK KEPENTINGAN YANG MELANGGAR UU PRIVASI DAN ITE</span>
+                            <span class="ticker-item text-sm tracking-wide sk-muted" aria-hidden="true">SELAMAT DATANG DI DASHBOARD ANALITIK SUDUT KOTA  //  SISTEM INI DIBANGUN MENGGUNAKAN TEKNOLOGI OBJECT DETECTION YOLOv8  //  DILENGKAPI DEEP LEARNING MIRNET DAN ZERO-DCE UNTUK MENJERNIHKAN GAMBAR MALAM  //  DILARANG MELAKUKAN TANGKAPAN LAYAR UNTUK KEPENTINGAN YANG MELANGGAR UU PRIVASI DAN ITE</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SIDEBAR DAFTAR NODE -->
+            <aside class="col-list sk-panel sk-line border rounded-2xl shadow-xl relative z-10 overflow-hidden">
+                <div class="p-5 sk-line border-b sk-panel sticky top-0 z-20 flex justify-between items-center gap-3 shadow-lg">
+                    <div>
+                        <h3 class="sk-ink font-black text-base uppercase tracking-widest">Daftar Node</h3>
+                        <p class="text-[11px] text-blue-500 font-bold mt-0.5">Pilih zona untuk memantau kamera</p>
+                    </div>
+                    <span id="total-cams" class="text-[11px] bg-gradient-to-r from-blue-800 to-blue-600 text-white px-3 py-1.5 rounded-lg font-black tracking-widest border border-blue-400/50 shrink-0">0 NODE</span>
+                </div>
+                <div id="camera-list-container" class="list-scroll-area premium-scroll p-3 sk-panel-2 shadow-inner"></div>
+                <div class="p-4 sk-panel sk-line border-t text-center text-[10px] sk-muted font-bold tracking-widest uppercase">
+                    &copy; 2026 Sudut Kota Infrastructure
+                </div>
+            </aside>
+        </div>
+    </div>
+</main>
+
+<div id="site-footer"></div>
+<div id="site-bottombar"></div>
+
+<script src="js/config.js?v=20261106h"></script>
+
+<script src="js/store.js?v=20261106h"></script>
+<script src="js/auth.js?v=20261106h"></script>
+<script src="js/app.js?v=20261106h"></script>
+<script src="js/main.js?v=20261106h"></script>
+<script>
+    App.init({ active: 'cctv', search: true });
+    CctvPlayer.init();
+</script>
+</body>
+</html>

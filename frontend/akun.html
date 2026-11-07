@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Kelola Akun — Sudut Kota</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="asset/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="asset/favicon-64.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="asset/apple-touch-icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20261106h">
+
+    <script>
+        tailwind.config = { darkMode: 'class' };
+        if (localStorage.getItem('color-theme') !== 'light') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+
+    <style>
+        .bg-mesh {
+            background-color: var(--sk-bg-body);
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(14,165,233,.12) 0px, transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(59,130,246,.12) 0px, transparent 40%),
+                radial-gradient(circle at 50% 80%, rgba(16,185,129,.05) 0px, transparent 40%);
+            background-attachment: fixed;
+        }
+        .action-btn { transition: all .25s cubic-bezier(.4,0,.2,1); }
+        .action-btn:active { transform: scale(.97); }
+        body.modal-open { overflow: hidden; }
+    </style>
+</head>
+<body class="sk-root text-slate-200 font-sans antialiased">
+
+<div id="site-nav"></div>
+
+<main class="flex-grow z-10 relative pt-[100px] md:pt-[130px] bg-mesh min-h-screen pb-32">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
+
+        <!-- JUDUL -->
+        <div class="glass-card p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in-up">
+            <div class="flex items-center gap-4 min-w-0">
+                <div class="p-3 md:p-4 bg-blue-900/50 rounded-2xl text-blue-400 border border-blue-500/30 shrink-0">
+                    <i class="fa-solid fa-user-shield text-2xl"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-xl md:text-2xl font-black text-white uppercase tracking-wider">Kelola Akun</h1>
+                    <p class="text-xs text-slate-400 font-medium mt-1">Atur peran, kredensial, dan akses petugas command center.</p>
+                </div>
+            </div>
+
+            <button id="btn-add-user" type="button"
+                    class="action-btn shrink-0 px-6 py-3 bg-blue-600 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 border border-blue-400/50 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-plus"></i> Tambah Akun
+            </button>
+        </div>
+
+        <!-- RINGKASAN -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up" style="animation-delay:.05s">
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Total Akun</span>
+                    <i class="fa-solid fa-users text-blue-500"></i>
+                </div>
+                <div id="sum-total" class="text-3xl font-black text-white mt-2">0</div>
+            </div>
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Administrator</span>
+                    <i class="fa-solid fa-shield-halved text-sky-500"></i>
+                </div>
+                <div id="sum-admin" class="text-3xl font-black text-sky-400 mt-2">0</div>
+            </div>
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Teknisi</span>
+                    <i class="fa-solid fa-screwdriver-wrench text-emerald-500"></i>
+                </div>
+                <div id="sum-teknisi" class="text-3xl font-black text-emerald-400 mt-2">0</div>
+            </div>
+            <div class="glass-card p-5">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visitor</span>
+                    <i class="fa-solid fa-user text-slate-400"></i>
+                </div>
+                <div id="sum-visitor" class="text-3xl font-black text-slate-300 mt-2">0</div>
+            </div>
+        </div>
+
+        <!-- DAFTAR AKUN -->
+        <div class="glass-card p-6 md:p-8 animate-fade-in-up" style="animation-delay:.1s">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="filter-search" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Cari Akun</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 z-10"></i>
+                        <input id="filter-search" type="search" autocomplete="off" placeholder="Nama, NIP, atau username"
+                               class="glass-input w-full p-4 pl-12 outline-none font-bold">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="filter-role" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Peran</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-id-badge absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 z-10"></i>
+                        <select id="filter-role" class="glass-input w-full p-4 pl-12 pr-10 outline-none font-bold cursor-pointer appearance-none">
+                            <option value="">Semua Peran</option>
+                            <option value="admin">Administrator</option>
+                            <option value="teknisi">Teknisi</option>
+                            <option value="visitor">Visitor</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-3">
+                <div class="text-xs text-slate-400 font-medium flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-blue-500"></i>
+                    <span id="status-text-body">Menampilkan seluruh akun terdaftar.</span>
+                </div>
+                <button id="btn-reset-accounts" type="button" class="text-[10px] font-bold text-slate-500 hover:text-red-400 uppercase tracking-widest transition">
+                    <i class="fa-solid fa-rotate-left"></i> Reset akun demo
+                </button>
+            </div>
+
+            <div id="user-cards" class="md:hidden space-y-3"></div>
+
+            <div id="user-table" class="hidden md:block overflow-x-auto rounded-2xl border border-blue-900/50">
+                <table class="w-full text-left text-sm">
+                    <thead class="sk-panel-2 text-[10px] uppercase tracking-widest text-blue-400">
+                        <tr>
+                            <th class="px-4 py-3 font-bold">Petugas</th>
+                            <th class="px-4 py-3 font-bold">Username</th>
+                            <th class="px-4 py-3 font-bold">Peran</th>
+                            <th class="px-4 py-3 font-bold text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body" class="divide-y divide-blue-900/40"></tbody>
+                </table>
+            </div>
+
+            <p class="text-[10px] text-slate-400 mt-4 leading-relaxed">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>
+                Akun disimpan di peramban (localStorage) selama Firebase Auth belum tersambung. Jangan pakai kata sandi
+                asli — data ini bisa dibaca siapa pun yang membuka halaman ini.
+            </p>
+        </div>
+    </div>
+</main>
+
+<!-- MODAL TAMBAH / UBAH AKUN -->
+<div id="user-modal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 md:p-8 border-t-4 border-blue-500">
+        <div class="flex items-start justify-between gap-4 mb-6">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-blue-900/50 rounded-2xl text-blue-400 border border-blue-500/30">
+                    <i id="modal-icon" class="fa-solid fa-user-plus text-lg"></i>
+                </div>
+                <div>
+                    <h2 id="modal-title" class="text-lg font-black text-white uppercase tracking-wider">Tambah Akun</h2>
+                    <p id="modal-subtitle" class="text-[11px] text-slate-400 font-medium mt-0.5">Lengkapi data petugas.</p>
+                </div>
+            </div>
+            <button id="btn-close-modal" type="button" title="Tutup"
+                    class="shrink-0 w-9 h-9 rounded-full bg-white/10 text-slate-300 hover:bg-red-600 hover:text-white transition flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="user-form" class="space-y-4" novalidate>
+            <input type="hidden" id="field-uid">
+
+            <div>
+                <label for="field-nama" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Nama Lengkap</label>
+                <input id="field-nama" name="nama" type="text" autocomplete="name" required
+                       class="glass-input w-full p-4 outline-none font-bold" placeholder="Contoh: Admin Dishub">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="field-nip" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">NIP <span class="text-slate-500 normal-case">(opsional)</span></label>
+                    <input id="field-nip" name="nip" type="text" autocomplete="off"
+                           class="glass-input w-full p-4 outline-none font-bold" placeholder="ADM-002">
+                </div>
+                <div>
+                    <label for="field-role" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Peran</label>
+                    <div class="relative">
+                        <select id="field-role" name="role" class="glass-input w-full p-4 pr-10 outline-none font-bold cursor-pointer appearance-none">
+                            <option value="admin">Administrator</option>
+                            <option value="teknisi">Teknisi</option>
+                            <option value="visitor">Visitor</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label for="field-username" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Username</label>
+                <input id="field-username" name="username" type="text" autocomplete="off" required
+                       class="glass-input w-full p-4 outline-none font-bold" placeholder="admin">
+                <p class="text-[10px] text-slate-500 mt-1.5 pl-1">Dipakai untuk login. Huruf besar/kecil tidak dibedakan.</p>
+            </div>
+
+            <div>
+                <label for="field-password" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">
+                    Kata Sandi <span id="password-hint" class="text-slate-500 normal-case">(minimal 6 karakter)</span>
+                </label>
+                <div class="relative">
+                    <input id="field-password" name="password" type="password" autocomplete="new-password"
+                           class="glass-input w-full p-4 pr-12 outline-none font-bold" placeholder="••••••">
+                    <button id="btn-toggle-password" type="button" title="Tampilkan kata sandi"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg text-slate-500 hover:text-blue-400 flex items-center justify-center transition">
+                        <i class="fa-solid fa-eye text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="form-error" class="hidden text-xs font-bold text-red-400 bg-red-900/30 border border-red-500/40 rounded-xl px-4 py-3"></div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button id="btn-cancel-modal" type="button"
+                        class="action-btn flex-1 px-5 py-3 bg-white/5 text-slate-300 font-bold rounded-xl border border-white/10 hover:bg-white/10 text-xs uppercase tracking-wider">
+                    Batal
+                </button>
+                <button id="btn-save-user" type="submit"
+                        class="action-btn flex-1 px-5 py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="site-footer"></div>
+<div id="site-bottombar"></div>
+
+<script src="js/config.js?v=20261106h"></script>
+
+<script src="js/store.js?v=20261106h"></script>
+<script src="js/auth.js?v=20261106h"></script>
+<script src="js/app.js?v=20261106h"></script>
+<script src="js/akun.js?v=20261106h"></script>
+</body>
+</html>

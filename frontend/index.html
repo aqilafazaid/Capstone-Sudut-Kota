@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sudut Kota — Command Center Bidang Infrastruktur</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="asset/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="asset/favicon-64.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="asset/apple-touch-icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20261106h">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: { brand: { navy: '#0a143c', blue: '#2563eb', sky: '#3b82f6', red: '#ed1c24' } }
+                }
+            }
+        };
+        if (localStorage.getItem('color-theme') !== 'light') {
+            if (localStorage.getItem('color-theme') !== 'light') {
+            document.documentElement.classList.add('dark');
+        }
+        }
+    </script>
+
+    <style>
+        .font-impact { font-family: 'Arial Black', Impact, sans-serif; }
+        .tv-glossy {
+            font-weight: 900;
+            background: linear-gradient(110deg, #2563eb 20%, #3b82f6 40%, #ffffff 50%, #facc15 60%, #2563eb 80%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s linear infinite;
+        }
+        @keyframes shine { to { background-position: 200% center; } }
+
+        .tech-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.05); border: 1px solid #f1f5f9; transition: all .3s cubic-bezier(.4,0,.2,1); }
+        .tech-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(37,99,235,.15); border-color: #3b82f6; }
+        .dark .tech-card { background: rgba(15,23,42,.6); backdrop-filter: blur(12px); border-color: rgba(59,130,246,.2); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+        .dark .tech-card:hover { border-color: #3b82f6; box-shadow: 0 15px 40px rgba(37,99,235,.2); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0a143c] text-slate-800 dark:text-slate-200 flex flex-col min-h-screen relative pb-[180px] lg:pb-[100px] font-sans transition-colors duration-300">
+
+    <div id="site-nav"></div>
+
+    <main class="flex-grow z-10 relative pt-[100px] md:pt-[130px]">
+        <div class="bg-white dark:bg-[#111827] w-full min-h-screen rounded-t-[2.5rem] md:rounded-t-[4rem] shadow-2xl relative overflow-hidden border-t-4 border-blue-600 transition-colors duration-300">
+            <div class="absolute inset-0 z-0 opacity-[0.35] dark:opacity-10" style="background-image: radial-gradient(#94a3b8 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
+
+            <div class="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 relative z-10">
+
+                <!-- SEKSI 1: HERO -->
+                <section class="relative bg-transparent pt-4 pb-12 overflow-hidden z-10">
+                    <div class="max-w-7xl mx-auto relative z-10">
+                        <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+
+                            <div class="flex-1 text-center lg:text-left space-y-8">
+                                <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-[#0a143c] border border-blue-800/50 text-white text-xs font-bold rounded-full shadow-sm">
+                                    <span class="w-2 h-2 bg-[#2563eb] rounded-full animate-pulse"></span> Integrasi AI &amp; Pemantauan Lalu Lintas Terpadu
+                                </div>
+
+                                <h1 class="text-3xl md:text-5xl lg:text-6xl 2xl:text-7xl font-impact text-[#0a143c] dark:text-white leading-tight tracking-tight uppercase transition-colors">
+                                    Selamat Datang di <br> <span class="tv-glossy font-impact">SUDUT KOTA PEKALONGAN</span>
+                                </h1>
+
+                                <p class="text-slate-600 dark:text-slate-300 font-medium text-base md:text-lg leading-relaxed max-w-2xl mx-auto lg:mx-0 transition-colors">
+                                    Sistem Informasi Eksekutif terpadu untuk efisiensi infrastruktur pengawasan kota melalui pemanfaatan teknologi Kecerdasan Buatan tingkat lanjut.
+                                </p>
+
+                                <div class="flex flex-wrap gap-4 justify-center lg:justify-start pt-2">
+                                    <a href="cctv.html" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-900 text-white font-bold rounded-full shadow-[0_10px_30px_rgba(37,99,235,0.3)] hover:shadow-[0_15px_40px_rgba(37,99,235,0.5)] transition flex items-center gap-3 transform hover:-translate-y-1 active:scale-95 uppercase tracking-wider text-sm">
+                                        <i class="fa-solid fa-video"></i> Buka Live Monitor
+                                    </a>
+                                    <a href="#arsitektur-sistem" class="px-8 py-4 bg-white dark:bg-[#0a143c] text-blue-900 dark:text-blue-400 font-bold rounded-full shadow-md border border-slate-200 dark:border-blue-900 hover:bg-slate-50 dark:hover:bg-blue-900/30 transition flex items-center gap-3 transform hover:-translate-y-1 active:scale-95 uppercase tracking-wider text-sm">
+                                        <i class="fa-solid fa-microchip"></i> Arsitektur
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 w-full max-w-md">
+                                <div class="bg-white/95 dark:bg-[#050b24]/90 backdrop-blur-md p-8 rounded-[2.5rem] shadow-2xl border-t-8 border-blue-600 relative overflow-hidden group hover:scale-[1.02] transition duration-500">
+                                    <div class="grid grid-cols-2 gap-8 text-center mb-8 relative z-10">
+                                        <div>
+                                            <div id="stat-zona" class="text-4xl font-impact text-[#0a143c] dark:text-white">—</div>
+                                            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-1 tracking-wider">Zona Wilayah</div>
+                                        </div>
+                                        <div>
+                                            <div id="stat-jalan" class="text-4xl font-impact text-[#0a143c] dark:text-white">—</div>
+                                            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-1 tracking-wider">Jalan Terpantau</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-gradient-to-br from-[#0a143c] to-blue-900 p-8 rounded-3xl text-center text-white relative overflow-hidden shadow-inner border border-blue-700/50">
+                                        <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(rgba(148,163,184,.5) 1px, transparent 1px); background-size: 18px 18px;"></div>
+                                        <div class="relative z-10">
+                                            <div id="stat-nodes" class="text-6xl font-impact text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">—</div>
+                                            <div class="text-xs text-blue-300 font-bold uppercase mt-2 tracking-[0.3em]">Titik CCTV Terdaftar</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SEKSI 2: LIVE MONITOR -->
+                <section id="monitor-live" class="my-8 md:my-16 py-16 bg-slate-900 rounded-[2.5rem] relative overflow-hidden shadow-2xl border-t-4 border-yellow-400">
+                    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-10"></div>
+                    <div class="max-w-7xl mx-auto px-6 relative z-10">
+                        <div class="text-center mb-10">
+                            <h2 class="text-3xl md:text-4xl font-impact text-white tracking-wide uppercase">Simulasi Pemrosesan Edge-to-Cloud</h2>
+                            <p class="text-slate-400 text-sm mt-2 font-medium">Perbandingan tangkapan NVR mentah dengan hasil pemrosesan AI di tingkat Edge Server.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                            <div class="bg-black rounded-2xl overflow-hidden border border-slate-700 shadow-lg relative group">
+                                <div class="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest z-20 flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span> RAW NVR
+                                </div>
+                                <div class="aspect-video bg-slate-800 flex items-center justify-center relative overflow-hidden">
+                                    <i class="fa-solid fa-video text-slate-600 text-5xl opacity-50"></i>
+                                    <div class="absolute inset-0 bg-slate-900/40"></div>
+                                </div>
+                                <div class="bg-[#0a143c] p-4 flex justify-between items-center border-t border-slate-700">
+                                    <div class="text-xs text-slate-300 font-medium"><i class="fa-solid fa-network-wired text-blue-400 mr-1"></i> Langsung dari NVR Dishub</div>
+                                    <div class="text-[10px] text-slate-500 font-mono">Standby Mode</div>
+                                </div>
+                            </div>
+
+                            <div class="bg-black rounded-2xl overflow-hidden border border-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.2)] relative group">
+                                <div class="absolute top-4 left-4 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest z-20 flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> AI ENHANCED
+                                </div>
+                                <div class="aspect-video bg-slate-800 flex items-center justify-center relative overflow-hidden">
+                                    <div class="text-center">
+                                        <i class="fa-solid fa-microchip text-blue-500 text-5xl mb-3 animate-pulse"></i>
+                                        <p class="text-blue-400 text-xs font-bold tracking-widest uppercase">Mesin Inferensi Aktif</p>
+                                    </div>
+                                    <div class="absolute top-1/4 left-1/4 w-20 h-16 border-2 border-green-500 bg-green-500/10"></div>
+                                    <div class="absolute top-1/3 right-1/3 w-24 h-20 border-2 border-green-500 bg-green-500/10"></div>
+                                </div>
+                                <div class="bg-[#0a143c] p-4 flex justify-between items-center border-t border-blue-900">
+                                    <div class="text-xs text-white font-bold"><i class="fa-solid fa-microchip text-yellow-400 mr-1"></i> Deteksi Kendaraan YOLOv8</div>
+                                    <div class="text-[10px] text-yellow-400 font-mono flex items-center gap-3">
+                                        <span>Vehicles: <span class="text-white text-sm">--</span></span>
+                                        <span>|</span>
+                                        <span>Latency: ~150ms</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="text-center mt-10">
+                            <a href="cctv.html" class="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 font-bold text-sm tracking-widest uppercase transition-colors">
+                                Buka Panel CCTV Penuh <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SEKSI 3: ARSITEKTUR -->
+                <section id="arsitektur-sistem" class="py-16 relative z-10">
+                    <div class="max-w-7xl mx-auto px-6">
+                        <div class="text-center mb-16">
+                            <h2 class="text-3xl md:text-4xl font-impact text-[#0a143c] dark:text-white tracking-wide uppercase">Teknologi Di Balik Sudut Kota</h2>
+                            <div class="w-24 h-1 bg-blue-600 mx-auto mt-4 rounded-full"></div>
+                            <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-2xl mx-auto font-medium">Sistem ini memadukan kekuatan komputasi ujung (Edge Computing) dengan peladen awan terdistribusi untuk menghasilkan analitik lalu lintas waktu nyata.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                            <div class="tech-card p-6 flex flex-col items-center text-center">
+                                <div class="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl mb-4 shadow-inner">
+                                    <i class="fa-solid fa-car-burst"></i>
+                                </div>
+                                <h3 class="font-bold text-[#0a143c] dark:text-white text-lg mb-2">Deteksi Objek YOLOv8</h3>
+                                <p class="text-sm text-slate-600 dark:text-slate-400">Algoritma pengenalan visual yang mengklasifikasikan jenis kendaraan dan menghitung volume lalu lintas dalam hitungan milidetik.</p>
+                            </div>
+
+                            <div class="tech-card p-6 flex flex-col items-center text-center">
+                                <div class="w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400 text-2xl mb-4 shadow-inner">
+                                    <i class="fa-solid fa-moon"></i>
+                                </div>
+                                <h3 class="font-bold text-[#0a143c] dark:text-white text-lg mb-2">Enhancement Cahaya Rendah</h3>
+                                <p class="text-sm text-slate-600 dark:text-slate-400">Penerapan model <b>MirNet</b> dan <b>Zero-DCE</b> untuk merekonstruksi gambar CCTV pada kondisi malam tanpa kehilangan detail.</p>
+                            </div>
+
+                            <div class="tech-card p-6 flex flex-col items-center text-center">
+                                <div class="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 text-2xl mb-4 shadow-inner">
+                                    <i class="fa-solid fa-database"></i>
+                                </div>
+                                <h3 class="font-bold text-[#0a143c] dark:text-white text-lg mb-2">Firebase Realtime</h3>
+                                <p class="text-sm text-slate-600 dark:text-slate-400">Metrik volume lalu lintas dari peladen lokal didorong ke basis data awan untuk divisualisasikan pada dasbor secara instan.</p>
+                            </div>
+
+                            <div class="tech-card p-6 flex flex-col items-center text-center">
+                                <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-2xl mb-4 shadow-inner">
+                                    <i class="fa-solid fa-satellite-dish"></i>
+                                </div>
+                                <h3 class="font-bold text-[#0a143c] dark:text-white text-lg mb-2">HLS Video Streaming</h3>
+                                <p class="text-sm text-slate-600 dark:text-slate-400">Protokol distribusi media berbasis HTTP yang melayani tayangan pemantauan ke peramban petugas secara stabil melalui peladen AWS.</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="site-footer"></div>
+    <div id="site-bottombar"></div>
+
+    <script src="js/config.js?v=20261106h"></script>
+
+    <script src="js/store.js?v=20261106h"></script>
+    <script src="js/auth.js?v=20261106h"></script>
+    <script src="js/app.js?v=20261106h"></script>
+    <script>
+        App.init({ active: 'home' });
+
+        function renderSummary() {
+            const cameras = Store.list();
+            const zones = new Set(cameras.map(c => c.zona).filter(Boolean));
+            const roads = new Set(cameras.map(c => c.jalan).filter(Boolean));
+            document.getElementById('stat-zona').textContent = zones.size;
+            document.getElementById('stat-jalan').textContent = roads.size;
+            document.getElementById('stat-nodes').textContent = cameras.length;
+        }
+
+        Store.ready().then(renderSummary);
+    </script>
+</body>
+</html>

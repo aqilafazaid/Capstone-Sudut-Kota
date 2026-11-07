@@ -2,10 +2,16 @@
 # 1. KREDENSIAL & KEAMANAN (SANGAT PENTING!)
 # ==========================================
 .env
+backend/.env
 serviceAccountKey.json
 credentials.json
 *.pem
 *.key
+# Dokumen desain dilacak; isi docs/ lainnya diabaikan.
+docs/*
+!docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/specs/
 
 # ==========================================
 # 2. PYTHON & ENVIRONMENT
@@ -54,3 +60,28 @@ labels/
 instance/
 .webassets-cache
 *.log
+
+# ==========================================
+# 7. DEPLOY
+# ==========================================
+.vercel/
+.output/
+
+# Keluaran ffmpeg (HLS) — dibuat saat streamer berjalan
+backend/media/
+
+# ==========================================
+# 8. RUNTIME BACKEND
+# ==========================================
+# Database konfigurasi kamera (SQLite) dan log/pid nginx
+backend/data/
+logs/
+
+# ==========================================
+# 9. ALAT LOKAL (tidak pernah ikut deploy)
+# ==========================================
+# Distribusi nginx Windows, log, dan temp: hanya ada di mesin operator.
+tools/
+backend/gateway/tools/
+backend/gateway/logs/
+backend/gateway/temp/

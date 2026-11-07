@@ -1,0 +1,358 @@
+/* ==========================================================================
+   SUDUT KOTA — STYLE.CSS
+   Gaya bersama untuk seluruh halaman frontend statis.
+   Tidak ada dependensi build: dimuat langsung setelah Tailwind CDN.
+
+   Tema dikendalikan kelas `dark` pada <html>. Warna permukaan memakai
+   variabel CSS (--sk-*) supaya halaman console (Stream, Dashboard, Statistik)
+   ikut berubah tanpa menulis dua set kelas Tailwind di setiap elemen.
+   ========================================================================== */
+
+/* --- 1. TOKEN TEMA (terang = cadangan, gelap = bawaan .dark) --- */
+:root {
+    --sk-primary: #2563eb;
+    --sk-primary-dark: #1e3a8a;
+    --sk-accent-glow: #3b82f6;
+    --sk-warning: #b45309;
+
+    --sk-bg-body: #eef2f7;
+    --sk-surface: #ffffff;
+    --sk-surface-2: #f8fafc;
+    --sk-surface-hover: #f1f5f9;
+    --sk-border: #cbd5e1;
+    --sk-text-main: #0f172a;
+    --sk-text-muted: #475569;
+
+    --sk-notice-bg: #fffbeb;
+    --sk-notice-border: #f59e0b;
+}
+
+html.dark {
+    --sk-primary: #2563eb;
+    --sk-primary-dark: #1e3a8a;
+    --sk-accent-glow: #3b82f6;
+    --sk-warning: #facc15;
+
+    --sk-bg-body: #030718;
+    --sk-surface: #0a143c;
+    --sk-surface-2: #050a1f;
+    --sk-surface-hover: #0f172a;
+    --sk-border: #1e3a8a;
+    --sk-text-main: #f8fafc;
+    --sk-text-muted: #94a3b8;
+
+    --sk-notice-bg: rgba(120, 53, 15, 0.35);
+    --sk-notice-border: #b45309;
+}
+
+/* --- 2. KELAS PERMUKAAN --- */
+.sk-root { background-color: var(--sk-bg-body); color: var(--sk-text-main); }
+.sk-panel { background-color: var(--sk-surface); color: var(--sk-text-main); }
+.sk-panel-2 { background-color: var(--sk-surface-2); color: var(--sk-text-main); }
+.sk-line { border-color: var(--sk-border); }
+.sk-ink { color: var(--sk-text-main); }
+.sk-muted { color: var(--sk-text-muted); }
+
+/* Di tema terang, teks putih di atas panel jadi tidak terbaca. Aturan ini
+   hanya mengenai elemen tanpa latar sendiri, sehingga tombol dan badge
+   berwarna tetap putih. */
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) .text-white:not([class*="bg-"]) {
+    color: var(--sk-text-main);
+}
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-blue-300, .text-blue-400, .text-slate-300, .text-slate-400) {
+    color: var(--sk-text-muted);
+}
+
+/* Label kecil berwarna pada kartu: versi 400 terlalu pucat di latar putih. */
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-sky-400, .text-sky-300) { color: #0369a1; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-cyan-400, .text-cyan-300) { color: #0e7490; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-amber-400, .text-amber-300) { color: #b45309; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-orange-400, .text-orange-300) { color: #c2410c; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-emerald-400, .text-emerald-300) { color: #047857; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-purple-400, .text-purple-300) { color: #7e22ce; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-yellow-400, .text-yellow-300) { color: #a16207; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-red-400, .text-red-300) { color: #b91c1c; }
+
+.sk-notice {
+    background: var(--sk-notice-bg);
+    border: 1px solid var(--sk-notice-border);
+    color: var(--sk-text-main);
+    border-radius: 14px;
+}
+
+/* --- 3. DASAR & SCROLLBAR --- */
+html { scroll-behavior: smooth; }
+
+body {
+    -webkit-tap-highlight-color: transparent;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #cbd5e1; }
+html.dark ::-webkit-scrollbar-track { background: #020617; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+html.dark ::-webkit-scrollbar-thumb { background: #334155; }
+::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+
+.premium-scroll::-webkit-scrollbar { width: 6px; }
+.premium-scroll::-webkit-scrollbar-track { background: transparent; }
+.premium-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; }
+html.dark .premium-scroll::-webkit-scrollbar-thumb { background-color: #334155; }
+.premium-scroll::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+/* --- 4. GLASSMORPHISM --- */
+.glass-card {
+    background: var(--sk-surface);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid var(--sk-border);
+    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
+    border-radius: 24px;
+}
+html.dark .glass-card {
+    background: rgba(3, 7, 24, 0.75);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.glass-input {
+    background: var(--sk-surface-2);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--sk-border);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    color: var(--sk-text-main);
+}
+.glass-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    transform: translateY(-1px);
+    outline: none;
+}
+.glass-input:read-only { opacity: 0.7; cursor: not-allowed; }
+.glass-input::placeholder { color: #64748b; }
+html.dark .glass-input::placeholder { color: #94a3b8; }
+.glass-input:disabled { opacity: 0.45; cursor: not-allowed; }
+.glass-input option { color: #0f172a; background: #ffffff; }
+html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
+
+/* --- 5. LATAR & ANIMASI BLOB --- */
+.bg-mesh-premium {
+    background-color: var(--sk-bg-body);
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.10) 0px, transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.10) 0px, transparent 40%),
+        radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.05) 0px, transparent 40%);
+    background-attachment: fixed;
+}
+
+@keyframes blob {
+    0%   { transform: translate(0, 0) scale(1); }
+    33%  { transform: translate(30px, -50px) scale(1.1); }
+    66%  { transform: translate(-20px, 20px) scale(0.9); }
+    100% { transform: translate(0, 0) scale(1); }
+}
+.animate-blob { animation: blob 10s infinite; }
+.animation-delay-2000 { animation-delay: 3s; }
+.animation-delay-4000 { animation-delay: 6s; }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+/* --- 6. PEMUTAR CCTV --- */
+.player-card {
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--sk-border);
+}
+
+.player-header {
+    background: linear-gradient(135deg, #0a143c 0%, #1e3a8a 50%, #2563eb 100%);
+    padding: 14px 20px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 2px solid var(--sk-accent-glow);
+}
+
+/* Judul tidak dipotong di tengah kata: nama node boleh dua baris, kota memakai
+   elipsis karena barisnya pendek. Blok ini boleh menyusut (min-width: 0). */
+.cam-info-mobile { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; flex: 1 1 auto; }
+.cam-city-label {
+    font-size: 0.7rem; font-weight: 900; color: #facc15; text-transform: uppercase; letter-spacing: 0.5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cam-name-label {
+    font-size: 1.1rem; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; overflow-wrap: anywhere;
+}
+
+.video-wrapper { position: relative; width: 100%; padding-top: 56.25%; background: #000; }
+.video-element { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+
+/* --- 7. INDIKATOR SINYAL --- */
+.signal-container { display: flex; flex-direction: column; align-items: flex-end; }
+.signal-bars { display: flex; align-items: flex-end; gap: 3px; height: 12px; }
+.bar { width: 4px; background: var(--sk-border); border-radius: 2px; transition: height 0.3s, background 0.3s; }
+.bar.active { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+.bar:nth-child(1) { height: 4px; }
+.bar:nth-child(2) { height: 7px; }
+.bar:nth-child(3) { height: 10px; }
+.bar:nth-child(4) { height: 13px; }
+.net-label { font-size: 0.65rem; font-weight: 900; color: #3b82f6; margin-top: 4px; letter-spacing: 0.5px; }
+
+/* --- 8. TOMBOL TOGGLE AI --- */
+.toggle-btn { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid var(--sk-border); }
+.toggle-btn.active-yolo { background-color: var(--sk-surface-2); border-color: var(--sk-warning); color: var(--sk-warning); box-shadow: inset 0 0 10px rgba(250, 204, 21, 0.2); }
+.toggle-btn.active-mirnet { background-color: var(--sk-surface-2); border-color: #3b82f6; color: #3b82f6; box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.2); }
+.toggle-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* --- 9. DAFTAR KAMERA (AKORDION) --- */
+.accordion-group {
+    margin-bottom: 10px;
+    border: 1px solid var(--sk-border);
+    border-radius: 12px;
+    background: var(--sk-surface);
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+}
+.group-header {
+    padding: 14px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    background: var(--sk-surface); color: var(--sk-text-main); transition: all 0.2s;
+}
+.group-header:hover { background: var(--sk-surface-hover); }
+.group-header.active { background: rgba(37, 99, 235, 0.12); border-bottom: 1px solid var(--sk-border); }
+.group-title { font-size: 0.8rem; font-weight: 800; color: var(--sk-warning); text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+.group-body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; background: var(--sk-surface-2); }
+.group-body.open { max-height: 5000px; }
+
+.cam-item {
+    padding: 12px 16px; border-bottom: 1px solid var(--sk-border); cursor: pointer;
+    display: flex; align-items: center; gap: 12px; transition: all 0.2s;
+}
+.cam-item:last-child { border-bottom: none; }
+.cam-item:hover { background-color: var(--sk-surface-hover); padding-left: 20px; }
+.cam-item.active { background-color: rgba(37, 99, 235, 0.14); border-left: 4px solid var(--sk-primary); }
+.cam-item.active .cam-name { color: var(--sk-text-main); font-weight: 800; }
+.cam-item.active .play-icon { color: var(--sk-primary) !important; text-shadow: 0 0 12px var(--sk-primary); transform: scale(1.1); }
+.cam-name { font-size: 0.85rem; font-weight: 600; color: var(--sk-text-muted); line-height: 1.4; }
+
+/* --- 10. LAYOUT RESPONSIF HALAMAN STREAM --- */
+@media (min-width: 1024px) {
+    .layout-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2rem; align-items: start; }
+    .col-player { grid-column: span 9; }
+    .col-list { grid-column: span 3; height: calc(100vh - 200px); overflow: hidden; display: flex; flex-direction: column; }
+    .list-scroll-area { flex: 1; overflow-y: auto; padding-right: 4px; }
+}
+@media (max-width: 1023px) {
+    .layout-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+    .col-player, .col-list { width: 100%; }
+    .col-list { height: auto; }
+    .list-scroll-area { height: 500px; max-height: 65vh; overflow-y: auto; }
+    .cam-name-label { font-size: 0.95rem; }
+    .player-header { padding: 12px 14px; }
+}
+
+@keyframes scroll-mobile {
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(var(--scroll-dist)); }
+}
+
+/* --- 11. TEKS BERJALAN (MARQUEE) --- */
+.marquee-container { position: relative; overflow: hidden; height: 100%; display: flex; align-items: center; }
+
+/* Dua salinan teks identik; animasi menggeser tepat satu salinan (-50%)
+   sehingga sambungannya tidak terlihat dan tidak ada jeda kosong. `nowrap`
+   mencegah teks membungkus seperti sebelumnya, saat belum ada animasi. */
+.ticker-track {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    will-change: transform;
+    animation: ticker-scroll 40s linear infinite;
+}
+.ticker-item { padding-right: 4rem; letter-spacing: 0.02em; }
+.ticker-wrap:hover .ticker-track { animation-play-state: paused; }
+@keyframes ticker-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+/* Catatan: teks berjalan TIDAK dimatikan saat pengguna memilih
+   `prefers-reduced-motion: reduce` — klien meminta teks ini tetap berjalan.
+   Yang dilunakkan hanya kecepatannya (lihat startTicker di app.js: 40 px/detik
+   alih-alih 55 px/detik), dan animasi tetap berhenti saat kursor di atasnya. */
+
+/* --- 12. KARTU STATISTIK --- */
+.stat-card {
+    background: var(--sk-surface);
+    border: 1px solid var(--sk-border);
+    border-radius: 14px;
+    transition: all 0.3s ease;
+}
+.stat-card:hover { border-color: var(--sk-accent-glow); transform: translateY(-2px); }
+
+/* --- 13. TOAST --- */
+#toast-stack {
+    position: fixed; top: 24px; right: 24px; z-index: 10000;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.toast {
+    min-width: 260px; max-width: 380px;
+    padding: 14px 18px; border-radius: 14px;
+    font-size: 13px; font-weight: 700; color: #fff;
+    display: flex; align-items: flex-start; gap: 10px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    animation: toastIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    pointer-events: auto;
+}
+.toast.success { background: rgba(6, 78, 59, 0.95); border: 1px solid #10b981; }
+.toast.error   { background: rgba(127, 29, 29, 0.95); border: 1px solid #ef4444; }
+.toast.info    { background: rgba(30, 58, 138, 0.95); border: 1px solid #3b82f6; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+
+/* --- 14. UTILITAS --- */
+.hidden-important { display: none !important; }
+.text-shadow-strong { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8); }
+
+/* --- 12. ADAPTASI LAYAR LEBAR & RASIO -------------------------------- */
+/* Halaman memakai max-w-7xl (1280 px). Pada monitor lebar sisa ruang besar
+   membuat konten terlihat kecil dan mengambang di tengah, jadi kontainer
+   dinaikkan bertahap mengikuti lebar layar. !important diperlukan karena
+   utilitas Tailwind di-inject setelah berkas ini. */
+@media (min-width: 1536px) {
+    .max-w-7xl { max-width: 88rem !important; }   /* 1408 px */
+}
+@media (min-width: 1920px) {
+    .max-w-7xl { max-width: 100rem !important; }  /* 1600 px */
+}
+@media (min-width: 2400px) {
+    .max-w-7xl { max-width: 110rem !important; }  /* 1760 px */
+}
+
+/* Offset konten mengikuti tinggi navbar yang sebenarnya (diukur app.js).
+   Navbar memakai position:fixed dan bisa melipat dua baris pada rasio
+   tertentu; padding tetap di halaman akan menutupi kartu di bawahnya. */
+main { padding-top: calc(var(--sk-nav-h, 110px) + 20px) !important; }
+
+/* Layar pendek (ponsel landscape, netbook): rapikan jarak vertikal. */
+@media (max-height: 520px) {
+    .glass-card { padding: 1.25rem !important; }
+}
+
+/* Teks judul ikut menskala pada layar sangat lebar. */
+@media (min-width: 1920px) {
+    .font-impact { letter-spacing: -0.01em; }
+}
+
+/* Jangan biarkan gambar/canvas memaksa lebar melebihi kontainer. */
+img, canvas, video, svg { max-width: 100%; }
