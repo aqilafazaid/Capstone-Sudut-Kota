@@ -232,16 +232,6 @@ RTDB dan di-cache 60 detik di backend; pemeriksaan peran **tidak** terjadi di pe
 Halaman yang butuh peran tetap memanggil `Auth.requireOperator()`/`requireAdmin()`, tetapi
 itu hanya untuk tampilan — endpoint tetap menolak sendiri.
 
-Batas RTSP bisa diperiksa ulang tanpa kredensial Firebase: `scripts/audit_akses.py`
-menyuntik verifier/peran palsu lalu memastikan `/api/nodes` + `/hls` tetap publik sementara
-`/api/nodes/<id>` hanya membalas 200 untuk teknisi/admin, dan tidak ada respons publik
-yang memuat `rtsp://`.
-
-```bash
-cd backend
-.venv/Scripts/python.exe scripts/audit_akses.py
-```
-
 `copy: true` meneruskan video apa adanya (hemat CPU); `copy: false` men-transcode H.264
 (wajib bila sumber bukan H.264). Engine AI selalu memakai jalur transcode.
 
