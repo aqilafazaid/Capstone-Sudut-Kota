@@ -76,6 +76,8 @@ Capstone-Sudut-Kota/
 ├── docs/                      catatan desain lokal (gitignored)
 ├── vercel.json                deploy: framework Other, output frontend/
 ├── .vercelignore              backend/, docs/, tools/ tidak ikut upload
+├── start-backend.bat          Windows: backend Flask untuk terminal 1
+├── start-frontend.bat         Windows: server statis 8787 untuk terminal 2
 └── README.md
 ```
 
@@ -86,6 +88,20 @@ lagi memindai `backend/` dan tidak mencari entrypoint Python. `backend/`, `docs/
 (root repo) — mengarahkannya ke `frontend` membuat `vercel.json` di root tidak terbaca.
 
 ## Menjalankan lokal
+
+Cara tercepat di Windows — dua jendela cmd, dari root repo:
+
+```bat
+start-backend.bat     :: terminal 1 -> http://127.0.0.1:5000
+start-frontend.bat    :: terminal 2 -> http://127.0.0.1:8787 (browser terbuka sendiri)
+```
+
+Keduanya berhenti dengan `Ctrl+C`. `start-frontend.bat` menerima port lain
+(`start-frontend.bat 8788`) dan tidak membuka browser bila `SK_NO_OPEN=1`;
+`start-backend.bat` mengikuti `API_PORT` bila diset. Keduanya menolak jalan kalau
+port tujuannya sudah dipakai, dan menyebutkan perintah untuk memeriksanya.
+
+Langkah manualnya:
 
 **Terminal 1 — backend (Flask):**
 
