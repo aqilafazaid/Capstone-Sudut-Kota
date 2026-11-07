@@ -35,13 +35,14 @@ from flask_cors import CORS
 import accounts
 import auth
 import nodes as node_store
+import stats as stats_store
 from streamer import MEDIA_ROOT as HLS_ROOT
 from streamer import manager as hls_manager
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 STARTED_AT = time.time()
 HOST = os.environ.get("API_HOST", "127.0.0.1")
 PORT = int(os.environ.get("API_PORT", "5000"))
@@ -219,7 +220,7 @@ def create_app() -> Flask:
         return jsonify(ok=True, id=node_id)
 
     @app.post("/api/nodes/reset")
-    @auth.require_role("admin")
+    @auth.require_role(*auth.WRITE_ROLES)
     def node_reset():
         hls_manager.stop_all()
         node_store.reset_nodes()
@@ -272,6 +273,42 @@ def create_app() -> Flask:
     def akun_delete(uid):
         user = auth.authenticate(required=True)
         return jsonify(accounts.delete_account(uid, user["uid"]))
+
+    # --- Statistik (agregat telemetri RTDB) -----------------------------
+    @app.get("/api/stats/telemetry")
+    def stats_telemetry():
+        """Publik: agregat per jam/hari dari RTDB, tanpa data mentah kamera.
+
+        ``?days=N`` membatasi rentang (default ``STATS_MAX_DAYS``); halaman
+        Statistik memakai default karena periode terpanjangnya "Seluruhnya".
+        """
+        raw_days = request.args.get("days")
+        try:
+            days = int(raw_days) if raw_days else None
+        except ValueError:
+            days = None
+        response = jsonify(stats_store.read_telemetry(days))
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.post("/api/stats/collect")
+    @auth.require_role(*auth.WRITE_ROLES)
+    def stats_collect():
+        result = stats_store.collect_once()
+        return jsonify(result), (200 if result.get("ok") else 503)
+
+    @app.post("/api/stats/seed")
+    @auth.require_role(*auth.WRITE_ROLES)
+    def stats_seed():
+        """Isi agregat contoh ke RTDB. ``{"days": 365, "reset": true}``."""
+        payload = request.get_json(silent=True) or {}
+        raw_days = payload.get("days")
+        try:
+            days = int(raw_days) if raw_days is not None else None
+        except (TypeError, ValueError):
+            days = None
+        result = stats_store.seed_dummy(days=days, reset=bool(payload.get("reset")))
+        return jsonify(result), (200 if result.get("ok") else 503)
 
     # --- HLS: dipakai saat dev tanpa nginx (python -m http.server 8787) --
     @app.get("/hls/<path:filename>")
@@ -348,5 +385,9 @@ def start_active_streams() -> list[str]:
 if __name__ == "__main__":
     if _truthy(os.environ.get("STREAM_AUTOSTART", "true")):
         print(f"[STREAM] Autostart: {', '.join(start_active_streams()) or '-'}")
+    if not _truthy(os.environ.get("STATS_COLLECTOR", "true")):
+        print("[STATS] Kolektor dimatikan lewat STATS_COLLECTOR=false.")
+    else:
+        stats_store.start_collector()
     print(f"Sudut Kota API v{APP_VERSION} -> http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=False)

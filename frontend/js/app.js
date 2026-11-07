@@ -37,6 +37,9 @@
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
         document.querySelectorAll('#theme-toggle-dark-icon').forEach(el => el.classList.toggle('hidden', !dark));
         document.querySelectorAll('#theme-toggle-light-icon').forEach(el => el.classList.toggle('hidden', dark));
+        /* Kanvas grafik dan elemen yang digambar lewat JS tidak ikut berubah
+           lewat CSS; mereka mendengarkan event ini untuk menggambar ulang. */
+        document.dispatchEvent(new CustomEvent('theme:change', { detail: { theme: dark ? 'dark' : 'light' } }));
     }
 
     function currentTheme() {
@@ -80,8 +83,15 @@
     }
 
     /* --- Navigasi -------------------------------------------------------- */
+    /* Sebelum Firebase selesai memulihkan sesi, jangan tampilkan tombol
+       "Masuk": pengguna yang sudah login akan melihat seolah sesinya hilang.
+       Placeholder netral lebih jujur daripada status yang salah. */
     function userChipMarkup() {
-        const user = global.Auth ? global.Auth.user() : null;
+        const auth = global.Auth;
+        if (auth && !auth.isReady()) {
+            return '<span aria-hidden="true" class="block w-24 h-9 rounded-xl bg-slate-200 dark:bg-white/10 animate-pulse"></span>';
+        }
+        const user = auth ? auth.user() : null;
 
         if (!user) {
             return `<a href="login.html" title="Masuk" class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-wider transition shadow-[0_0_15px_rgba(37,99,235,0.35)]">
@@ -95,7 +105,7 @@
             <div class="flex items-center gap-2">
                 <div class="hidden sm:flex flex-col items-end leading-tight">
                     <span class="text-[11px] font-black text-slate-800 dark:text-white truncate max-w-[140px]">${user.nama}</span>
-                    <span class="text-[10px] font-bold ${isOperator ? 'text-blue-500' : 'text-amber-500'} uppercase tracking-wider">${roleLabel}</span>
+                    <span class="text-[10px] font-bold ${isOperator ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'} uppercase tracking-wider">${roleLabel}</span>
                 </div>
                 <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 text-white flex items-center justify-center font-black text-sm border border-blue-400/40">
                     ${(user.nama || '?').charAt(0).toUpperCase()}
@@ -351,6 +361,36 @@
             if (user) user.innerHTML = userChipMarkup();
             syncNavHeight();
         });
+
+        /* Firebase memulihkan sesi secara asinkron. Tanpa panggilan ini,
+           halaman yang tidak memakai requireOperator/requireAdmin (stream,
+           statistik, beranda) tidak pernah tahu pengguna sudah login dan
+           menampilkan tombol "Masuk" seolah sesinya berakhir. */
+        if (global.Auth) {
+            global.Auth.ready().catch(function (err) {
+                console.warn('[App] Gagal memulihkan sesi:', err);
+            });
+
+            /* Visitor hanya boleh membuka Stream dan Statistik. Beranda publik
+               tetap terbuka untuk tamu, tetapi pengguna Visitor yang sudah
+               login dialihkan ke Stream. */
+            if (opts.active === 'home') {
+                global.Auth.ready().then(function (user) {
+                    if (user && user.role === 'visitor') location.replace('cctv.html');
+                }).catch(function () {});
+            }
+        }
+
+        /* Pesan saat halaman dialihkan karena peran tidak mencukupi. */
+        try {
+            const denied = new URLSearchParams(location.search).get('denied');
+            if (denied) {
+                const only = denied === 'akun.html' ? 'Administrator' : 'Teknisi atau Administrator';
+                setTimeout(function () {
+                    toast('Halaman ' + denied + ' hanya untuk ' + only + '.', 'error', 5200);
+                }, 500);
+            }
+        } catch (err) { /* URLSearchParams tidak tersedia: abaikan */ }
 
         document.addEventListener('click', (event) => {
             if (event.target.closest('#theme-toggle')) toggleTheme();

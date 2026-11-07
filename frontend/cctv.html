@@ -12,16 +12,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261107a">
+    <link rel="stylesheet" href="css/style.css?v=20261107g">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
 
     <script>
         tailwind.config = { darkMode: 'class' };
         // Bawaan gelap; hanya berubah bila pengguna memilih terang.
         if (localStorage.getItem('color-theme') !== 'light') {
-            if (localStorage.getItem('color-theme') !== 'light') {
             document.documentElement.classList.add('dark');
-        }
         }
     </script>
 </head>
@@ -122,19 +120,19 @@
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Truk</div>
-                        <div id="stat-truk" class="text-2xl font-black text-amber-500 mt-1">0</div>
+                        <div id="stat-truk" class="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">0</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Bus</div>
-                        <div id="stat-bus" class="text-2xl font-black text-orange-500 mt-1">0</div>
+                        <div id="stat-bus" class="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">0</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Total</div>
-                        <div id="stat-total" class="text-2xl font-black text-blue-500 mt-1">0</div>
+                        <div id="stat-total" class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">0</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Server FPS</div>
-                        <div id="stat-fps" class="text-2xl font-black text-emerald-500 mt-1">0</div>
+                        <div id="stat-fps" class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">0</div>
                     </div>
                 </div>
 
@@ -229,7 +227,7 @@
                 <div class="p-5 sk-line border-b sk-panel sticky top-0 z-20 flex justify-between items-center gap-3 shadow-lg">
                     <div>
                         <h3 class="sk-ink font-black text-base uppercase tracking-widest">Daftar Node</h3>
-                        <p class="text-[11px] text-blue-500 font-bold mt-0.5">Pilih zona untuk memantau kamera</p>
+                        <p class="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-0.5">Pilih zona untuk memantau kamera</p>
                     </div>
                     <span id="total-cams" class="text-[11px] bg-gradient-to-r from-blue-800 to-blue-600 text-white px-3 py-1.5 rounded-lg font-black tracking-widest border border-blue-400/50 shrink-0">0 NODE</span>
                 </div>
@@ -247,15 +245,15 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261107a"></script>
-<script src="js/firebase-config.js?v=20261107a"></script>
-<script src="js/firebase-client.js?v=20261107a"></script>
-<script src="js/config.js?v=20261107a"></script>
+<script src="js/public-config.js?v=20261107g"></script>
+<script src="js/firebase-config.js?v=20261107g"></script>
+<script src="js/firebase-client.js?v=20261107g"></script>
+<script src="js/config.js?v=20261107g"></script>
 
-<script src="js/store.js?v=20261107a"></script>
-<script src="js/auth.js?v=20261107a"></script>
-<script src="js/app.js?v=20261107a"></script>
-<script src="js/main.js?v=20261107a"></script>
+<script src="js/store.js?v=20261107g"></script>
+<script src="js/auth.js?v=20261107g"></script>
+<script src="js/app.js?v=20261107g"></script>
+<script src="js/main.js?v=20261107g"></script>
 <script>
     App.init({ active: 'cctv', search: true });
     CctvPlayer.init();

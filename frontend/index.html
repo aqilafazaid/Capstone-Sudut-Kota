@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261107a">
+    <link rel="stylesheet" href="css/style.css?v=20261107g">
 
     <script>
         tailwind.config = {
@@ -23,10 +23,9 @@
                 }
             }
         };
+        // Bawaan gelap; hanya berubah bila pengguna memilih terang.
         if (localStorage.getItem('color-theme') !== 'light') {
-            if (localStorage.getItem('color-theme') !== 'light') {
             document.documentElement.classList.add('dark');
-        }
         }
     </script>
 
@@ -135,7 +134,7 @@
                                 </div>
                                 <div class="bg-[#0a143c] p-4 flex justify-between items-center border-t border-slate-700">
                                     <div class="text-xs text-slate-300 font-medium"><i class="fa-solid fa-network-wired text-blue-400 mr-1"></i> Langsung dari NVR Dishub</div>
-                                    <div class="text-[10px] text-slate-500 font-mono">Standby Mode</div>
+                                    <div class="text-[10px] text-slate-400 font-mono">Standby Mode</div>
                                 </div>
                             </div>
 
@@ -227,14 +226,14 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-    <script src="js/public-config.js?v=20261107a"></script>
-    <script src="js/firebase-config.js?v=20261107a"></script>
-    <script src="js/firebase-client.js?v=20261107a"></script>
-    <script src="js/config.js?v=20261107a"></script>
+    <script src="js/public-config.js?v=20261107g"></script>
+    <script src="js/firebase-config.js?v=20261107g"></script>
+    <script src="js/firebase-client.js?v=20261107g"></script>
+    <script src="js/config.js?v=20261107g"></script>
 
-    <script src="js/store.js?v=20261107a"></script>
-    <script src="js/auth.js?v=20261107a"></script>
-    <script src="js/app.js?v=20261107a"></script>
+    <script src="js/store.js?v=20261107g"></script>
+    <script src="js/auth.js?v=20261107g"></script>
+    <script src="js/app.js?v=20261107g"></script>
     <script>
         App.init({ active: 'home' });
 

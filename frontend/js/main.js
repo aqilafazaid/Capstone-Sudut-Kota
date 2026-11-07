@@ -62,7 +62,7 @@
         const text = mode === 'ai' ? 'HLS · AI AKTIF' : 'HLS · TANPA AI';
         badge.textContent = text;
         badge.className = 'text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border sk-line ' +
-            (mode === 'ai' ? 'text-emerald-600 dark:text-emerald-300' : 'text-blue-600 dark:text-blue-300');
+            (mode === 'ai' ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300');
     }
 
     function isMixedContent(url) {
@@ -103,8 +103,8 @@
                         <span class="cam-name flex-1">${cam.nama}</span>
                         <span class="text-[10px] px-2 py-0.5 rounded border ${
                             online
-                                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
-                                : 'bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/40'
+                                ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/40'
+                                : 'bg-red-500/15 text-red-800 dark:text-red-300 border-red-500/40'
                         }">${online ? 'LIVE' : 'OFF'}</span>
                     </div>`;
             }).join('');
@@ -184,27 +184,34 @@
         }
     }
 
-    /* Panel kontrol AI terbuka untuk semua peran, termasuk visitor tanpa akun.
-       Badge hanya menandai siapa yang sedang mengubah parameter. */
+    /* Kontrol AI mengubah parameter operator; Visitor dan tamu hanya boleh
+       menonton. Backend juga menolak endpoint tulis untuk peran non-operator. */
     function syncOperatorBadge() {
         const badge = el['operator-badge'];
-        if (!badge) return;
-
         const user = global.Auth ? global.Auth.user() : null;
-        badge.textContent = user ? `Akses: ${global.Auth.roleLabel(user.role)}` : 'Akses: Publik';
-        badge.className = 'text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ' +
-            'bg-blue-900/30 text-blue-300 border-blue-500/40';
+        const canControl = !!user && (user.role === 'admin' || user.role === 'teknisi');
+
+        if (badge) {
+            badge.textContent = user
+                ? `Akses: ${global.Auth.roleLabel(user.role)}${canControl ? '' : ' · hanya lihat'}`
+                : 'Akses: Publik · hanya lihat';
+            badge.className = 'text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border sk-soft';
+        }
 
         ['toggle-lowlight', 'toggle-yolo', 'select-lowlight', 'select-yolo'].forEach(id => {
             const node = el[id];
             if (!node) return;
-            node.disabled = false;
-            node.title = '';
+            node.disabled = !canControl;
+            node.title = canControl ? '' : 'Kontrol AI hanya untuk Teknisi atau Administrator.';
         });
     }
 
     function commitAi(patch, description) {
         if (!state.activeId) return;
+        if (!global.Auth || !global.Auth.isOperator()) {
+            App.toast('Kontrol AI hanya untuk Teknisi atau Administrator.', 'error');
+            return;
+        }
 
         const ai = Store.setAi(state.activeId, patch);
         paintAiPanel(ai);

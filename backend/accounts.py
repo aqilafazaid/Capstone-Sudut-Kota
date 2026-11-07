@@ -209,7 +209,18 @@ def create_account(payload: Any) -> dict[str, Any]:
         "created_at": now,
         "updated_at": now,
     }
-    _ref("akun", record.uid).set(profile)
+    try:
+        _ref("akun", record.uid).set(profile)
+    except Exception as exc:
+        # Jangan tinggalkan user Auth tanpa profil: akun seperti itu tidak bisa
+        # dipakai tetapi tetap bisa login dan memicu 404 berulang.
+        try:
+            fb_auth.delete_user(record.uid, app=_app())
+        except Exception:
+            pass
+        raise AccountError(
+            "Gagal menyimpan profil akun; pembuatan akun dibatalkan.", 500
+        ) from exc
     return _profile(record.uid, profile)
 
 
@@ -271,11 +282,19 @@ def delete_account(uid: str, requester_uid: str) -> dict[str, Any]:
     if current["peran"] == "admin" and len(admins) <= 1:
         raise AccountError("Minimal harus ada satu Administrator.", 409)
 
-    _ref("akun", uid).delete()
+    # Identitas dihapus lebih dulu. Bila penghapusan profil gagal setelahnya,
+    # yang tersisa hanyalah profil tanpa akses login — bukan akun Auth yatim
+    # yang masih bisa dipakai.
     try:
         fb_auth.delete_user(uid, app=_app())
     except fb_auth.UserNotFoundError:
-        pass  # profil yatim: tetap dianggap terhapus
+        pass  # profil yatim: lanjut hapus profilnya
+    except Exception as exc:
+        raise AccountError(
+            "Gagal menghapus identitas Firebase; profil dipertahankan.", 502
+        ) from exc
+
+    _ref("akun", uid).delete()
     auth.reset_cache()
     return {"ok": True, "uid": uid}
 

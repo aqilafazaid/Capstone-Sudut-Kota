@@ -1,7 +1,8 @@
 /* ==========================================================================
    AKUN.JS — Manajemen akun petugas (khusus Administrator)
    --------------------------------------------------------------------------
-   CRUD berjalan lewat Auth (auth.js), yang kini menyimpan akun di localStorage.
+   CRUD berjalan lewat Auth (auth.js) dan backend /api/akun, yang memakai
+   Firebase Authentication + RTDB.
    Saat Firebase Auth dipakai, cukup ganti isi Auth.list/create/update/remove;
    halaman ini tidak perlu diubah.
    ========================================================================== */
@@ -50,9 +51,9 @@
 
     /* --- Gaya ------------------------------------------------------------ */
     const ROLE_STYLE = {
-        admin: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-        teknisi: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-        visitor: 'bg-slate-500/15 text-slate-300 border-slate-500/30'
+        admin: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30',
+        teknisi: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+        visitor: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30'
     };
 
     function roleBadge(role) {
@@ -61,8 +62,8 @@
     }
 
     const BASE = 'flex items-center justify-center rounded-lg text-xs transition';
-    const EDIT_STYLE = 'bg-yellow-600/15 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500 hover:text-[#050a1f]';
-    const DEL_STYLE = 'bg-red-900/40 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white';
+    const EDIT_STYLE = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-white';
+    const DEL_STYLE = 'sk-btn-soft-danger';
 
     function editButton(user, extra, label) {
         return `<button type="button" data-edit="${user.uid}" title="Ubah akun" class="${extra}">
@@ -105,15 +106,15 @@
     function cardOf(user) {
         const isSelf = user.uid === admin.uid;
         return `
-            <div class="rounded-2xl border border-blue-900/50 sk-panel p-4">
+            <div class="rounded-2xl border sk-line sk-panel p-4">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="font-bold text-white text-sm leading-snug break-words">${user.nama}</div>
-                        <div class="text-[11px] text-slate-500 font-mono mt-0.5">${user.nip || 'tanpa NIP'}</div>
+                        <div class="font-bold sk-ink text-sm leading-snug break-words">${user.nama}</div>
+                        <div class="text-[11px] sk-muted font-mono mt-0.5">${user.nip || 'tanpa NIP'}</div>
                     </div>
                     ${roleBadge(user.role)}
                 </div>
-                <div class="mt-3 text-[11px] text-slate-400 font-mono break-all">${user.username}</div>
+                <div class="mt-3 text-[11px] sk-muted font-mono break-all">${user.username}</div>
                 <div class="mt-4 flex items-center gap-2">
                     ${editButton(user, `${BASE} flex-1 h-10 gap-2 font-bold text-[11px] uppercase tracking-wider ${EDIT_STYLE}`, 'Ubah')}
                     ${deleteButton(user, `${BASE} flex-1 h-10 gap-2 font-bold text-[11px] uppercase tracking-wider ${DEL_STYLE}`, isSelf ? 'Dipakai' : 'Hapus')}
@@ -127,12 +128,12 @@
 
         if (rows.length === 0) {
             el.tableBody.innerHTML = `
-                <tr><td colspan="4" class="px-4 py-12 text-center text-slate-500 text-sm">
+                <tr><td colspan="4" class="px-4 py-12 text-center sk-muted text-sm">
                     <i class="fa-solid fa-user-slash text-3xl mb-3 block opacity-50"></i>
                     Tidak ada akun yang cocok dengan filter.
                 </td></tr>`;
             el.cards.innerHTML = `
-                <div class="rounded-2xl border border-blue-900/50 sk-panel px-4 py-12 text-center text-slate-500 text-sm">
+                <div class="rounded-2xl border sk-line sk-panel px-4 py-12 text-center sk-muted text-sm">
                     <i class="fa-solid fa-user-slash text-3xl mb-3 block opacity-50"></i>
                     Tidak ada akun yang cocok dengan filter.
                 </div>`;
@@ -143,13 +144,13 @@
         el.tableBody.innerHTML = rows.map(user => {
             const isSelf = user.uid === admin.uid;
             return `
-            <tr class="hover:bg-white/5 transition">
+            <tr class="sk-row-hover">
                 <td class="px-4 py-4">
-                    <div class="font-bold text-white">${user.nama}${isSelf ? ' <span class="text-[10px] font-black text-blue-400 uppercase tracking-wider">(Anda)</span>' : ''}</div>
-                    <div class="text-[11px] text-slate-500 font-mono">${user.nip || '—'}</div>
+                    <div class="font-bold sk-ink">${user.nama}${isSelf ? ' <span class="text-[10px] font-black sk-accent uppercase tracking-wider">(Anda)</span>' : ''}</div>
+                    <div class="text-[11px] sk-muted font-mono">${user.nip || '—'}</div>
                 </td>
                 <td class="px-4 py-4">
-                    <span class="text-xs text-slate-300 font-mono">${user.username}</span>
+                    <span class="text-xs sk-muted font-mono">${user.username}</span>
                 </td>
                 <td class="px-4 py-4">${roleBadge(user.role)}</td>
                 <td class="px-4 py-4">
@@ -317,12 +318,8 @@
     el.tableBody.addEventListener('click', handleAction);
     el.cards.addEventListener('click', handleAction);
 
-    el.resetBtn.addEventListener('click', async () => {
-        if (!confirm('Kembalikan daftar akun ke kondisi demo awal? Akun tambahan akan hilang.')) return;
-        const result = await Auth.resetAccounts();
-        if (!result.ok) { App.toast(result.error, 'error'); return; }
-        await refresh();
-        App.toast('Akun demo dipulihkan.', 'info');
+    el.resetBtn && el.resetBtn.addEventListener('click', async () => {
+        App.toast('Akun dikelola Firebase Auth; tidak ada reset demo.', 'info');
     });
 
     document.addEventListener('auth:change', refresh);

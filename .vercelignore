@@ -4,3 +4,31 @@ backend/
 docs/
 tools/
 .vscode/
+
+# Launcher lokal: hanya untuk mesin operator, tidak pernah ikut deploy.
+*.bat
+*.cmd
+*.ps1
+*.sh
+start-backend.bat
+start-frontend.bat
+
+# Rahasia lokal (jika ada salinan di root repo).
+.env
+.env.*
+*.pem
+*.key
+serviceAccountKey.json
+
+# Dokumen yang tidak perlu dikirim ke builder.
+README.md
+AGENTS.md
+
+# Berkas tes: hanya untuk mesin operator, tidak ikut deploy.
+backend/tests/
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+.coverage
+htmlcov/

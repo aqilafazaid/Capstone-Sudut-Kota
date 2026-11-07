@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261107a">
+    <link rel="stylesheet" href="css/style.css?v=20261107g">
 
     <!-- Pustaka ekspor & grafik, dimuat hanya di halaman ini -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -20,10 +20,9 @@
 
     <script>
         tailwind.config = { darkMode: 'class' };
+        // Bawaan gelap; hanya berubah bila pengguna memilih terang.
         if (localStorage.getItem('color-theme') !== 'light') {
-            if (localStorage.getItem('color-theme') !== 'light') {
             document.documentElement.classList.add('dark');
-        }
         }
     </script>
 
@@ -40,7 +39,7 @@
         .period-tab.is-active { background: #2563eb; color: #fff; border-color: #3b82f6; box-shadow: 0 0 15px rgba(37,99,235,.4); }
     </style>
 </head>
-<body class="sk-root text-slate-200 font-sans antialiased">
+<body class="sk-root font-sans antialiased">
 
 <div id="site-nav"></div>
 
@@ -50,37 +49,37 @@
         <!-- JUDUL & AKSI -->
         <div class="glass-card p-6 md:p-8 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 animate-fade-in-up">
             <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-2xl bg-blue-900/50 border border-blue-500/30 flex items-center justify-center text-blue-400 text-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+                <div class="w-14 h-14 rounded-2xl sk-soft border flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)]">
                     <i class="fa-solid fa-chart-column"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-black text-white tracking-tight">Statistik Lalu Lintas</h1>
-                    <p class="text-xs text-blue-300 font-semibold mt-1">
+                    <h1 class="text-2xl font-black sk-ink tracking-tight">Statistik Lalu Lintas</h1>
+                    <p class="text-xs sk-accent font-semibold mt-1">
                         <span id="range-label">Memuat rentang...</span>
-                        <span class="mx-1 text-slate-600">|</span>
-                        <span class="text-amber-400/80">data simulasi</span>
+                        <span class="mx-1 sk-muted">|</span>
+                        <span id="stats-source" class="text-amber-700 dark:text-amber-400/80">memuat sumber...</span>
                     </p>
                 </div>
             </div>
 
             <div class="flex flex-col gap-2 w-full sm:pl-[72px] xl:pl-0 xl:w-auto xl:items-end">
                 <div class="grid grid-cols-4 gap-1 sk-panel-2 border sk-line rounded-xl p-1 w-full sm:w-auto sm:flex sm:items-center sm:gap-0.5 sm:shrink-0">
-                    <button type="button" data-period="1d" class="period-tab flex-1 sm:flex-none is-active px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-300 border border-transparent whitespace-nowrap">1 Hari</button>
-                    <button type="button" data-period="1w" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-300 border border-transparent whitespace-nowrap">1 Minggu</button>
-                    <button type="button" data-period="1m" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-300 border border-transparent whitespace-nowrap">1 Bulan</button>
-                    <button type="button" data-period="3m" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-300 border border-transparent whitespace-nowrap">3 Bulan</button>
-                    <button type="button" data-period="1y" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-300 border border-transparent whitespace-nowrap">1 Tahun</button>
-                    <button type="button" data-period="5y" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-300 border border-transparent whitespace-nowrap">5 Tahun</button>
-                    <button type="button" data-period="all" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-300 border border-transparent whitespace-nowrap">Seluruhnya</button>
+                    <button type="button" data-period="1d" class="period-tab flex-1 sm:flex-none is-active px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Hari</button>
+                    <button type="button" data-period="1w" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Minggu</button>
+                    <button type="button" data-period="1m" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Bulan</button>
+                    <button type="button" data-period="3m" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">3 Bulan</button>
+                    <button type="button" data-period="1y" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Tahun</button>
+                    <button type="button" data-period="5y" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">5 Tahun</button>
+                    <button type="button" data-period="all" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">Seluruhnya</button>
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
                     <button id="btn-export-pdf" type="button"
-                            class="shrink-0 px-2.5 py-3 rounded-xl bg-red-900/40 text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white text-[11px] font-black uppercase tracking-wider transition flex items-center gap-2">
+                            class="shrink-0 px-2.5 py-3 rounded-xl sk-btn-soft-danger text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
                     <button id="btn-export-csv" type="button"
-                            class="shrink-0 px-2.5 py-3 rounded-xl bg-emerald-900/40 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600 hover:text-white text-[11px] font-black uppercase tracking-wider transition flex items-center gap-2">
+                            class="shrink-0 px-2.5 py-3 rounded-xl sk-btn-soft-success text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-file-csv"></i> CSV
                     </button>
                 </div>
@@ -123,8 +122,8 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div class="glass-card p-6 lg:col-span-2">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-sm font-black text-white uppercase tracking-widest">Volume Kendaraan</h2>
-                    <div class="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                    <h2 class="text-sm font-black sk-ink uppercase tracking-widest">Volume Kendaraan</h2>
+                    <div class="flex items-center gap-3 text-[10px] font-bold sk-muted">
                         <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-sky-400 inline-block"></i> Mobil</span>
                         <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-cyan-400 inline-block"></i> Motor</span>
                         <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-amber-400 inline-block"></i> Truk</span>
@@ -137,7 +136,7 @@
             </div>
 
             <div class="glass-card p-6">
-                <h2 class="text-sm font-black text-white uppercase tracking-widest mb-4">Komposisi</h2>
+                <h2 class="text-sm font-black sk-ink uppercase tracking-widest mb-4">Komposisi</h2>
                 <div class="relative h-[280px]">
                     <canvas id="chart-composition"></canvas>
                 </div>
@@ -146,17 +145,17 @@
 
         <!-- TABEL -->
         <div class="glass-card p-6 md:p-8">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-blue-900/50 pb-5 mb-5">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b sk-line pb-5 mb-5">
                 <div>
-                    <h2 class="text-sm font-black text-white uppercase tracking-widest">Rekap Per Node</h2>
-                    <p class="text-[11px] text-slate-400 font-medium mt-1">Diurutkan dari volume tertinggi.</p>
+                    <h2 class="text-sm font-black sk-ink uppercase tracking-widest">Rekap Per Node</h2>
+                    <p class="text-[11px] sk-muted font-medium mt-1">Diurutkan dari volume tertinggi.</p>
                 </div>
-                <span id="table-count" class="text-[10px] font-black uppercase tracking-widest text-blue-300 bg-blue-900/30 border border-blue-500/30 px-3 py-1.5 rounded-lg">0 node</span>
+                <span id="table-count" class="text-[10px] font-black uppercase tracking-widest sk-soft border px-3 py-1.5 rounded-lg">0 node</span>
             </div>
 
-            <div class="overflow-x-auto rounded-2xl border border-blue-900/50">
+            <div class="overflow-x-auto rounded-2xl border sk-line">
                 <table class="w-full text-left text-sm">
-                    <thead class="sk-panel-2 text-[10px] uppercase tracking-widest text-blue-400">
+                    <thead class="sk-panel-2 text-[10px] uppercase tracking-widest sk-accent">
                         <tr>
                             <th class="px-4 py-3 font-bold">Node</th>
                             <th class="px-4 py-3 font-bold">Zona</th>
@@ -168,15 +167,19 @@
                             <th class="px-4 py-3 font-bold text-center">Status</th>
                         </tr>
                     </thead>
-                    <tbody id="stats-table-body" class="divide-y divide-blue-900/40"></tbody>
-                    <tfoot id="stats-table-foot" class="sk-panel-2 font-black text-white"></tfoot>
+                    <tbody id="stats-table-body" class="sk-divide"></tbody>
+                    <tfoot id="stats-table-foot" class="sk-panel-2 font-black sk-ink"></tfoot>
                 </table>
             </div>
 
-            <p class="mt-4 text-[10px] text-slate-500 leading-relaxed">
-                Angka dibangkitkan dari model simulasi per node dan per jam, bukan hasil inferensi YOLO.
-                Setelah telemetri Firebase tersambung, sumber data diganti di <code class="text-cyan-400">Store.stats()</code>
-                tanpa mengubah halaman ini.
+            <p class="mt-4 text-[10px] sk-muted leading-relaxed">
+                Angka dibaca dari Firebase RTDB: <code class="sk-accent">statistik_harian/&lt;tanggal&gt;/&lt;node&gt;</code>
+                untuk periode harian dan <code class="sk-accent">statistik/&lt;tanggal&gt;/&lt;jam&gt;/&lt;node&gt;</code> untuk 1 Hari.
+                Selama engine AI belum mengirim telemetri, isinya data contoh yang diisi lewat
+                <code class="sk-accent">POST /api/stats/seed</code>; hitungan inferensi YOLO ditambahkan kolektor
+                backend setiap <code class="sk-accent">STATS_SAMPLE_SECONDS</code> detik. Kosongkan data contoh
+                dengan <code class="sk-accent">{"reset": true}</code> pada endpoint yang sama sebelum pengambilan
+                data sungguhan.
             </p>
         </div>
     </div>
@@ -187,14 +190,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261107a"></script>
-<script src="js/firebase-config.js?v=20261107a"></script>
-<script src="js/firebase-client.js?v=20261107a"></script>
-<script src="js/config.js?v=20261107a"></script>
+<script src="js/public-config.js?v=20261107g"></script>
+<script src="js/firebase-config.js?v=20261107g"></script>
+<script src="js/firebase-client.js?v=20261107g"></script>
+<script src="js/config.js?v=20261107g"></script>
 
-<script src="js/store.js?v=20261107a"></script>
-<script src="js/auth.js?v=20261107a"></script>
-<script src="js/app.js?v=20261107a"></script>
-<script src="js/statistik.js?v=20261107a"></script>
+<script src="js/store.js?v=20261107g"></script>
+<script src="js/auth.js?v=20261107g"></script>
+<script src="js/app.js?v=20261107g"></script>
+<script src="js/statistik.js?v=20261107g"></script>
 </body>
 </html>

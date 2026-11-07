@@ -11,14 +11,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261107a">
+    <link rel="stylesheet" href="css/style.css?v=20261107g">
 
     <script>
         tailwind.config = { darkMode: 'class' };
+        // Bawaan gelap; hanya berubah bila pengguna memilih terang.
         if (localStorage.getItem('color-theme') !== 'light') {
-            if (localStorage.getItem('color-theme') !== 'light') {
             document.documentElement.classList.add('dark');
-        }
         }
     </script>
 
@@ -35,7 +34,7 @@
         .action-btn:active { transform: scale(.97); }
     </style>
 </head>
-<body class="sk-root text-slate-200 font-sans antialiased">
+<body class="sk-root font-sans antialiased">
 
 <div id="site-nav"></div>
 
@@ -50,21 +49,21 @@
                     <span class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 sk-line rounded-full animate-pulse"></span>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-extrabold text-white">
+                    <h1 class="text-2xl font-extrabold sk-ink">
                         Siap, <span id="profile-name">Admin Dishub</span>!
                         <i class="fa-solid fa-shield-halved text-blue-500 ml-1"></i>
                     </h1>
-                    <p class="text-blue-300 text-sm font-medium tracking-wide">
+                    <p class="sk-accent text-sm font-medium tracking-wide">
                         <span id="profile-role">Administrator</span> &middot; Akses Command Center Terverifikasi.
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-3">
-                <a href="cctv.html" class="action-btn px-5 py-3 bg-blue-900/40 text-blue-300 font-bold rounded-xl border border-blue-500/40 hover:bg-blue-600 hover:text-white flex items-center gap-2 text-xs uppercase tracking-wider">
+                <a href="cctv.html" class="action-btn px-5 py-3 sk-soft font-bold rounded-xl border hover:bg-blue-600 hover:text-white flex items-center gap-2 text-xs uppercase tracking-wider">
                     <i class="fa-solid fa-video"></i> Buka Stream
                 </a>
-                <button id="btn-logout-dash" type="button" class="action-btn px-5 py-3 bg-red-900/50 text-red-400 font-bold rounded-xl border border-red-500/50 hover:bg-red-600 hover:text-white flex items-center gap-2 text-xs uppercase tracking-wider">
+                <button id="btn-logout-dash" type="button" class="action-btn px-5 py-3 sk-btn-soft-danger font-bold rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider">
                     <i class="fa-solid fa-door-open"></i> Akhiri Sesi
                 </button>
             </div>
@@ -104,14 +103,14 @@
 
         <!-- MANAJEMEN -->
         <div class="glass-card p-6 md:p-8 animate-fade-in-up" style="animation-delay:.1s">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-900/50 pb-6 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b sk-line pb-6 mb-6">
                 <div class="flex items-center gap-3">
-                    <div class="p-3 bg-blue-900/50 rounded-2xl text-blue-400 border border-blue-500/30">
+                    <div class="p-3 sk-soft rounded-2xl">
                         <i class="fa-solid fa-server text-xl"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white uppercase tracking-wider">Manajemen Infrastruktur CCTV</h2>
-                        <p class="text-xs text-slate-400 font-medium mt-1">Kelola direktori titik kamera pemantau lalu lintas.</p>
+                        <h2 class="text-xl font-bold sk-ink uppercase tracking-wider">Manajemen Infrastruktur CCTV</h2>
+                        <p class="text-xs sk-muted font-medium mt-1">Kelola direktori titik kamera pemantau lalu lintas.</p>
                     </div>
                 </div>
 
@@ -122,7 +121,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                    <label for="filter-zona" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Zona Wilayah</label>
+                    <label for="filter-zona" class="block text-[10px] font-bold sk-accent uppercase mb-2 pl-1 tracking-widest">Zona Wilayah</label>
                     <div class="relative">
                         <i class="fa-solid fa-map-location-dot absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 z-10"></i>
                         <select id="filter-zona" class="glass-input w-full p-4 pl-12 pr-10 outline-none font-bold cursor-pointer appearance-none">
@@ -133,7 +132,7 @@
                 </div>
 
                 <div>
-                    <label for="filter-status" class="block text-[10px] font-bold text-blue-400 uppercase mb-2 pl-1 tracking-widest">Status Node</label>
+                    <label for="filter-status" class="block text-[10px] font-bold sk-accent uppercase mb-2 pl-1 tracking-widest">Status Node</label>
                     <div class="relative">
                         <i class="fa-solid fa-signal absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 z-10"></i>
                         <select id="filter-status" class="glass-input w-full p-4 pl-12 pr-10 outline-none font-bold cursor-pointer appearance-none">
@@ -147,20 +146,20 @@
             </div>
 
             <div class="flex items-center justify-between mb-3">
-                <div id="status-text" class="text-xs text-slate-400 font-medium flex items-center gap-2">
+                <div id="status-text" class="text-xs sk-muted font-medium flex items-center gap-2">
                     <i class="fa-solid fa-circle-info text-blue-500"></i>
                     <span id="status-text-body">Menampilkan seluruh node terdaftar.</span>
                 </div>
-                <button id="btn-reset-demo" type="button" class="text-[10px] font-bold text-slate-500 hover:text-red-400 uppercase tracking-widest transition">
-                    <i class="fa-solid fa-rotate-left"></i> Reset data demo
+                <button id="btn-reset-demo" type="button" class="text-[10px] font-bold sk-muted hover:text-red-500 uppercase tracking-widest transition">
+                    <i class="fa-solid fa-rotate-left"></i> Reset data node
                 </button>
             </div>
 
             <div id="node-cards" class="md:hidden space-y-3"></div>
 
-            <div id="node-table" class="hidden md:block overflow-x-auto rounded-2xl border border-blue-900/50">
+            <div id="node-table" class="hidden md:block overflow-x-auto rounded-2xl border sk-line">
                 <table class="w-full text-left text-sm">
-                    <thead class="sk-panel-2 text-[10px] uppercase tracking-widest text-blue-400">
+                    <thead class="sk-panel-2 text-[10px] uppercase tracking-widest sk-accent">
                         <tr>
                             <th class="px-4 py-3 font-bold">Node</th>
                             <th class="px-4 py-3 font-bold">Zona / Jalan</th>
@@ -169,7 +168,7 @@
                             <th class="px-4 py-3 font-bold text-right">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody id="node-table-body" class="divide-y divide-blue-900/40"></tbody>
+                    <tbody id="node-table-body" class="sk-divide"></tbody>
                 </table>
             </div>
         </div>
@@ -181,14 +180,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261107a"></script>
-<script src="js/firebase-config.js?v=20261107a"></script>
-<script src="js/firebase-client.js?v=20261107a"></script>
-<script src="js/config.js?v=20261107a"></script>
+<script src="js/public-config.js?v=20261107g"></script>
+<script src="js/firebase-config.js?v=20261107g"></script>
+<script src="js/firebase-client.js?v=20261107g"></script>
+<script src="js/config.js?v=20261107g"></script>
 
-<script src="js/store.js?v=20261107a"></script>
-<script src="js/auth.js?v=20261107a"></script>
-<script src="js/app.js?v=20261107a"></script>
-<script src="js/dashboard.js?v=20261107a"></script>
+<script src="js/store.js?v=20261107g"></script>
+<script src="js/auth.js?v=20261107g"></script>
+<script src="js/app.js?v=20261107g"></script>
+<script src="js/dashboard.js?v=20261107g"></script>
 </body>
 </html>

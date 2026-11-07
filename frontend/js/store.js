@@ -101,6 +101,28 @@
     let readyPromise = null;
 
     const statsCache = new Map();
+    /* Agregat statistik dari Firebase (GET /api/stats/telemetry). Selama belum
+       ada sampel, halaman memakai simulasi deterministik lama. */
+    let statsTelemetry = null;
+    let statsSource = 'simulasi';
+    let statsLoadedAt = null;
+    let statsLoading = null;
+
+    function emptyBucket() {
+        return { mobil: 0, motor: 0, truk: 0, bus: 0, total: 0 };
+    }
+
+    function firebaseHour(nodeId, dayKey, hour) {
+        const today = statsTelemetry && statsTelemetry.hourly ? statsTelemetry.hourly[nodeId] : null;
+        if (!today || dayKey !== dateKey(new Date())) return emptyBucket();
+        return Object.assign(emptyBucket(), today[hour] || {});
+    }
+
+    function firebaseDay(nodeId, dayKey) {
+        const day = statsTelemetry && statsTelemetry.daily ? statsTelemetry.daily[dayKey] : null;
+        if (!day || !day[nodeId]) return emptyBucket();
+        return Object.assign(emptyBucket(), day[nodeId]);
+    }
 
     let aiState = readJson(AI_KEY, {});
     if (typeof aiState !== 'object' || aiState === null) aiState = {};
@@ -471,6 +493,8 @@
             const cfg = PERIODS[key];
             const cameras = nodes.map(n => ({ ...n }));
             const activeCameras = cameras.filter(c => c.aktif);
+            const useFirebase = statsSource === 'firebase' && !!statsTelemetry;
+            const countedCameras = useFirebase ? cameras : activeCameras;
             const today = startOfDay(new Date());
             const buckets = [];
             const perNodeMap = new Map(cameras.map(cam => [cam.id, {
@@ -481,7 +505,11 @@
             let rangeStart = today;
 
             if (cfg.unit === 'hour') {
-                const seriesByNode = activeCameras.map(cam => ({ cam, series: daySeries(cam, dateKey(today)) }));
+                const todayKey = dateKey(today);
+                const seriesByNode = countedCameras.map(cam => ({
+                    cam,
+                    series: useFirebase ? null : daySeries(cam, todayKey)
+                }));
 
                 for (let hour = 0; hour < 24; hour += 1) {
                     const bucket = {
@@ -491,7 +519,9 @@
                     };
 
                     seriesByNode.forEach(({ cam, series }) => {
-                        const value = hourCompose(series[hour]);
+                        const value = useFirebase
+                            ? firebaseHour(cam.id, todayKey, hour)
+                            : hourCompose(series[hour]);
                         bucket.mobil += value.mobil;
                         bucket.motor += value.motor;
                         bucket.truk += value.truk;
@@ -522,9 +552,11 @@
                     }
 
                     const dayKey = dateKey(day);
-                    for (let i = 0; i < activeCameras.length; i += 1) {
-                        const cam = activeCameras[i];
-                        const totals = composeSeries(daySeries(cam, dayKey));
+                    for (let i = 0; i < countedCameras.length; i += 1) {
+                        const cam = countedCameras[i];
+                        const totals = useFirebase
+                            ? firebaseDay(cam.id, dayKey)
+                            : composeSeries(daySeries(cam, dayKey));
 
                         bucket.mobil += totals.mobil;
                         bucket.motor += totals.motor;
@@ -555,6 +587,7 @@
                 avgLabel: cfg.avgLabel,
                 peakLabel: cfg.peakLabel,
                 generatedAt: new Date(),
+                dataSource: useFirebase ? 'firebase' : 'simulasi',
                 rangeLabel: key === '1d'
                     ? `Hari ini, ${shortDate(today)}`
                     : key === 'all'
@@ -580,12 +613,61 @@
             return result;
         },
 
-        /** Kembalikan data demo di backend. */
+        /**
+         * Muat agregat statistik dari Firebase lewat backend.
+         * Bila belum ada sampel (atau backend mati), tetap memakai simulasi.
+         */
+        async loadStats(force) {
+            if (statsLoading && !force) return statsLoading;
+
+            statsLoading = (async () => {
+                try {
+                    const data = await apiRead('stats/telemetry');
+                    if (data && data.has_data && data.daily && Object.keys(data.daily).length) {
+                        statsTelemetry = data;
+                        statsSource = 'firebase';
+                    } else {
+                        statsTelemetry = null;
+                        statsSource = 'simulasi';
+                    }
+                    statsLoadedAt = new Date();
+                } catch (err) {
+                    statsTelemetry = null;
+                    statsSource = 'simulasi';
+                    statsLoadedAt = new Date();
+                    console.warn('[Store] Statistik Firebase tidak tersedia:', err.message || err);
+                }
+                statsCache.clear();
+                emit('stats:change', { source: statsSource });
+                return Store.statsInfo();
+            })();
+
+            try {
+                return await statsLoading;
+            } finally {
+                statsLoading = null;
+            }
+        },
+
+        /** Status sumber angka untuk label halaman dan ekspor. */
+        statsInfo() {
+            return {
+                source: statsSource,
+                hasData: !!statsTelemetry,
+                loadedAt: statsLoadedAt,
+                generatedAt: statsTelemetry ? statsTelemetry.generated_at : null,
+                days: statsTelemetry ? statsTelemetry.days : null
+            };
+        },
+
+        /** Kembalikan node ke seed backend (akun Firebase tidak disentuh). */
         async resetDemo() {
             const data = await apiRequest('nodes/reset', { method: 'POST' });
             nodes = Array.isArray(data.nodes) ? data.nodes : [];
             aiState = {};
             statsCache.clear();
+            statsTelemetry = null;
+            statsSource = 'simulasi';
             writeJson(NODES_CACHE_KEY, nodes);
             writeJson(AI_KEY, aiState);
             emit('store:change', { type: 'reset' });

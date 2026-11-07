@@ -19,10 +19,23 @@
     const VALID_ROLES = ['admin', 'teknisi', 'visitor'];
     const ROLE_RANK = { admin: 0, teknisi: 1, visitor: 2 };
 
+    /* Peta halaman -> peran yang boleh membuka. Halaman yang tidak terdaftar
+       (beranda publik, login, register, lupa sandi, stream, statistik) tidak
+       dijaga di sini; stream & statistik memang terbuka untuk Visitor. */
+    const PAGE_ROLES = {
+        'dashboard.html': ['admin', 'teknisi'],
+        'add-data.html': ['admin', 'teknisi'],
+        'akun.html': ['admin']
+    };
+
     let currentUser = null;
     let readyPromise = null;
     let firstResolve = null;
     let lastProfileError = null;
+    /* idle → pending selama Firebase memulihkan sesi → done setelah hasil
+       pertama keluar. Halaman memakai ini untuk membedakan "belum tahu"
+       dari "memang belum login". */
+    let status = 'idle';
 
     function firebaseAuth() {
         return global.SK_FIREBASE && global.SK_FIREBASE.auth ? global.SK_FIREBASE.auth : null;
@@ -136,12 +149,25 @@
         document.dispatchEvent(new CustomEvent('auth:change', { detail: { user: currentUser } }));
     }
 
+    /** Nama berkas halaman aktif, mis. ``akun.html``. */
+    function currentPage() {
+        var name = String(location.pathname || '').split('/').pop();
+        return (name || 'index.html').toLowerCase();
+    }
+
+    /** Halaman awal menurut peran. */
+    function homeFor(role) {
+        return role === 'visitor' ? 'cctv.html' : 'dashboard.html';
+    }
+
     function ready() {
         if (readyPromise) return readyPromise;
+        status = 'pending';
 
         readyPromise = (async function () {
             const auth = firebaseAuth();
             if (!auth) {
+                status = 'done';
                 currentUser = null;
                 emit();
                 return null;
@@ -150,6 +176,7 @@
             const first = new Promise(function (resolve) { firstResolve = resolve; });
             auth.onAuthStateChanged(async function (firebaseUser) {
                 currentUser = firebaseUser ? await loadProfile() : null;
+                status = 'done';
                 emit();
                 if (firstResolve) {
                     const done = firstResolve;
@@ -167,6 +194,11 @@
         roles: ROLE_LABEL,
 
         ready: ready,
+
+        /** true setelah Firebase selesai memulihkan sesi (login atau tidak). */
+        isReady() {
+            return status === 'done';
+        },
 
         user() {
             return currentUser ? Object.assign({}, currentUser) : null;
@@ -201,6 +233,7 @@
                 await auth.signInWithEmailAndPassword(email, password);
                 const user = await loadProfile();
                 currentUser = user;
+                status = 'done';
                 emit();
                 if (!user) {
                     return { ok: false, error: profileErrorHint() };
@@ -227,11 +260,20 @@
                 if (cred.user && cred.user.updateProfile) {
                     await cred.user.updateProfile({ displayName: nama }).catch(function () {});
                 }
-                const profile = await request('akun/self', {
-                    method: 'POST',
-                    body: JSON.stringify({ nama: nama, email: email })
-                });
+                let profile;
+                try {
+                    profile = await request('akun/self', {
+                        method: 'POST',
+                        body: JSON.stringify({ nama: nama, email: email })
+                    });
+                } catch (profileError) {
+                    // Jangan tinggalkan user Auth tanpa profil (akun yatim):
+                    // hapus identitas yang baru dibuat lalu laporkan gagal.
+                    try { await cred.user.delete(); } catch (cleanupError) { /* diabaikan */ }
+                    throw profileError;
+                }
                 currentUser = normalize(profile, cred.user);
+                status = 'done';
                 emit();
                 return { ok: true, user: currentUser, visitor: true };
             } catch (err) {
@@ -255,6 +297,7 @@
         async logout() {
             const auth = firebaseAuth();
             currentUser = null;
+            status = 'done';
             emit();
             if (auth) {
                 try { await auth.signOut(); } catch (err) { console.warn(err); }
@@ -265,8 +308,12 @@
         async requireOperator() {
             const user = await ready();
             if (user && (user.role === 'admin' || user.role === 'teknisi')) return user;
+            if (user) {
+                location.replace('cctv.html?denied=' + encodeURIComponent(currentPage()));
+                return null;
+            }
             const next = encodeURIComponent(location.pathname + location.search);
-            location.replace('login.html?next=' + next + '&reason=' + (user ? 'visitor' : 'login'));
+            location.replace('login.html?next=' + next + '&reason=login');
             return null;
         },
 
@@ -274,10 +321,41 @@
         async requireAdmin() {
             const user = await ready();
             if (user && user.role === 'admin') return user;
+            if (user) {
+                const target = user.role === 'teknisi' ? 'dashboard.html' : 'cctv.html';
+                location.replace(target + '?denied=' + encodeURIComponent(currentPage()));
+                return null;
+            }
             const next = encodeURIComponent(location.pathname + location.search);
-            location.replace('login.html?next=' + next + '&reason=' + (user ? 'forbidden' : 'login'));
+            location.replace('login.html?next=' + next + '&reason=login');
             return null;
         },
+
+        /** Pagar berbasis peta PAGE_ROLES; halaman tak terdaftar lolos apa adanya. */
+        async requirePage(page) {
+            const user = await ready();
+            const name = String(page || currentPage()).toLowerCase();
+            const allowed = PAGE_ROLES[name];
+            if (!allowed) return user;
+            if (!user) {
+                const next = encodeURIComponent(location.pathname + location.search);
+                location.replace('login.html?next=' + next + '&reason=login');
+                return null;
+            }
+            if (allowed.indexOf(user.role) >= 0) return user;
+            const target = user.role === 'visitor' ? 'cctv.html' : 'dashboard.html';
+            location.replace(target + '?denied=' + encodeURIComponent(name));
+            return null;
+        },
+
+        /** true bila peran boleh membuka halaman (tanpa mengalihkan). */
+        canAccess(page, role) {
+            const allowed = PAGE_ROLES[String(page || '').toLowerCase()];
+            return !allowed || allowed.indexOf(role || (currentUser && currentUser.role)) >= 0;
+        },
+
+        homeFor: homeFor,
+        currentPage: currentPage,
 
         /* --- CRUD akun, khusus Administrator (lewat /api/akun) ----------- */
 
@@ -330,10 +408,6 @@
             } catch (err) {
                 return { ok: false, error: err.message };
             }
-        },
-
-        async resetAccounts() {
-            return { ok: false, error: 'Akun kini dikelola Firebase Auth; tidak ada reset demo.' };
         },
 
         onChange(callback) {

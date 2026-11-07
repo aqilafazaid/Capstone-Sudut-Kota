@@ -8,8 +8,8 @@ Halaman berjalan tanpa build step dan tanpa server Python: cukup HTML, CSS, dan 
 | Bagian | Status |
 |--------|--------|
 | Frontend statis (`frontend/`) | **Selesai** — 8 halaman, pemutar HLS, panel kontrol AI, CRUD node, statistik + ekspor |
-| Firebase Auth + Realtime Database | **Ditunda** — digantikan lapisan demo di `js/store.js` dan `js/auth.js` |
-| Backend AI lokal (`ai_engine/`) | Belum dipindah/diubah pada tahap ini |
+| Firebase Auth + Realtime Database | **Aktif** — identitas di Firebase Auth; profil/peran dan agregat statistik di RTDB |
+| Backend lokal (`backend/`) | Flask API + kolektor statistik + engine AI (ffmpeg/HLS) |
 | Deployment Vercel | Siap — `vercel.json` di root, `outputDirectory: frontend` |
 
 ## Navigasi
@@ -19,8 +19,9 @@ identik di semua halaman. **Beranda tidak lagi jadi item menu** — logo bundar 
 kiri navbar yang menjadi tautan ke `index.html` (dan diberi cincin biru saat halaman aktif).
 
 - **Dashboard hanya muncul untuk Administrator dan Teknisi**, **Akun hanya untuk Administrator**.
-  Visitor melihat tiga menu; tautan muncul/hilang seketika saat login atau logout tanpa memuat
-  ulang halaman.
+  **Visitor hanya boleh membuka Stream dan Statistik**; membuka Dashboard, Tambah Data, Kelola
+  Akun, atau Beranda akan dialihkan ke Stream dengan pesan penolakan. Tautan muncul/hilang
+  seketika saat login atau logout tanpa memuat ulang halaman.
 - **Teks berjalan** di bar bawah (tampil ≥1024 px) memakai marquee dua salinan identik yang
   digeser tepat satu salinan, jadi sambungannya tidak terlihat dan tidak ada jeda kosong.
   Kecepatannya tetap ~55 px/detik berapa pun panjang teksnya dan berhenti saat kursor berada di atas
@@ -150,7 +151,7 @@ Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 | Konfigurasi kamera (RTSP) | `backend/data/sudutkota.db` (SQLite) | sumber kebenaran; RTSP tidak pernah dikirim ke peramban |
 | Identitas operator | Firebase Authentication | email + kata sandi |
 | Profil & peran operator | RTDB `<RTDB_ROOT>/akun/<uid>` | ditulis backend lewat Admin SDK, bukan klien |
-| Statistik | simulasi `Store.stats()` | belum tersambung ke RTDB |
+| Statistik | RTDB `<RTDB_ROOT>/statistik/<tanggal>/<jam>/<node>` dan `<RTDB_ROOT>/statistik_harian/<tanggal>/<node>` | agregat sampel telemetri AI + agregat harian, ditulis kolektor backend |
 | Konfigurasi Firebase Web SDK | `backend/.env` → `frontend/js/firebase-config.js` | kunci publik; hasil `sync_public_config.py` |
 | Alamat backend untuk Vercel | `backend/.env` (`PUBLIC_BACKEND_URL`) → `frontend/js/public-config.js` | hasil skrip yang sama |
 
@@ -201,11 +202,14 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 | GET | `/api/nodes` | publik | daftar node (tanpa RTSP) |
 | GET | `/hls/<cam>/index.m3u8`, `/hls/<cam>/seg_*.ts` | publik | playlist & segmen |
 | GET | `/api/streams` | publik | status proses ffmpeg |
+| GET | `/api/stats/telemetry` | publik | agregat statistik per jam/hari dari RTDB (`?days=N`) |
 | GET | `/api/nodes/<id>` | teknisi, admin | detail + RTSP untuk form edit |
 | POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node |
 | POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
 | GET | `/api/status` | teknisi, admin | path database, daftar model |
-| POST | `/api/nodes/reset` | admin | reset node ke seed |
+| POST | `/api/nodes/reset` | teknisi, admin | reset node ke seed |
+| POST | `/api/stats/collect` | teknisi, admin | paksa satu sampel statistik |
+| POST | `/api/stats/seed` | teknisi, admin | isi agregat contoh (`{"days":365,"reset":true}`) |
 | GET/PUT/DELETE | `/api/akun[/<uid>]` | admin | kelola akun petugas |
 | GET | `/api/akun/me` | login | profil sendiri |
 | POST | `/api/akun/self` | login | buat profil saat pendaftaran (peran visitor) |
@@ -235,9 +239,9 @@ dengan profil di RTDB `/akun/<uid>`:
 
 | Peran | Kode | Akses |
 |---|---|---|
-| Administrator | `admin` | semua halaman, termasuk Kelola Akun dan reset node |
-| Teknisi | `teknisi` | beranda, stream, statistik, dashboard node, kontrol AI |
-| Visitor | `visitor` | beranda, stream, statistik; tanpa dashboard |
+| Administrator | `admin` | semua halaman, termasuk Kelola Akun |
+| Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, AI, dan reset |
+| Visitor | `visitor` | hanya Stream dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
 
 Pendaftaran mandiri (`register.html`) selalu membuat akun Visitor: Firebase Auth membuat
 user, lalu `POST /api/akun/self` menulis profilnya. Body `peran` maupun `nip` dari peramban
@@ -262,6 +266,9 @@ Kata sandi diminta lewat prompt, tidak masuk riwayat shell.
 ## Deploy ke Vercel
 
 1. Import repo ini dengan **Root Directory kosong** (root repo, bukan `frontend`).
+   `.vercelignore` mengecualikan `backend/`, `docs/`, `tools/`, seluruh launcher
+   `*.bat`/`*.sh` (termasuk `start-backend.bat` dan `start-frontend.bat`), serta berkas
+   rahasia lokal — jadi hanya isi `frontend/` yang bisa disajikan.
 2. Jangan isi Framework Preset / Build Command / Output Directory di dashboard: `vercel.json`
    di root sudah mengunci `framework: null`, `buildCommand: null`, dan
    `outputDirectory: "frontend"`. Framework preset yang tersimpan sebagai Flask akan
@@ -278,12 +285,11 @@ Backend menyemai 3 node Pekalongan (`cam_29`, `cam_35`, `cam_43`) saat
 `ALLOW_TEST_SOURCES=true`; default-nya `false`.
 
 - `localStorage['sudutkota.nodes.cache.v2']` — cache baca, bukan sumber kebenaran.
-- `localStorage['sudutkota.ai.v1']` — status AI (masih demo).
-- `localStorage['sudutkota.writeToken']` — token operator.
-- `localStorage['sudutkota.session.v1']` — sesi login demo.
+- `localStorage['sudutkota.ai.v1']` — status AI lokal (belum tersinkron ke RTDB).
+- `localStorage['sudutkota.backend']` — override alamat backend di lingkungan non-lokal.
 
-Tombol **Reset data demo** memanggil `POST /api/nodes/reset` (butuh token),
-mengembalikan node ke seed backend, lalu akun ke akun demo.
+Tombol **Reset data** memanggil `POST /api/nodes/reset` (teknisi/admin),
+mengembalikan node ke seed backend. Akun Firebase **tidak** ikut direset.
 
 ## Titik integrasi backend dan Firebase
 
@@ -298,14 +304,18 @@ Store.list()                     Store.get(id)          Store.byZone()
 Store.upsert(camera)             Store.remove(id)       Store.fetchDetail(id)
 Store.getAi(id)                  Store.setAi(id, patch)
 Store.subscribeTelemetry(id, cb) Store.onChange(cb)
+Store.loadStats(force)           Store.statsInfo()      Store.stats(period)
 
-// auth.js — masih demo; titik integrasi Firebase Auth nanti
+// auth.js — Firebase Auth + peran dari /api/akun/me
 Auth.login(identifier, password) Auth.register({...})   Auth.logout()
-Auth.user()                      Auth.isOperator()      Auth.requireOperator()
+Auth.user()                      Auth.isOperator()      Auth.isAdmin()
+Auth.requireOperator()           Auth.requireAdmin()    Auth.requirePage()
+Auth.canAccess(page, role)       Auth.homeFor(role)
 ```
 
-Akun dan statistik belum dipindah. Saat Firebase Auth/RTDB diaktifkan, ganti isi
-`auth.js` dan sumber `Store.stats()`; node tetap di backend.
+Akun sudah sepenuhnya di Firebase Authentication + RTDB, dan statistik dibaca dari
+agregat RTDB lewat `Store.loadStats()`. Yang masih lokal hanya status toggle AI
+(`localStorage['sudutkota.ai.v1']`) dan telemetri demo di halaman Stream.
 
 ## Halaman Statistik & Ekspor
 
@@ -362,9 +372,40 @@ Tata letak kartu judul:
 - **<1280 px** — judul di atas, kolom kontrol di bawahnya dengan tepi kiri sejajar teks judul.
 - **<640 px** — tombol interval menjadi grid 4 kolom (dua baris), tanpa bar geser.
 
-Pustaka ekspor dimuat dari CDN hanya di halaman ini. Angkanya berasal dari model simulasi
-deterministik (per node, per hari, per jam), jadi tidak berubah saat halaman dimuat ulang. Saat
-telemetri Firebase tersambung, cukup ganti isi `Store.stats()`; halaman dan ekspor tidak berubah.
+Pustaka ekspor dimuat dari CDN hanya di halaman ini. Angka diambil dari agregat
+telemetri AI di RTDB: `<RTDB_ROOT>/statistik/<tanggal>/<jam>/<node>` untuk periode
+**1 Hari** dan `<RTDB_ROOT>/statistik_harian/<tanggal>/<node>` untuk periode lain.
+Kolektor backend mengambil sampel tiap `STATS_SAMPLE_SECONDS` detik dan mengakumulasi
+keduanya sekaligus, sehingga total "1 Hari" selalu sama dengan kontribusi hari itu di
+"1 Minggu". Agregat harian dibaca dengan `start_at`/`end_at` pada kunci tanggal, jadi
+satu muat halaman tidak pernah menarik seluruh arsip jam (yang berarti ±26.000 record
+untuk satu tahun). Sampel yang lebih tua dari `STATS_STALE_SECONDS` dilewati agar stream
+mati tidak menambah angka.
+
+Selama belum ada satu pun sampel (mis. AI belum berjalan), halaman memakai simulasi
+deterministik lama dan menandainya **data simulasi**. Untuk demo, agregat contoh diisi
+lewat endpoint khusus (teknisi/admin) atau langsung dari konsol backend:
+
+```bash
+# teknisi/admin yang login; token Firebase di header Authorization
+curl -X POST http://127.0.0.1:5000/api/stats/seed \
+     -H "Authorization: Bearer <ID_TOKEN>" -H "Content-Type: application/json" \
+     -d '{"days": 365}'            # 365 hari terakhir
+#   -d '{"reset": true}'          # kosongkan kedua koleksi dulu, lalu isi ulang
+```
+
+```bash
+cd backend
+python -c "import stats; print(stats.seed_dummy(days=365, reset=False))"
+```
+
+Tanpa `days`, rentangnya 2019-01-01 s.d. hari ini sehingga semua tab interval terisi.
+Angkanya deterministik per (node, tanggal) dan mengikuti model simulasi lama, sehingga
+seluruh interval konsisten dan pengisian ulang tidak menggandakan angka. Setelah data ada,
+label halaman berubah menjadi **sumber: Firebase RTDB** dan ekspor PDF/CSV ikut menulis
+sumber itu. Sebelum data inferensi sungguhan dipakai, jalankan dengan `reset` supaya
+agregat contoh tidak tercampur hitungan YOLO. Rentang baca dibatasi `STATS_MAX_DAYS` hari
+(default 4000, cukup untuk periode "Seluruhnya").
 
 ## Cache aset lokal
 
@@ -462,3 +503,6 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
    belum termasuk pekerjaan ini.
 7. **CSP belum dipasang.** Situs memuat `cdn.tailwindcss.com` (JIT, butuh `unsafe-eval`)
    dan banyak script inline; CSP yang benar menuntut build step lebih dulu.
+8. **Kredensial awal.** Halaman login tidak lagi menampilkan akun demo. Kata sandi akun
+   bootstrap harus diganti setelah serah terima, tidak boleh ditulis di repo, dan akun
+   yatim dapat diperiksa dengan `python scripts/audit_accounts.py`.

@@ -68,17 +68,33 @@ class HlsStream:
                 return {"ok": True, "sudah_berjalan": True, **self.status()}
 
             self.dir.mkdir(parents=True, exist_ok=True)
-            for old in self.dir.glob("*"):
-                old.unlink(missing_ok=True)
+            try:
+                for old in self.dir.glob("*"):
+                    old.unlink(missing_ok=True)
+            except OSError as exc:
+                # Folders can still be held by an ffmpeg process from a previous
+                # backend run (Windows keeps inherited handles open). Report it
+                # instead of crashing the autostart thread.
+                return {
+                    "ok": False,
+                    "error": f"Folder HLS masih dipakai proses lain: {exc}. Hentikan ffmpeg lama lalu coba lagi.",
+                    **self.status(),
+                }
 
             self.source = rtsp_url
             self.transcoding = not copy
             cmd = self._build_command(rtsp_url, copy)
 
+            # Close the parent handle immediately after spawn: on Windows the
+            # child inherits it, and keeping it open here would block the next
+            # start() from deleting ffmpeg.log.
             log = open(self._log_path, "wb")
-            self.process = subprocess.Popen(
-                cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=log, cwd=str(self.dir)
-            )
+            try:
+                self.process = subprocess.Popen(
+                    cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=log, cwd=str(self.dir)
+                )
+            finally:
+                log.close()
             self.started_at = time.time()
 
             # Tunggu playlist pertama muncul (maks 15 dtk) supaya klien tidak

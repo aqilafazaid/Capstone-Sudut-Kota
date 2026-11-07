@@ -6,28 +6,60 @@
    Tema dikendalikan kelas `dark` pada <html>. Warna permukaan memakai
    variabel CSS (--sk-*) supaya halaman console (Stream, Dashboard, Statistik)
    ikut berubah tanpa menulis dua set kelas Tailwind di setiap elemen.
+
+   Aturan penulisan: markup TIDAK boleh memakai warna gelap-hardcoded untuk
+   permukaan/teks (mis. `bg-[#050a1f]`, `text-white` di dalam kartu). Pakai
+   kelas semantik di bawah supaya tema terang dan gelap selalu sinkron.
    ========================================================================== */
 
 /* --- 1. TOKEN TEMA (terang = cadangan, gelap = bawaan .dark) --- */
 :root {
+    color-scheme: light;
+
     --sk-primary: #2563eb;
     --sk-primary-dark: #1e3a8a;
     --sk-accent-glow: #3b82f6;
-    --sk-warning: #b45309;
+    --sk-warning: #92400e;
 
     --sk-bg-body: #eef2f7;
     --sk-surface: #ffffff;
     --sk-surface-2: #f8fafc;
-    --sk-surface-hover: #f1f5f9;
+    --sk-surface-3: #f1f5f9;
+    --sk-surface-hover: #e9eef5;
     --sk-border: #cbd5e1;
+    --sk-border-soft: #e2e8f0;
     --sk-text-main: #0f172a;
     --sk-text-muted: #475569;
+    --sk-text-faint: #64748b;
+
+    --sk-accent-ink: #1d4ed8;
+    --sk-accent-soft: rgba(37, 99, 235, 0.08);
+    --sk-accent-border: rgba(37, 99, 235, 0.28);
+
+    --sk-danger-ink: #b91c1c;
+    --sk-danger-soft: #fef2f2;
+    --sk-danger-border: #fecaca;
+    --sk-success-ink: #047857;
+    --sk-success-soft: #ecfdf5;
+    --sk-success-border: #a7f3d0;
+    --sk-warning-ink: #b45309;
+    --sk-warning-soft: #fffbeb;
+    --sk-warning-border: #fcd34d;
+
+    --sk-chip-bg: #f1f5f9;
+    --sk-chip-border: #cbd5e1;
+    --sk-chip-ink: #334155;
+
+    --sk-auth-card: #ffffff;
+    --sk-auth-card-border: #e2e8f0;
 
     --sk-notice-bg: #fffbeb;
     --sk-notice-border: #f59e0b;
 }
 
 html.dark {
+    color-scheme: dark;
+
     --sk-primary: #2563eb;
     --sk-primary-dark: #1e3a8a;
     --sk-accent-glow: #3b82f6;
@@ -36,42 +68,128 @@ html.dark {
     --sk-bg-body: #030718;
     --sk-surface: #0a143c;
     --sk-surface-2: #050a1f;
+    --sk-surface-3: rgba(3, 7, 24, 0.6);
     --sk-surface-hover: #0f172a;
     --sk-border: #1e3a8a;
+    --sk-border-soft: rgba(30, 58, 138, 0.5);
     --sk-text-main: #f8fafc;
     --sk-text-muted: #94a3b8;
+    --sk-text-faint: #94a3b8;
+
+    --sk-accent-ink: #60a5fa;
+    --sk-accent-soft: rgba(37, 99, 235, 0.18);
+    --sk-accent-border: rgba(59, 130, 246, 0.35);
+
+    --sk-danger-ink: #f87171;
+    --sk-danger-soft: rgba(127, 29, 29, 0.35);
+    --sk-danger-border: rgba(239, 68, 68, 0.4);
+    --sk-success-ink: #34d399;
+    --sk-success-soft: rgba(6, 78, 59, 0.35);
+    --sk-success-border: rgba(16, 185, 129, 0.4);
+    --sk-warning-ink: #fbbf24;
+    --sk-warning-soft: rgba(120, 53, 15, 0.35);
+    --sk-warning-border: rgba(245, 158, 11, 0.4);
+
+    --sk-chip-bg: rgba(255, 255, 255, 0.06);
+    --sk-chip-border: rgba(59, 130, 246, 0.35);
+    --sk-chip-ink: #cbd5e1;
+
+    --sk-auth-card: rgba(3, 7, 24, 0.9);
+    --sk-auth-card-border: rgba(59, 130, 246, 0.3);
 
     --sk-notice-bg: rgba(120, 53, 15, 0.35);
     --sk-notice-border: #b45309;
 }
 
-/* --- 2. KELAS PERMUKAAN --- */
+/* --- 2. KELAS PERMUKAAN & TEKS --- */
 .sk-root { background-color: var(--sk-bg-body); color: var(--sk-text-main); }
 .sk-panel { background-color: var(--sk-surface); color: var(--sk-text-main); }
 .sk-panel-2 { background-color: var(--sk-surface-2); color: var(--sk-text-main); }
+.sk-panel-3 { background-color: var(--sk-surface-3); color: var(--sk-text-main); }
 .sk-line { border-color: var(--sk-border); }
+.sk-line-soft { border-color: var(--sk-border-soft); }
 .sk-ink { color: var(--sk-text-main); }
 .sk-muted { color: var(--sk-text-muted); }
+.sk-faint { color: var(--sk-text-faint); }
+.sk-accent { color: var(--sk-accent-ink); }
 
-/* Di tema terang, teks putih di atas panel jadi tidak terbaca. Aturan ini
-   hanya mengenai elemen tanpa latar sendiri, sehingga tombol dan badge
-   berwarna tetap putih. */
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) .text-white:not([class*="bg-"]) {
+/* Permukaan lembut beraksen biru: kotak ikon, tombol sekunder, badge. */
+.sk-soft {
+    background-color: var(--sk-accent-soft);
+    border: 1px solid var(--sk-accent-border);
+    color: var(--sk-accent-ink);
+}
+
+/* Chip netral: badge jumlah, label peran, status sekunder. */
+.sk-chip {
+    background-color: var(--sk-chip-bg);
+    border: 1px solid var(--sk-chip-border);
+    color: var(--sk-chip-ink);
+}
+
+/* Baris tabel: garis antar-baris + hover yang mengikuti tema. */
+.sk-divide > :not([hidden]) ~ :not([hidden]) { border-top: 1px solid var(--sk-border-soft); }
+.sk-row-hover { transition: background-color 0.15s ease; }
+.sk-row-hover:hover { background-color: var(--sk-surface-hover); }
+
+/* Kotak pesan (alert/notice) — jangan tulis bg-red-900/40 langsung di markup. */
+.sk-alert {
+    border: 1px solid var(--sk-border);
+    border-radius: 14px;
     color: var(--sk-text-main);
 }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-blue-300, .text-blue-400, .text-slate-300, .text-slate-400) {
-    color: var(--sk-text-muted);
+.sk-alert-error {
+    background-color: var(--sk-danger-soft);
+    border-color: var(--sk-danger-border);
+    color: var(--sk-danger-ink);
+}
+.sk-alert-success {
+    background-color: var(--sk-success-soft);
+    border-color: var(--sk-success-border);
+    color: var(--sk-success-ink);
+}
+.sk-alert-warning {
+    background-color: var(--sk-warning-soft);
+    border-color: var(--sk-warning-border);
+    color: var(--sk-warning-ink);
+}
+.sk-alert-info {
+    background-color: var(--sk-accent-soft);
+    border-color: var(--sk-accent-border);
+    color: var(--sk-accent-ink);
 }
 
-/* Label kecil berwarna pada kartu: versi 400 terlalu pucat di latar putih. */
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-sky-400, .text-sky-300) { color: #0369a1; }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-cyan-400, .text-cyan-300) { color: #0e7490; }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-amber-400, .text-amber-300) { color: #b45309; }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-orange-400, .text-orange-300) { color: #c2410c; }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-emerald-400, .text-emerald-300) { color: #047857; }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-purple-400, .text-purple-300) { color: #7e22ce; }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-yellow-400, .text-yellow-300) { color: #a16207; }
-html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-red-400, .text-red-300) { color: #b91c1c; }
+/* Tombol warna lembut: tetap terbaca di latar putih maupun navy. */
+.sk-btn-soft-danger {
+    background-color: var(--sk-danger-soft);
+    border: 1px solid var(--sk-danger-border);
+    color: var(--sk-danger-ink);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.sk-btn-soft-danger:hover { background-color: #dc2626; border-color: #dc2626; color: #ffffff; }
+
+.sk-btn-soft-success {
+    background-color: var(--sk-success-soft);
+    border: 1px solid var(--sk-success-border);
+    color: var(--sk-success-ink);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.sk-btn-soft-success:hover { background-color: #059669; border-color: #059669; color: #ffffff; }
+
+.sk-btn-ghost {
+    background-color: var(--sk-chip-bg);
+    border: 1px solid var(--sk-border);
+    color: var(--sk-text-muted);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.sk-btn-ghost:hover { background-color: var(--sk-surface-hover); color: var(--sk-text-main); }
+
+/* Kartu halaman otorisasi (login/registrasi/reset). */
+.sk-auth-card {
+    background-color: var(--sk-auth-card);
+    border: 1px solid var(--sk-auth-card-border);
+    color: var(--sk-text-main);
+}
 
 .sk-notice {
     background: var(--sk-notice-bg);
@@ -80,12 +198,40 @@ html:not(.dark) :is(.sk-panel, .sk-panel-2, .glass-card) :is(.text-red-400, .tex
     border-radius: 14px;
 }
 
+/* Kompatibilitas markup lama: teks Tailwind yang ditulis untuk tema gelap
+   dipetakan ke token tema saat mode terang aktif. Elemen berlatarbelakang
+   sendiri (tombol, badge berwarna) tidak disentuh. */
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) .text-white:not([class*="bg-"]) {
+    color: var(--sk-text-main);
+}
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-blue-300, .text-blue-400) {
+    color: var(--sk-accent-ink);
+}
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500) {
+    color: var(--sk-text-muted);
+}
+
+/* Label kecil berwarna pada kartu: versi 400 terlalu pucat di latar putih. */
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-sky-400, .text-sky-300) { color: #0369a1; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-cyan-400, .text-cyan-300) { color: #0e7490; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-amber-400, .text-amber-300) { color: #b45309; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-orange-400, .text-orange-300) { color: #c2410c; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-emerald-400, .text-emerald-300) { color: #047857; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-purple-400, .text-purple-300) { color: #7e22ce; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-yellow-400, .text-yellow-300) { color: #a16207; }
+html:not(.dark) :is(.sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card) :is(.text-red-400, .text-red-300) { color: #b91c1c; }
+
 /* --- 3. DASAR & SCROLLBAR --- */
 html { scroll-behavior: smooth; }
 
 body {
     -webkit-tap-highlight-color: transparent;
     font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Peralihan halus saat tombol tema ditekan; tidak mengganggu hover. */
+body, .sk-panel, .sk-panel-2, .sk-panel-3, .glass-card, .sk-auth-card {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -324,7 +470,7 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
 .hidden-important { display: none !important; }
 .text-shadow-strong { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8); }
 
-/* --- 12. ADAPTASI LAYAR LEBAR & RASIO -------------------------------- */
+/* --- 15. ADAPTASI LAYAR LEBAR & RASIO -------------------------------- */
 /* Halaman memakai max-w-7xl (1280 px). Pada monitor lebar sisa ruang besar
    membuat konten terlihat kecil dan mengambang di tengah, jadi kontainer
    dinaikkan bertahap mengikuti lebar layar. !important diperlukan karena

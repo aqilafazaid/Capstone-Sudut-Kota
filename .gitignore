@@ -72,3 +72,16 @@ backend/gateway/temp/
 # ==========================================
 # Catatan desain hanya ada di mesin operator, tidak ikut repo.
 docs/
+
+# ==========================================
+# 10. TES (LOKAL SAJA)
+# ==========================================
+# Suite tes hanya ada di mesin operator: tidak ikut repo maupun deploy.
+# Salin ulang dari mesin lokal bila perlu menjalankan `python -m unittest`.
+backend/tests/
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+.coverage
+htmlcov/

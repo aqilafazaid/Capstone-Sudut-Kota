@@ -75,7 +75,7 @@
         const ai = Store.getAi(cam.id);
         const badges = [];
         badges.push(ai.yolo
-            ? `<span class="px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30 text-[10px] font-bold">YOLO ${ai.yolo_model}</span>`
+            ? `<span class="px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 border border-yellow-500/30 text-[10px] font-bold">YOLO ${ai.yolo_model}</span>`
             : '<span class="px-2 py-0.5 rounded bg-slate-500/10 text-slate-600 dark:bg-slate-700/40 dark:text-slate-400 border border-slate-400/40 dark:border-slate-600/40 text-[10px] font-bold">YOLO OFF</span>');
         badges.push(ai.lowlight
             ? `<span class="px-2 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[10px] font-bold">${ai.lowlight_model}</span>`
@@ -103,23 +103,23 @@
 
     /* Ukuran dipisah dari gaya: tabel memakai tombol ikon 36 px, kartu memakai tombol lebar 40 px. */
     const BASE = 'flex items-center justify-center rounded-lg text-xs transition';
-    const EDIT_STYLE = 'bg-yellow-600/15 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500 hover:text-[#050a1f]';
-    const DEL_STYLE = 'bg-red-900/40 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white';
+    const EDIT_STYLE = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-white';
+    const DEL_STYLE = 'sk-btn-soft-danger';
     const CARD_BTN = `${BASE} flex-1 h-10 gap-2 font-bold text-[11px] uppercase tracking-wider`;
 
     /* Kartu untuk ponsel: kolom AI dan aksi tidak lagi tersembunyi di balik gulir. */
     function cardOf(cam) {
         return `
-            <div class="rounded-2xl border border-blue-900/50 sk-panel p-4">
+            <div class="rounded-2xl border sk-line sk-panel p-4">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="font-bold text-white text-sm leading-snug break-words">${cam.nama}</div>
-                        <div class="text-[11px] text-slate-500 font-mono mt-0.5">${cam.id}${cam.channel && cam.channel !== '—' ? ' · CH ' + cam.channel : ''}</div>
+                        <div class="font-bold sk-ink text-sm leading-snug break-words">${cam.nama}</div>
+                        <div class="text-[11px] sk-muted font-mono mt-0.5">${cam.id}${cam.channel && cam.channel !== '—' ? ' · CH ' + cam.channel : ''}</div>
                     </div>
                     ${statusBadge(cam)}
                 </div>
-                <div class="mt-3 text-xs text-slate-300 font-semibold">${cam.zona || '—'}</div>
-                <div class="text-[11px] text-slate-500">${cam.jalan || '—'}</div>
+                <div class="mt-3 text-xs sk-muted font-semibold">${cam.zona || '—'}</div>
+                <div class="text-[11px] sk-muted">${cam.jalan || '—'}</div>
                 <div class="mt-3">${aiBadges(cam)}</div>
                 <div class="mt-4 flex items-center gap-2">
                     ${editLink(cam, `${CARD_BTN} ${EDIT_STYLE}`, 'Edit')}
@@ -133,12 +133,12 @@
 
         if (rows.length === 0) {
             el.tableBody.innerHTML = `
-                <tr><td colspan="5" class="px-4 py-12 text-center text-slate-500 text-sm">
+                <tr><td colspan="5" class="px-4 py-12 text-center sk-muted text-sm">
                     <i class="fa-solid fa-folder-open text-3xl mb-3 block opacity-50"></i>
                     Tidak ada node yang cocok dengan filter.
                 </td></tr>`;
             el.cards.innerHTML = `
-                <div class="rounded-2xl border border-blue-900/50 sk-panel px-4 py-12 text-center text-slate-500 text-sm">
+                <div class="rounded-2xl border sk-line sk-panel px-4 py-12 text-center sk-muted text-sm">
                     <i class="fa-solid fa-folder-open text-3xl mb-3 block opacity-50"></i>
                     Tidak ada node yang cocok dengan filter.
                 </div>`;
@@ -147,14 +147,14 @@
         }
 
         el.tableBody.innerHTML = rows.map(cam => `
-            <tr class="hover:bg-white/5 transition">
+            <tr class="sk-row-hover">
                 <td class="px-4 py-4">
-                    <div class="font-bold text-white">${cam.nama}</div>
-                    <div class="text-[11px] text-slate-500 font-mono">${cam.id}${cam.channel && cam.channel !== '—' ? ' · CH ' + cam.channel : ''}</div>
+                    <div class="font-bold sk-ink">${cam.nama}</div>
+                    <div class="text-[11px] sk-muted font-mono">${cam.id}${cam.channel && cam.channel !== '—' ? ' · CH ' + cam.channel : ''}</div>
                 </td>
                 <td class="px-4 py-4">
-                    <div class="text-xs text-slate-300 font-semibold">${cam.zona || '—'}</div>
-                    <div class="text-[11px] text-slate-500">${cam.jalan || '—'}</div>
+                    <div class="text-xs sk-muted font-semibold">${cam.zona || '—'}</div>
+                    <div class="text-[11px] sk-muted">${cam.jalan || '—'}</div>
                 </td>
                 <td class="px-4 py-4">${statusBadge(cam)}</td>
                 <td class="px-4 py-4">${aiBadges(cam)}</td>
@@ -208,14 +208,12 @@
     el.cards.addEventListener('click', onDeleteClick);
 
     el.resetDemo.addEventListener('click', async () => {
-        if (!confirm('Kembalikan seluruh data node dan akun ke kondisi demo awal?')) return;
+        if (!confirm('Kembalikan seluruh data node ke kondisi awal? Akun operator tidak diubah.')) return;
         try {
             await Store.resetDemo();
-            Auth.resetDemo();
-            App.toast('Data demo dikembalikan. Mengalihkan ke login...', 'info');
-            setTimeout(() => { location.href = 'login.html'; }, 1200);
+            App.toast('Data node dikembalikan ke kondisi awal.', 'success');
         } catch (err) {
-            App.toast(err.message || 'Gagal mereset data demo.', 'error');
+            App.toast(err.message || 'Gagal mereset data node.', 'error');
         }
     });
 

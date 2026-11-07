@@ -14,6 +14,7 @@
 
     const el = {
         rangeLabel: document.getElementById('range-label'),
+        source: document.getElementById('stats-source'),
         kpiTotal: document.getElementById('kpi-total'),
         kpiMobil: document.getElementById('kpi-mobil'),
         kpiMotor: document.getElementById('kpi-motor'),
@@ -32,6 +33,25 @@
 
     const COLORS = { mobil: '#38bdf8', motor: '#22d3ee', truk: '#fbbf24', bus: '#f97316' };
 
+    /* Kanvas tidak ikut berubah lewat CSS. Warna sumbu, grid, dan tooltip
+       dibaca dari token tema setiap kali grafik digambar, lalu grafik
+       digambar ulang saat event `theme:change` (lihat App.applyTheme). */
+    function themeColors() {
+        const css = getComputedStyle(document.documentElement);
+        const dark = document.documentElement.classList.contains('dark');
+        const pick = (name, fallback) => (css.getPropertyValue(name) || '').trim() || fallback;
+        return {
+            tick: pick('--sk-text-faint', dark ? '#94a3b8' : '#64748b'),
+            legend: pick('--sk-text-muted', dark ? '#94a3b8' : '#475569'),
+            grid: dark ? 'rgba(30,58,138,.35)' : 'rgba(148,163,184,.35)',
+            tooltipBg: dark ? 'rgba(3,7,24,.95)' : 'rgba(255,255,255,.97)',
+            tooltipBorder: dark ? '#1e3a8a' : '#cbd5e1',
+            tooltipTitle: dark ? '#ffffff' : '#0f172a',
+            tooltipBody: dark ? '#cbd5e1' : '#334155',
+            donutBorder: dark ? '#020617' : '#ffffff'
+        };
+    }
+
     /* --- Bantu ----------------------------------------------------------- */
     const nf = new Intl.NumberFormat('id-ID');
 
@@ -47,7 +67,7 @@
             .trim() || '-';
     }
 
-    /** Jalan diambil dari node; sebagian node demo memakai nama stream. */
+    /** Jalan diambil dari node; sebagian node tidak punya kolom jalan. */
     function jalanOf(node) {
         const cam = Store.get(node.id);
         return (cam && cam.jalan) || '-';
@@ -72,10 +92,25 @@
         setTimeout(() => URL.revokeObjectURL(url), 4000);
     }
 
+    /** Keterangan sumber di kop PDF/CSV mengikuti data yang benar-benar dipakai. */
+    function sourceLabel() {
+        const info = Store.statsInfo ? Store.statsInfo() : { source: 'simulasi' };
+        return info.source === 'firebase'
+            ? 'Firebase RTDB (agregat telemetri AI)'
+            : 'Simulasi frontend (belum tersambung Firebase)';
+    }
+
     /* --- Render ---------------------------------------------------------- */
     function paintKpi() {
         const s = state.data.summary;
         el.rangeLabel.textContent = state.data.rangeLabel;
+        if (el.source) {
+            const firebase = state.data.dataSource === 'firebase';
+            el.source.textContent = firebase ? 'sumber: Firebase RTDB' : 'data simulasi';
+            el.source.className = firebase
+                ? 'text-emerald-700 dark:text-emerald-400/90'
+                : 'text-amber-700 dark:text-amber-400/80';
+        }
         el.kpiTotal.textContent = fmt(s.total);
         el.kpiMobil.textContent = fmt(s.mobil);
         el.kpiMotor.textContent = fmt(s.motor);
@@ -92,21 +127,21 @@
 
         el.tableCount.textContent = `${rows.length} node`;
         el.tableBody.innerHTML = rows.map(node => `
-            <tr class="hover:bg-white/5 transition">
+            <tr class="sk-row-hover">
                 <td class="px-4 py-3">
-                    <div class="font-bold text-white">${node.nama}</div>
-                    <div class="text-[11px] text-slate-500 font-mono">${node.id}</div>
+                    <div class="font-bold sk-ink">${node.nama}</div>
+                    <div class="text-[11px] sk-muted font-mono">${node.id}</div>
                 </td>
-                <td class="px-4 py-3 text-xs text-slate-300">${node.zona}</td>
+                <td class="px-4 py-3 text-xs sk-muted">${node.zona}</td>
                 <td class="px-4 py-3 text-right text-sm text-sky-700 dark:text-sky-300 font-semibold">${fmt(node.mobil)}</td>
                 <td class="px-4 py-3 text-right text-sm text-cyan-700 dark:text-cyan-300 font-semibold">${fmt(node.motor)}</td>
-                <td class="px-4 py-3 text-right text-sm text-amber-600 dark:text-amber-300 font-semibold">${fmt(node.truk)}</td>
-                <td class="px-4 py-3 text-right text-sm text-orange-600 dark:text-orange-300 font-semibold">${fmt(node.bus)}</td>
+                <td class="px-4 py-3 text-right text-sm text-amber-700 dark:text-amber-300 font-semibold">${fmt(node.truk)}</td>
+                <td class="px-4 py-3 text-right text-sm text-orange-700 dark:text-orange-300 font-semibold">${fmt(node.bus)}</td>
                 <td class="px-4 py-3 text-right text-sm text-slate-900 dark:text-white font-black">${fmt(node.total)}</td>
                 <td class="px-4 py-3 text-center">
                     ${node.aktif
-                        ? '<span class="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">Online</span>'
-                        : '<span class="px-2 py-1 rounded-lg bg-red-500/15 text-red-300 border border-red-500/30 text-[10px] font-black uppercase tracking-wider">Offline</span>'}
+                        ? '<span class="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">Online</span>'
+                        : '<span class="px-2 py-1 rounded-lg bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30 text-[10px] font-black uppercase tracking-wider">Offline</span>'}
                 </td>
             </tr>`).join('');
 
@@ -130,6 +165,7 @@
         }
 
         const buckets = state.data.buckets;
+        const theme = themeColors();
 
         if (state.volumeChart) state.volumeChart.destroy();
         if (state.compositionChart) state.compositionChart.destroy();
@@ -152,24 +188,24 @@
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: 'rgba(3,7,24,.95)',
-                        borderColor: '#1e3a8a',
+                        backgroundColor: theme.tooltipBg,
+                        borderColor: theme.tooltipBorder,
                         borderWidth: 1,
-                        titleColor: '#fff',
-                        bodyColor: '#cbd5e1'
+                        titleColor: theme.tooltipTitle,
+                        bodyColor: theme.tooltipBody
                     }
                 },
                 scales: {
                     x: {
                         stacked: true,
                         grid: { display: false },
-                        ticks: { color: '#64748b', font: { size: 10, weight: '700' }, maxRotation: 0, autoSkip: true }
+                        ticks: { color: theme.tick, font: { size: 10, weight: '700' }, maxRotation: 0, autoSkip: true }
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        grid: { color: 'rgba(30,58,138,.35)' },
-                        ticks: { color: '#64748b', font: { size: 10 } }
+                        grid: { color: theme.grid },
+                        ticks: { color: theme.tick, font: { size: 10 } }
                     }
                 }
             }
@@ -187,7 +223,7 @@
                         state.data.summary.bus
                     ],
                     backgroundColor: [COLORS.mobil, COLORS.motor, COLORS.truk, COLORS.bus],
-                    borderColor: '#020617',
+                    borderColor: theme.donutBorder,
                     borderWidth: 3
                 }]
             },
@@ -198,11 +234,11 @@
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { color: '#94a3b8', font: { size: 11, weight: '700' }, boxWidth: 10, usePointStyle: true }
+                        labels: { color: theme.legend, font: { size: 11, weight: '700' }, boxWidth: 10, usePointStyle: true }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(3,7,24,.95)',
-                        borderColor: '#1e3a8a',
+                        backgroundColor: theme.tooltipBg,
+                        borderColor: theme.tooltipBorder,
                         borderWidth: 1,
                         callbacks: {
                             label: (ctx) => ` ${ctx.label}: ${fmt(ctx.parsed)}`
@@ -269,7 +305,7 @@
         out.push(csvRow(['Laporan Statistik Lalu Lintas - Sudut Kota']));
         out.push(csvRow(['Command Center Dishub Kota Pekalongan']));
         out.push(csvRow(['Dibuat', new Date().toLocaleString('id-ID')]));
-        out.push(csvRow(['Sumber', 'Simulasi frontend (belum tersambung Firebase)']));
+        out.push(csvRow(['Sumber', sourceLabel()]));
         out.push(csvRow(['Isi', periods.length > 1
             ? 'Semua interval: ' + periods.map(p => p.periodLabel).join(', ')
             : periods[0].periodLabel + ' (' + periods[0].rangeLabel + ')']));
@@ -505,7 +541,7 @@
         doc.setFontSize(8.5);
         doc.setTextColor(105, 115, 135);
         doc.text('Sudut Kota - Command Center Dinas Perhubungan ' + ascii(KOP.kota), M, 55.5);
-        doc.text('Dibuat: ' + ascii(new Date().toLocaleString('id-ID')) + '   |   Sumber: simulasi frontend (belum tersambung Firebase)', M, 60);
+        doc.text('Dibuat: ' + ascii(new Date().toLocaleString('id-ID')) + '   |   Sumber: ' + ascii(sourceLabel()), M, 60);
         doc.text('Isi: ' + (periods.length > 1
             ? 'seluruh interval - ' + ascii(periods.map(p => p.periodLabel).join(', '))
             : ascii(periods[0].periodLabel) + ' (' + ascii(periods[0].rangeLabel) + ')'), M, 64.5);
@@ -703,9 +739,27 @@
     if (el.btnPdf) el.btnPdf.addEventListener('click', exportPdf);
     if (el.btnCsv) el.btnCsv.addEventListener('click', exportCsv);
 
-    Store.onChange(() => load(state.period));
+    Store.onChange(() => {
+        Store.loadStats(true).then(() => load(state.period));
+    });
 
-    Store.ready().then(() => load('1d'));
+    /* Tema berubah → warna kanvas harus digambar ulang. */
+    document.addEventListener('theme:change', () => {
+        if (state.data) paintCharts();
+    });
+
+    /* Render simulasi dulu agar halaman tidak pernah kosong, lalu ganti dengan
+       agregat Firebase bila tersedia. */
+    Store.ready()
+        .then(() => {
+            load('1d');
+            return Store.loadStats();
+        })
+        .then(() => load(state.period))
+        .catch((err) => {
+            console.warn('[Statistik] Gagal memuat data:', err);
+            if (!state.data) load('1d');
+        });
 
     /* Hook untuk pengujian otomatis dan pemakaian dari konsol. */
     window.Statistik = {
