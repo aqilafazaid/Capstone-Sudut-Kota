@@ -77,8 +77,8 @@ Capstone-Sudut-Kota/
 ├── docs/                      catatan desain lokal (gitignored)
 ├── vercel.json                deploy: framework Other, output frontend/
 ├── .vercelignore              backend/, docs/, tools/ tidak ikut upload
-├── start-backend.bat          Windows: backend + Tailscale Funnel (satu klik)
-├── start-frontend.bat         Windows: server statis 8787 untuk mode lokal
+├── start-backend.bat          Windows: nginx + Flask + Tailscale Funnel (satu klik)
+├── start-frontend.bat         Windows: server statis loopback 8787 (mode lokal)
 └── README.md
 ```
 
@@ -90,62 +90,69 @@ lagi memindai `backend/` dan tidak mencari entrypoint Python. `backend/`, `docs/
 
 ## Menjalankan lokal
 
-Cara tercepat di Windows — dua jendela cmd, dari root repo:
+Dua mode, keduanya memakai **nginx sebagai pintu masuk** dengan Flask di loopback.
+
+**Cara 1 — frontend di Vercel, satu terminal:**
 
 ```bat
-start-backend.bat     :: terminal 1 -> http://127.0.0.1:5000
-start-frontend.bat    :: terminal 2 -> http://127.0.0.1:8787 (browser terbuka sendiri)
+start-backend.bat     :: nginx + Flask + Tailscale Funnel
 ```
 
-Keduanya berhenti dengan `Ctrl+C`. `start-frontend.bat` menerima port lain
-(`start-frontend.bat 8788`) dan tidak membuka browser bila `SK_NO_OPEN=1`;
-`start-backend.bat` mengikuti `API_PORT` bila diset. Keduanya menolak jalan kalau
-port tujuannya sudah dipakai, dan menyebutkan perintah untuk memeriksanya.
-
-**Mode Vercel — cukup satu terminal.** `start-backend.bat` menjalankan
-`backend/scripts/funnel_serve.py`, yang:
+`start-backend.bat` menyalakan nginx di `127.0.0.1:8080`, Flask di `127.0.0.1:5000`,
+lalu `backend/scripts/funnel_serve.py` yang:
 
 1. menulis `PUBLIC_BACKEND_URL` di `backend/.env` sesuai nama node Tailscale,
 2. menjalankan ulang `scripts/sync_public_config.py` bila `frontend/js/public-config.js`
    belum memuat alamat itu (ikuti perintah commit & push yang dicetak),
-3. menyalakan `tailscale funnel --bg 5000`, dan mematikannya lagi saat backend berhenti.
+3. menyalakan `tailscale funnel --bg 8080`, dan mematikannya lagi saat backend berhenti.
+
+Funnel hanya mencapai nginx: `/api` di-proxy ke Flask, `/hls` dilayani dari disk. Flask
+tidak pernah dipublikasikan, sehingga `limit_req`, batas body, dan header keamanan nginx
+tetap berlaku untuk trafik internet.
+
+**Cara 2 — backend + frontend lokal, Vercel tetap jalan:**
+
+```bat
+start-backend.bat     :: terminal 1 -> nginx 8080 + Funnel untuk Vercel
+start-frontend.bat    :: terminal 2 -> http://127.0.0.1:8787 (browser terbuka sendiri)
+```
+
+Halaman 8787 memanggil `http://127.0.0.1:5000` langsung (`js/config.js` memilih sendiri)
+untuk siklus edit cepat; buka `http://127.0.0.1:8080` untuk menguji jalur nginx yang sama
+dengan produksi. Funnel tetap menyala, jadi halaman Vercel ikut berfungsi.
+
+Server statis 8787 **hanya listen di loopback** — tidak ada akses dari LAN. Keduanya
+berhenti dengan `Ctrl+C`; `start-frontend.bat` menerima port lain
+(`start-frontend.bat 8788`) dan tidak membuka browser bila `SK_NO_OPEN=1`.
+`start-backend.bat` memakai port tetap (5000 Flask, 8080 nginx) dan menolak jalan bila
+salah satunya sudah dipakai. Set `SK_NO_FUNNEL=1` untuk menjalankan backend tanpa membuka
+akses publik.
 
 Funnel harus diaktifkan sekali per mesin di konsol admin Tailscale; bila belum, skrip
-mencetak tautannya dan backend tetap jalan — halaman 8787 memakai
-`http://127.0.0.1:5000` (`js/config.js` memilih sendiri), jadi mode lokal tidak
-terpengaruh.
+mencetak tautannya dan backend tetap jalan — halaman 8787 tidak terpengaruh.
 
-Langkah manualnya:
+Langkah manual (setara dua skrip di atas):
 
-**Terminal 1 — backend (Flask):**
-
-```bash
-cd backend
-.venv/Scripts/activate
-python app.py
-# API langsung: http://127.0.0.1:5000/api/health
-```
-
-**Terminal 2 — frontend statis:**
-
-```bash
-cd frontend
-python -m http.server 8787
-# buka http://127.0.0.1:8787
-```
-
-`js/config.js` mengarahkan halaman 8787 ke `http://127.0.0.1:5000`, dan Flask ikut
-menyajikan `/hls`, jadi stream tetap bisa diputar tanpa nginx.
-
-**nginx (opsional, meniru jalur produksi):**
+**Terminal 1 — nginx + Flask:**
 
 ```bash
 bash backend/gateway/start-nginx.sh      # http://127.0.0.1:8080
-bash backend/gateway/stop-nginx.sh
+cd backend
+.venv/Scripts/activate
+python app.py                            # loopback:5000, di-proxy nginx
+```
+
+**Terminal 2 — frontend statis (opsional, mode lokal):**
+
+```bash
+cd frontend
+python -m http.server --bind 127.0.0.1 8787
+# buka http://127.0.0.1:8787
 ```
 
 nginx menyajikan `frontend/` sekaligus `/api` dan `/hls` dari satu origin; pada jalur ini
-segmen `.ts` dilayani langsung dari disk, tidak melewati Python.
+segmen `.ts` dilayani langsung dari disk, tidak melewati Python. Flask tetap punya route
+`/hls/<path>` (allowlist `.m3u8`/`.ts`) hanya untuk mode dev tanpa nginx.
 
 Bila `backend/.venv` belum ada:
 
@@ -502,8 +509,9 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
 
 1. **Provider Email/Password harus diaktifkan** di Firebase Console → Authentication →
    Sign-in method. Tanpa itu login membalas `auth/operation-not-allowed`.
-2. **Ingress publik.** Halaman Vercel berjalan di HTTPS; backend harus dijangkau lewat
-   HTTPS juga. Rencana: Tailscale Funnel (`tailscale funnel --bg 8080`) → nginx:8080.
+2. **Ingress publik.** Halaman Vercel berjalan di HTTPS; backend dijangkau lewat HTTPS
+   juga. Jalur aktif: `tailscale funnel --bg 8080` → nginx:8080, dinyalakan dan dimatikan
+   oleh `start-backend.bat`. Flask tetap di loopback dan tidak pernah dipublikasikan.
 3. **Stream Pekalongan belum menyala.** Node `cam_29`, `cam_35`, `cam_43` masih
    `aktif: false`; ffmpeg baru dijalankan setelah node diaktifkan dan RTSP-nya terjangkau.
 4. **Kredensial RTSP.** URL RTSP tersimpan plaintext di `backend/data/sudutkota.db` dan
