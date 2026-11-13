@@ -11,8 +11,11 @@
 
     App.init({ active: 'dashboard' });
 
-    const user = await Auth.requireOperator();
-    if (!user) return; // requireOperator sudah mengalihkan ke login.html
+    /* Pagar berbasis fitur: peran hanya bawaan, jadi Administrator bisa
+       membuka Command Center untuk peran apa pun. */
+    const gate = await Auth.guard('dashboard');
+    if (!gate.ok) { if (!gate.redirected) App.blocked('dashboard'); return; }
+    const user = gate.user;
 
     const el = {
         initial: document.getElementById('profile-initial'),
@@ -23,6 +26,7 @@
         sumOffline: document.getElementById('sum-offline'),
         sumZones: document.getElementById('sum-zones'),
         filterZona: document.getElementById('filter-zona'),
+        filterJalan: document.getElementById('filter-jalan'),
         filterStatus: document.getElementById('filter-status'),
         statusText: document.getElementById('status-text-body'),
         tableBody: document.getElementById('node-table-body'),
@@ -59,11 +63,28 @@
         if (zones.includes(current)) el.filterZona.value = current;
     }
 
+    /* Jalan mengikuti zona terpilih (cascade), tetapi tetap bisa dipakai tanpa
+       memilih zona lebih dulu: daftarnya lalu memuat semua ruas jalan. */
+    function paintRoadOptions() {
+        const zona = el.filterZona.value;
+        const current = el.filterJalan.value;
+        const roads = [...new Set(Store.list()
+            .filter(cam => !zona || cam.zona === zona)
+            .map(cam => cam.jalan)
+            .filter(Boolean))].sort();
+
+        el.filterJalan.innerHTML = '<option value="">Semua Jalan</option>' +
+            roads.map(r => `<option value="${r}">${r}</option>`).join('');
+        if (roads.includes(current)) el.filterJalan.value = current;
+    }
+
     function filtered() {
         const zona = el.filterZona.value;
+        const jalan = el.filterJalan.value;
         const status = el.filterStatus.value;
         return Store.list().filter(cam => {
             if (zona && cam.zona !== zona) return false;
+            if (jalan && cam.jalan !== jalan) return false;
             if (status === 'online' && !cam.aktif) return false;
             if (status === 'offline' && cam.aktif) return false;
             return true;
@@ -174,11 +195,16 @@
     function refresh() {
         paintSummary();
         paintZoneOptions();
+        paintRoadOptions();
         paintTable();
     }
 
     /* --- Event ----------------------------------------------------------- */
-    el.filterZona.addEventListener('change', paintTable);
+    el.filterZona.addEventListener('change', () => {
+        paintRoadOptions();
+        paintTable();
+    });
+    el.filterJalan.addEventListener('change', paintTable);
     el.filterStatus.addEventListener('change', paintTable);
 
     async function onDeleteClick(event) {

@@ -5,10 +5,14 @@
    implementasi Store.stats(); halaman ini tidak perlu disentuh.
    ========================================================================== */
 
-(function () {
+(async function () {
     'use strict';
 
     App.init({ active: 'statistik' });
+
+    /* Fitur bisa dicabut Administrator; tamu tetap boleh melihat statistik. */
+    const viewer = await Auth.ready();
+    if (viewer && !Auth.can('statistik')) { App.blocked('statistik'); return; }
 
     const state = { period: '1d', data: null, volumeChart: null, compositionChart: null };
 

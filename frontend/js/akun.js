@@ -12,8 +12,11 @@
 
     App.init({ active: 'akun' });
 
-    const admin = await Auth.requireAdmin();
-    if (!admin) return; // requireAdmin sudah mengalihkan ke login.html
+    /* Akses "akun" kini bisa diberikan ke peran mana pun oleh Administrator,
+       jadi pagar memakai fitur — bukan requireAdmin(). */
+    const gate = await Auth.guard('akun');
+    if (!gate.ok) { if (!gate.redirected) App.blocked('akun'); return; }
+    const admin = gate.user;
 
     /** Cache daftar akun dari /api/akun; halaman ini tidak menulis RTDB. */
     let accounts = [];
@@ -43,6 +46,7 @@
         password: document.getElementById('field-password'),
         passwordHint: document.getElementById('password-hint'),
         togglePassword: document.getElementById('btn-toggle-password'),
+        modalAkses: document.getElementById('modal-akses'),
         error: document.getElementById('form-error'),
         save: document.getElementById('btn-save-user'),
         close: document.getElementById('btn-close-modal'),
@@ -63,6 +67,61 @@
 
     const BASE = 'flex items-center justify-center rounded-lg text-xs transition';
     const EDIT_STYLE = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-white';
+
+    /* --- Akses fitur ------------------------------------------------------
+       Semua sakelar berfungsi untuk akun mana pun: Administrator yang berhak
+       mengaturnya, jadi peran tidak lagi mengunci pilihan. Peran hanya menjadi
+       nilai bawaan. Satu-satunya sakelar terkunci: akses "Akun" milik akun
+       yang sedang dipakai (mencegah Administrator mengunci dirinya sendiri). */
+    const FEATURES = Auth.features();
+    const SHORT_LABEL = { cctv: 'CCTV', statistik: 'Statistik', dashboard: 'Dashboard', ai: 'Modul AI', akun: 'Akun' };
+    const FEATURE_DESC = {
+        cctv: 'Menonton kamera live.',
+        statistik: 'Grafik volume lalu lintas, tabel, ekspor PDF/CSV.',
+        dashboard: 'Command Center dan registrasi titik kamera.',
+        ai: 'Panel kontrol modul AI di halaman CCTV (YOLOv8, MirNet/Zero-DCE, pilihan model).',
+        akun: 'Kelola akun petugas dan akses fiturnya.'
+    };
+
+    function roleAllows(role, feature) {
+        return Auth.roleFeatures(role).indexOf(feature) >= 0;
+    }
+
+    function defaultHint(role, feature) {
+        return 'Bawaan peran: ' + (roleAllows(role, feature) ? 'aktif' : 'nonaktif');
+    }
+
+    /** Sakelar; `size` 'sm' untuk tabel/kartu, 'md' untuk modal. */
+    function aksesSwitch(user, feature, size) {
+        const on = user.akses[feature] === true;
+        const locked = user.uid === admin.uid && feature === 'akun';
+        const md = size === 'md';
+        const track = md ? 'h-6 w-11' : 'h-5 w-9';
+        const knob = md ? 'h-5 w-5' : 'h-4 w-4';
+        const shift = on ? (md ? 'translate-x-[22px]' : 'translate-x-4') : 'translate-x-0.5';
+
+        return `<button type="button" role="switch" aria-checked="${on}"
+                    data-akses="${user.uid}" data-feature="${feature}"
+                    aria-label="${Auth.featureLabel(feature)} untuk ${user.nama}"
+                    title="${locked ? 'Tidak bisa dicabut dari akun sendiri' : (on ? 'Nonaktifkan akses' : 'Aktifkan akses') + ' · ' + defaultHint(user.role, feature)}"
+                    ${locked ? 'disabled aria-disabled="true"' : ''}
+                    class="relative inline-flex ${track} shrink-0 items-center rounded-full transition-colors ${
+                        on ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+                    } ${locked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}">
+                    <span class="inline-block ${knob} rounded-full bg-white shadow transform transition-transform ${shift}"></span>
+                </button>`;
+    }
+
+    /** Empat sakelar ringkas (2 kolom) untuk tabel dan kartu ponsel. */
+    function aksesGrid(user, size) {
+        return `<div class="grid grid-cols-2 gap-x-4 gap-y-2">${FEATURES.map(feature => `
+            <div class="flex items-center gap-2">
+                ${aksesSwitch(user, feature, size)}
+                <span class="text-[10px] font-bold uppercase tracking-wide ${
+                    user.akses[feature] === true ? 'sk-ink' : 'sk-faint'
+                }">${SHORT_LABEL[feature] || feature}</span>
+            </div>`).join('')}</div>`;
+    }
     const DEL_STYLE = 'sk-btn-soft-danger';
 
     function editButton(user, extra, label) {
@@ -115,6 +174,10 @@
                     ${roleBadge(user.role)}
                 </div>
                 <div class="mt-3 text-[11px] sk-muted font-mono break-all">${user.username}</div>
+                <div class="mt-3 pt-3 border-t sk-line-soft">
+                    <div class="text-[9px] font-bold sk-faint uppercase tracking-widest mb-2">Akses Fitur</div>
+                    ${aksesGrid(user, 'md')}
+                </div>
                 <div class="mt-4 flex items-center gap-2">
                     ${editButton(user, `${BASE} flex-1 h-10 gap-2 font-bold text-[11px] uppercase tracking-wider ${EDIT_STYLE}`, 'Ubah')}
                     ${deleteButton(user, `${BASE} flex-1 h-10 gap-2 font-bold text-[11px] uppercase tracking-wider ${DEL_STYLE}`, isSelf ? 'Dipakai' : 'Hapus')}
@@ -128,7 +191,7 @@
 
         if (rows.length === 0) {
             el.tableBody.innerHTML = `
-                <tr><td colspan="4" class="px-4 py-12 text-center sk-muted text-sm">
+                <tr><td colspan="5" class="px-4 py-12 text-center sk-muted text-sm">
                     <i class="fa-solid fa-user-slash text-3xl mb-3 block opacity-50"></i>
                     Tidak ada akun yang cocok dengan filter.
                 </td></tr>`;
@@ -153,6 +216,7 @@
                     <span class="text-xs sk-muted font-mono">${user.username}</span>
                 </td>
                 <td class="px-4 py-4">${roleBadge(user.role)}</td>
+                <td class="px-4 py-4">${aksesGrid(user, 'sm')}</td>
                 <td class="px-4 py-4">
                     <div class="flex justify-end gap-2">
                         ${editButton(user, `${BASE} w-9 h-9 ${EDIT_STYLE}`)}
@@ -177,6 +241,43 @@
         }
         paintSummary();
         paintList();
+    }
+
+    /* --- Akses di modal --------------------------------------------------
+       Modal memakai sakelar yang sama; nilainya dikirim bersama Simpan,
+       sedangkan sakelar di tabel/kartu langsung tersimpan saat diklik. */
+    let modalAksesState = {};
+
+    function modalAksesRow(feature, role, on) {
+        const locked = el.uid.value === admin.uid && feature === 'akun';
+        const shift = on ? 'translate-x-[22px]' : 'translate-x-0.5';
+
+        return `
+            <div class="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border sk-line">
+                <div class="min-w-0">
+                    <div class="text-xs font-bold sk-ink">${Auth.featureLabel(feature)}</div>
+                    <div class="text-[10px] sk-muted leading-snug">${FEATURE_DESC[feature]}</div>
+                </div>
+                <button type="button" role="switch" aria-checked="${on}" data-modal-akses="${feature}"
+                        aria-label="${Auth.featureLabel(feature)}"
+                        ${locked ? 'disabled aria-disabled="true" title="Tidak bisa dicabut dari akun sendiri"' : 'title="' + defaultHint(role, feature) + '"'}
+                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                            on ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+                        } ${locked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}">
+                    <span class="inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${shift}"></span>
+                </button>
+            </div>`;
+    }
+
+    function renderModalAkses() {
+        const role = el.roleField.value;
+        el.modalAkses.innerHTML = FEATURES.map(feature =>
+            modalAksesRow(feature, role, modalAksesState[feature] === true)).join('');
+    }
+
+    function setModalAkses(role, akses) {
+        modalAksesState = Auth.aksesOf(role, akses);
+        renderModalAkses();
     }
 
     /* --- Modal ----------------------------------------------------------- */
@@ -214,6 +315,9 @@
             el.save.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan';
         }
 
+        /* `el.uid` sudah terisi, jadi sakelar "Akun" tahu apakah ini akun sendiri. */
+        setModalAkses(el.roleField.value, user ? user.akses : null);
+
         el.modal.classList.remove('hidden');
         el.modal.classList.add('flex');
         document.body.classList.add('modal-open');
@@ -239,7 +343,8 @@
             nama: el.nama.value,
             email: el.email.value,
             peran: el.roleField.value,
-            password: el.password.value
+            password: el.password.value,
+            akses: Object.assign({}, modalAksesState)
         };
 
         const uid = el.uid.value;
@@ -257,6 +362,9 @@
             showError(result.error);
             return;
         }
+
+        // Administrator yang mengubah aksesnya sendiri harus melihat menu ikut berubah.
+        if (uid && uid === admin.uid) await Auth.refreshProfile();
 
         closeModal();
         refresh();
@@ -292,6 +400,40 @@
         App.toast(`Akun ${user.username} dihapus.`, 'success');
     }
 
+    /* --- Sakelar akses di tabel/kartu (langsung tersimpan) ---------------- */
+    async function handleAksesToggle(event) {
+        const btn = event.target.closest('[data-akses]');
+        if (!btn || btn.disabled) return;
+
+        const user = findUser(btn.dataset.akses);
+        const feature = btn.dataset.feature;
+        if (!user || FEATURES.indexOf(feature) < 0) return;
+
+        const next = user.akses[feature] === false;   // false → nyalakan
+        const previous = Object.assign({}, user.akses);
+
+        user.akses[feature] = next;                   // optimistis
+        paintList();
+
+        const result = await Auth.update(user.uid, { akses: { [feature]: next } });
+        if (!result.ok) {
+            user.akses = previous;                    // kembalikan bila ditolak server
+            paintList();
+            App.toast(result.error, 'error');
+            return;
+        }
+
+        Object.assign(user, result.user);
+        if (user.uid === admin.uid) await Auth.refreshProfile();
+
+        paintSummary();
+        paintList();
+        App.toast(
+            `${Auth.featureLabel(feature)} ${next ? 'diaktifkan' : 'dinonaktifkan'} untuk ${user.nama}.`,
+            next ? 'success' : 'info'
+        );
+    }
+
     /* --- Event ----------------------------------------------------------- */
     el.addBtn.addEventListener('click', () => openModal(null));
     el.close.addEventListener('click', closeModal);
@@ -314,6 +456,23 @@
 
     el.search.addEventListener('input', paintList);
     el.role.addEventListener('change', paintList);
+
+    /* Sakelar akses di modal: ubah peran = kembalikan ke bawaan peran itu. */
+    el.roleField.addEventListener('change', () => {
+        modalAksesState = Auth.aksesOf(el.roleField.value, null);
+        renderModalAkses();
+    });
+
+    el.modalAkses.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-modal-akses]');
+        if (!btn || btn.disabled) return;
+        const feature = btn.dataset.modalAkses;
+        modalAksesState[feature] = modalAksesState[feature] !== true;
+        renderModalAkses();
+    });
+
+    el.tableBody.addEventListener('click', handleAksesToggle);
+    el.cards.addEventListener('click', handleAksesToggle);
 
     el.tableBody.addEventListener('click', handleAction);
     el.cards.addEventListener('click', handleAction);

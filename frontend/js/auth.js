@@ -19,6 +19,39 @@
     const VALID_ROLES = ['admin', 'teknisi', 'visitor'];
     const ROLE_RANK = { admin: 0, teknisi: 1, visitor: 2 };
 
+    /* --- Fitur & akses ---------------------------------------------------
+       Peran hanya menentukan nilai BAWAAN sakelar. Administrator boleh
+       mengubah keempat fitur untuk akun mana pun lewat Kelola Akun, jadi
+       `akses` adalah sumber kebenaran; UI dan backend sama-sama membacanya. */
+    const FEATURES = ['cctv', 'statistik', 'dashboard', 'ai', 'akun'];
+    const FEATURE_LABEL = {
+        cctv: 'CCTV Live',
+        statistik: 'Statistik',
+        dashboard: 'Dashboard',
+        ai: 'Kontrol Modul AI',
+        akun: 'Kelola Akun'
+    };
+    const ROLE_FEATURES = {
+        admin: FEATURES.slice(),
+        teknisi: ['cctv', 'statistik', 'dashboard', 'ai'],
+        visitor: ['cctv', 'statistik']
+    };
+
+    function roleAllows(peran, feature) {
+        return (ROLE_FEATURES[peran] || ROLE_FEATURES.visitor).indexOf(feature) >= 0;
+    }
+
+    /** Normalisasi `akses`: bawaan peran, ditimpa boolean eksplisit server. */
+    function aksesOf(peran, raw) {
+        const data = raw && typeof raw === 'object' ? raw : {};
+        const result = {};
+        FEATURES.forEach(function (feature) {
+            const value = data[feature];
+            result[feature] = typeof value === 'boolean' ? value : roleAllows(peran, feature);
+        });
+        return result;
+    }
+
     /* Peta halaman -> peran yang boleh membuka. Halaman yang tidak terdaftar
        (beranda publik, login, register, lupa sandi, stream, statistik) tidak
        dijaga di sini; stream & statistik memang terbuka untuk Visitor. */
@@ -108,7 +141,8 @@
             nip: profile.nip || '',
             username: profile.username || '',
             email: email,
-            role: peran
+            role: peran,
+            akses: aksesOf(peran, profile.akses)
         };
     }
 
@@ -214,6 +248,63 @@
 
         isAdmin() {
             return !!currentUser && currentUser.role === 'admin';
+        },
+
+        /* --- Akses fitur -------------------------------------------------- */
+
+        /** Fitur yang dikenal UI (dipakai halaman Kelola Akun). */
+        features() {
+            return FEATURES.slice();
+        },
+
+        featureLabel(feature) {
+            return FEATURE_LABEL[feature] || feature;
+        },
+
+        /** Fitur yang menjadi bawaan sebuah peran (bukan batas akses). */
+        roleFeatures(role) {
+            return (ROLE_FEATURES[role] || ROLE_FEATURES.visitor).slice();
+        },
+
+        aksesOf: aksesOf,
+
+        /** Boleh memakai fitur? `akses` akun yang menentukan. */
+        can(feature) {
+            if (!currentUser) return false;
+            const akses = currentUser.akses || {};
+            if (typeof akses[feature] === 'boolean') return akses[feature];
+            return roleAllows(currentUser.role, feature);
+        },
+
+        /**
+         * Pagar halaman berbasis fitur.
+         * Fitur publik (cctv, statistik): tamu lolos, pengguna login mengikuti
+         * `akses`. Fitur berperan (dashboard, akun): tamu dialihkan ke login.
+         * Hasil `{ ok, user, redirected }`; pemanggil menampilkan
+         * App.blocked() bila ok=false dan tidak dialihkan.
+         */
+        async guard(feature) {
+            const user = await this.ready();
+            const gated = !roleAllows('visitor', feature);
+
+            if (!user) {
+                if (!gated) return { ok: true, user: null, redirected: false };
+                const next = encodeURIComponent(location.pathname + location.search);
+                location.replace('login.html?next=' + next + '&reason=login');
+                return { ok: false, user: null, redirected: true };
+            }
+
+            if (this.can(feature)) return { ok: true, user: user, redirected: false };
+            return { ok: false, user: user, redirected: false };
+        },
+
+        /** Muat ulang profil sendiri setelah Administrator mengubah aksesnya. */
+        async refreshProfile() {
+            const user = await loadProfile();
+            currentUser = user;
+            status = 'done';
+            emit();
+            return user ? Object.assign({}, user) : null;
         },
 
         roleLabel(role) {

@@ -12,6 +12,11 @@
    kelas semantik di bawah supaya tema terang dan gelap selalu sinkron.
    ========================================================================== */
 
+/* Font display dimuat dari sini supaya semua halaman (yang disuntik navbar
+   lewat app.js) memakai rupa huruf yang sama tanpa harus menyunting <head>
+   sembilan berkas HTML satu per satu. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap');
+
 /* --- 1. TOKEN TEMA (terang = cadangan, gelap = bawaan .dark) --- */
 :root {
     color-scheme: light;
@@ -485,10 +490,13 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
     .max-w-7xl { max-width: 110rem !important; }  /* 1760 px */
 }
 
-/* Offset konten mengikuti tinggi navbar yang sebenarnya (diukur app.js).
-   Navbar memakai position:fixed dan bisa melipat dua baris pada rasio
-   tertentu; padding tetap di halaman akan menutupi kartu di bawahnya. */
-main { padding-top: calc(var(--sk-nav-h, 110px) + 20px) !important; }
+/* Offset konten mengikuti tinggi navbar. Navbar bertinggi tetap (h-16 di
+   ponsel, h-20 dari md ke atas) sehingga cukup ditetapkan di CSS: pengukuran
+   JavaScript bisa tertinggal satu bingkai saat rasio berubah dan membuat
+   padding <main> salah. */
+:root { --sk-nav-h: 64px; }
+@media (min-width: 768px) { :root { --sk-nav-h: 80px; } }
+main { padding-top: calc(var(--sk-nav-h) + 20px) !important; }
 
 /* Layar pendek (ponsel landscape, netbook): rapikan jarak vertikal. */
 @media (max-height: 520px) {
@@ -502,3 +510,65 @@ main { padding-top: calc(var(--sk-nav-h, 110px) + 20px) !important; }
 
 /* Jangan biarkan gambar/canvas memaksa lebar melebihi kontainer. */
 img, canvas, video, svg { max-width: 100%; }
+
+/* --- 16. KERANGKA EKSEKUTIF (navbar, footer, bottom nav, loader) ------ */
+/* Dipakai markup yang disuntik app.js. Kelas di sini sengaja tidak memakai
+   utilitas `brand-*` karena tailwind.config tiap halaman berbeda; Chrome
+   bersama harus tampil sama di semua halaman tanpa menyentuh <head> mereka. */
+
+.font-display { font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif; }
+
+/* Kontainer isi. Satu definisi supaya navbar, hero, dan footer punya tepi
+   yang sama di semua rasio, termasuk monitor 2K/4K. */
+.sk-shell {
+    width: 100%;
+    max-width: 1400px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+}
+@media (min-width: 768px)  { .sk-shell { padding-inline: 1.5rem; } }
+@media (min-width: 1024px) { .sk-shell { padding-inline: 2rem; } }
+@media (min-width: 1920px) { .sk-shell { max-width: 1600px; } }
+
+/* Kapsul kaca untuk widget jam/sapaan di header. */
+.glass-pill {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+html.dark .glass-pill {
+    background: rgba(15, 23, 42, 0.55);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+/* Sapaan & jam tidak boleh membungkus: navbar bertinggi tetap. */
+.greeting-text, .realtime-clock { white-space: nowrap; }
+
+/* Pemindai radar pada loader awal. */
+.radar-scanner {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(to right, transparent, #2563eb, transparent);
+    animation: sk-scan 2.4s linear infinite;
+}
+@keyframes sk-scan {
+    0%   { top: 0; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+
+/* Bottom bar ponsel: sisipan aman iPhone (home indicator). */
+.sk-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Navbar setinggi tetap; tautan desktop tidak boleh memaksa baris kedua. */
+#nav-links a { white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+    .radar-scanner { animation-duration: 6s; }
+}

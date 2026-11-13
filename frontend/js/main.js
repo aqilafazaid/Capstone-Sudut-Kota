@@ -254,11 +254,33 @@
         if (!el['video-element']) return;
 
         if (Hls.isSupported && Hls.isSupported()) {
+            /* Buffer & sinkronisasi live. Buffer besar membuat pemutar
+               tertinggal dari siaran lalu melompat (terasa tersendat); buffer
+               terlalu kecil membuang segmen saat jaringan goyah. Segmen kita
+               2 detik, jadi ~12 detik buffer = 6 segmen: cukup untuk jitter
+               tanpa menumpuk latensi. `capLevelToPlayerSize` sengaja tidak
+               dipakai: bila elemen video belum punya ukuran saat init (panel
+               tersembunyi / layout belum jalan) hls.js tidak memilih level
+               dan tidak pernah memuat segmen. Stream ini satu bitrate. */
             state.hls = new Hls({
-                manifestLoadingTimeOut: 10000,
-                manifestLoadingMaxRetry: 2,
-                levelLoadingTimeOut: 10000,
-                enableWorker: true
+                enableWorker: true,
+                lowLatencyMode: false,
+                backBufferLength: 12,
+                maxBufferLength: 12,
+                maxMaxBufferLength: 24,
+                liveSyncDurationCount: 3,
+                liveMaxLatencyDurationCount: 6,
+                maxLiveSyncPlaybackRate: 1.5,
+                manifestLoadingTimeOut: 8000,
+                manifestLoadingMaxRetry: 4,
+                manifestLoadingRetryDelay: 500,
+                levelLoadingTimeOut: 8000,
+                levelLoadingMaxRetry: 4,
+                levelLoadingRetryDelay: 500,
+                fragLoadingTimeOut: 15000,
+                fragLoadingMaxRetry: 5,
+                fragLoadingRetryDelay: 400,
+                fragLoadingMaxRetryTimeout: 8000
             });
 
             state.hls.loadSource(url);
@@ -274,13 +296,20 @@
                 });
             });
 
+            /* Satu segmen berhasil masuk buffer = jaringan sehat; reset hitungan
+               supaya gangguan lama tidak menghabiskan jatah percobaan. */
+            state.hls.on(Hls.Events.FRAG_BUFFERED, () => { state.retries = 0; });
+
             state.hls.on(Hls.Events.ERROR, (event, data) => {
-                if (!data.fatal) return;
-                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && state.retries < 2) {
+                if (!data.fatal) return;   // non-fatal ditangani hls.js sendiri
+
+                if (data.type === Hls.ErrorTypes.NETWORK_ERROR && state.retries < 4) {
                     state.retries += 1;
-                    log(`Galat jaringan HLS (percobaan ${state.retries}/2), memuat ulang manifest...`);
-                    state.hls.startLoad();
-                } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                    const wait = Math.min(1000 * state.retries, 4000);
+                    log(`Jaringan HLS terputus (${state.retries}/4), muat ulang dalam ${wait / 1000} dtk...`);
+                    setTimeout(() => { if (state.hls) state.hls.startLoad(); }, wait);
+                } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && state.retries < 4) {
+                    state.retries += 1;
                     log('Galat media HLS, mencoba memulihkan dekoder...');
                     state.hls.recoverMediaError();
                 } else {
@@ -520,10 +549,26 @@
         });
     }
 
+    /* --- Pagar fitur ------------------------------------------------------ */
+    /* Administrator bisa mencabut "Kontrol Modul AI". Panel kontrolnya lalu
+       disembunyikan; pemantauan gambar tetap berjalan — yang hilang hanya
+       kemampuan mengubah modul, bukan tayangannya. */
+    function applyFeatureGates() {
+        const panel = document.getElementById('ai-panel');
+        if (!panel) return;
+
+        const auth = global.Auth;
+        const allowed = !auth || !auth.isReady() || auth.can('ai');
+        panel.classList.toggle('hidden-important', !allowed);
+    }
+
     /* --- Inisialisasi ---------------------------------------------------- */
     function init() {
         cacheDom();
         if (!el['video-element']) return;
+
+        applyFeatureGates();
+        document.addEventListener('auth:change', applyFeatureGates);
 
         syncOperatorBadge();
         bindEvents();
@@ -551,9 +596,18 @@
     }
 
     global.CctvPlayer = {
-        /* Tunggu daftar node dari backend sebelum menentukan node default. */
+        /* Tunggu daftar node dari backend sebelum menentukan node default.
+           Fitur bisa dicabut Administrator; tamu tetap boleh menonton. */
         init: function () {
-            Store.ready().then(() => ensureHls(init));
+            const start = function () {
+                Store.ready().then(() => ensureHls(init));
+            };
+
+            if (!global.Auth) { start(); return; }
+            global.Auth.ready().then(function (user) {
+                if (user && !global.Auth.can('cctv')) { global.App.blocked('cctv'); return; }
+                start();
+            }).catch(start);
         },
         select: selectCamera,
         refresh: applyStream

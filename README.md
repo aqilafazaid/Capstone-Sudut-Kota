@@ -237,7 +237,10 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 Otorisasi memakai header `Authorization: Bearer <idToken> (Firebase). Peran diambil dari
 RTDB dan di-cache 60 detik di backend; pemeriksaan peran **tidak** terjadi di peramban.
 Halaman yang butuh peran tetap memanggil `Auth.requireOperator()`/`requireAdmin()`, tetapi
-itu hanya untuk tampilan — endpoint tetap menolak sendiri.
+itu hanya untuk tampilan — endpoint tetap menolak sendiri. Endpoint tulis memakai
+`@auth.require_feature("dashboard"|"akun")`, yang hanya membaca field `akses` akun
+(bawaan peran dipakai bila kunci tidak diset). Menu dan pagar halaman membaca nilai
+yang sama lewat `Auth.can()`.
 
 `copy: true` meneruskan video apa adanya (hemat CPU); `copy: false` men-transcode H.264
 (wajib bila sumber bukan H.264). Engine AI selalu memakai jalur transcode.
@@ -262,6 +265,27 @@ dengan profil di RTDB `/akun/<uid>`:
 | Administrator | `admin` | semua halaman, termasuk Kelola Akun |
 | Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, AI, dan reset |
 | Visitor | `visitor` | hanya Stream dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
+
+**Akses fitur per akun.** Selain peran, setiap profil punya field
+`akses: { cctv, statistik, dashboard, ai, akun }`. Administrator mengaturnya lewat sakelar
+di `akun.html` (kolom *Akses Fitur* dan bagian yang sama di modal Tambah/Ubah Akun).
+Peran hanya mengisi **nilai bawaan** (Administrator semua, Teknisi tanpa Kelola Akun,
+Visitor hanya CCTV + Statistik); kelima sakelar tetap bisa diubah untuk akun mana pun,
+jadi Administrator bisa memberi fitur di luar kebiasaan perannya maupun mencabutnya.
+Fitur `ai` mengatur panel **Kontrol Modul AI** di halaman CCTV (toggle YOLOv8,
+MirNet/Zero-DCE, dan pilihan model); bila dicabut, panelnya disembunyikan dan tayangan
+tetap berjalan.
+Nilai yang tidak ada memakai bawaan peran, sehingga akun lama (tanpa field `akses`)
+berperilaku seperti sebelumnya. `PUT /api/akun/<uid>` menggabungkan kiriman parsial
+(`{"akses":{"cctv":false}}` hanya mengubah satu fitur), dan mengubah `peran` tanpa
+`akses` eksplisit mengembalikan sakelar ke bawaan peran baru. Administrator tidak bisa
+mencabut `akun` dari akunnya sendiri (ditolak backend dengan 409) agar tidak terkunci
+dari satu-satunya halaman untuk memperbaikinya. Fitur yang tertutup memunculkan panel
+"Akses Fitur Dinonaktifkan" di halaman terkait, dan endpoint tulisnya membalas 403.
+
+> Memberi fitur `akun` ke peran non-Administrator berarti memberi wewenang penuh atas
+> manajemen akun — termasuk membuat akun Administrator baru. Berikan hanya bila memang
+> itu yang diinginkan.
 
 Pendaftaran mandiri (`register.html`) selalu membuat akun Visitor: Firebase Auth membuat
 user, lalu `POST /api/akun/self` menulis profilnya. Body `peran` maupun `nip` dari peramban
@@ -528,5 +552,3 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
 8. **Kredensial awal.** Halaman login tidak lagi menampilkan akun demo. Kata sandi akun
    bootstrap harus diganti setelah serah terima, tidak boleh ditulis di repo, dan akun
    yatim dapat diperiksa dengan `python scripts/audit_accounts.py`.
-
-Test

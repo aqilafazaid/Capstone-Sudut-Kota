@@ -12,8 +12,12 @@ dari disk). Flask tetap bind 127.0.0.1 supaya tidak pernah terekspos langsung.
 Otorisasi:
 
 - Baca publik: daftar node (tanpa RTSP), status stream, playlist/segmen HLS.
-- Tulis (`admin`, `teknisi`): CRUD node, start/stop stream, detail node.
-- `admin` saja: reset node, CRUD akun.
+- Fitur `dashboard` (bawaan `admin`, `teknisi`): CRUD node, start/stop stream, detail node.
+- Fitur `ai` (bawaan `admin`, `teknisi`): panel Kontrol Modul AI di halaman CCTV.
+- Fitur `akun` (bawaan `admin`): CRUD akun dan penetapan akses fitur.
+- Setiap akun punya field `akses` di profilnya; Administrator bisa memberi atau
+  mencabut fitur lewat halaman Kelola Akun. Peran hanya menetapkan nilai bawaan,
+  `akses` adalah sumber kebenaran (lihat `auth.require_feature`).
 
 Identitas operator diverifikasi dari Firebase ID token (lihat `auth.py`), bukan
 token bersama. URL RTSP tidak pernah dikirim ke peramban kecuali lewat endpoint
@@ -25,12 +29,13 @@ from __future__ import annotations
 import atexit
 import logging
 import os
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, g, jsonify, request, send_file
 from flask_cors import CORS
 
 import accounts
@@ -104,8 +109,16 @@ def _start_node(node: dict) -> None:
     hls_manager.start_async(node["id"], node["rtsp"])
 
 
-def _stop_node(node_id: str) -> None:
-    hls_manager.get(node_id).stop()
+def _stop_node(node_id: str, purge: bool = False) -> None:
+    """Hentikan ffmpeg; `purge=True` sekaligus menghapus playlist lama.
+
+    Playlist yang dibiarkan akan tetap dilayani di `/hls/<id>/index.m3u8`,
+    sehingga peramban memutar konfigurasi lama setelah node diubah/dihapus.
+    """
+    if purge:
+        hls_manager.purge(node_id)
+    else:
+        hls_manager.stop(node_id)
 
 
 def create_app() -> Flask:
@@ -155,7 +168,7 @@ def create_app() -> Flask:
         )
 
     @app.get("/api/status")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def status():
         """Ringkasan kesiapan backend. Operator saja: memuat path & daftar model."""
         lowlight = sorted(
@@ -182,12 +195,12 @@ def create_app() -> Flask:
         return jsonify([_with_stream(node) for node in node_store.list_nodes()])
 
     @app.get("/api/nodes/<node_id>")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def node_detail(node_id):
         return jsonify(_with_stream(node_store.get_node(node_id)))
 
     @app.post("/api/nodes")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def node_create():
         node = node_store.create_node(request.get_json(silent=True))
         if node["aktif"]:
@@ -195,36 +208,42 @@ def create_app() -> Flask:
         return jsonify(_with_stream(_without_rtsp(node))), 201
 
     @app.put("/api/nodes/<node_id>")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def node_update(node_id):
         before = node_store.get_node(node_id)
         node = node_store.update_node(node_id, request.get_json(silent=True))
 
         if not node["aktif"]:
-            _stop_node(node_id)
+            _stop_node(node_id, purge=True)
         elif (
             before["rtsp"] != node["rtsp"]
             or not before["aktif"]
             or not hls_manager.get(node_id).running
         ):
-            _stop_node(node_id)
+            # Folder dibersihkan dulu: segmen & playlist sumber lama tidak boleh
+            # tercampur dengan hasil ffmpeg untuk URL RTSP yang baru.
+            _stop_node(node_id, purge=True)
             _start_node(node)
 
         return jsonify(_with_stream(_without_rtsp(node)))
 
     @app.delete("/api/nodes/<node_id>")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def node_delete(node_id):
         node_store.get_node(node_id)
-        _stop_node(node_id)
+        # Folder HLS ikut dihapus: tanpa ini /hls/<id>/index.m3u8 tetap
+        # dilayani untuk node yang sudah tidak ada.
+        _stop_node(node_id, purge=True)
         node_store.delete_node(node_id)
         return jsonify(ok=True, id=node_id)
 
     @app.post("/api/nodes/reset")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def node_reset():
         hls_manager.stop_all()
         node_store.reset_nodes()
+        # Node lama (ID berbeda) tidak boleh meninggalkan folder HLS-nya.
+        hls_manager.prune([node["id"] for node in node_store.list_nodes()])
         started = []
         for node in node_store.list_nodes():
             if node["aktif"]:
@@ -255,22 +274,23 @@ def create_app() -> Flask:
         return jsonify(profile), 201
 
     @app.get("/api/akun")
-    @auth.require_role("admin")
+    @auth.require_feature("akun")
     def akun_list():
         return jsonify(accounts.list_accounts())
 
     @app.post("/api/akun")
-    @auth.require_role("admin")
+    @auth.require_feature("akun")
     def akun_create():
         return jsonify(accounts.create_account(request.get_json(silent=True))), 201
 
     @app.put("/api/akun/<uid>")
-    @auth.require_role("admin")
+    @auth.require_feature("akun")
     def akun_update(uid):
-        return jsonify(accounts.update_account(uid, request.get_json(silent=True)))
+        return jsonify(accounts.update_account(uid, request.get_json(silent=True),
+                                               g.user.get("uid", "")))
 
     @app.delete("/api/akun/<uid>")
-    @auth.require_role("admin")
+    @auth.require_feature("akun")
     def akun_delete(uid):
         user = auth.authenticate(required=True)
         return jsonify(accounts.delete_account(uid, user["uid"]))
@@ -293,13 +313,13 @@ def create_app() -> Flask:
         return response
 
     @app.post("/api/stats/collect")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def stats_collect():
         result = stats_store.collect_once()
         return jsonify(result), (200 if result.get("ok") else 503)
 
     @app.post("/api/stats/seed")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def stats_seed():
         """Isi agregat contoh ke RTDB. ``{"days": 365, "reset": true}``."""
         payload = request.get_json(silent=True) or {}
@@ -336,7 +356,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/streams/<name>")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def stream_start(name):
         payload = request.get_json(silent=True) or {}
         rtsp_url = (payload.get("rtsp") or "").strip()
@@ -352,9 +372,10 @@ def create_app() -> Flask:
         return jsonify(result), (200 if result.get("ok") else 502)
 
     @app.delete("/api/streams/<name>")
-    @auth.require_role(*auth.WRITE_ROLES)
+    @auth.require_feature("dashboard")
     def stream_stop(name):
-        return jsonify(hls_manager.stop(name))
+        # Playlist lama ikut dibuang supaya pemutar tidak memutar stream beku.
+        return jsonify(hls_manager.purge(name))
 
     @app.errorhandler(404)
     def not_found(_error):
@@ -371,8 +392,11 @@ def start_active_streams() -> list[str]:
     """Jalankan ffmpeg untuk semua node aktif; dipakai saat app.py start."""
     if not FFMPEG_OK:
         return []
+    nodes = node_store.list_nodes()
+    # Sisa folder dari sesi sebelumnya (node dihapus/ID berubah) dibuang dulu.
+    hls_manager.prune([node["id"] for node in nodes])
     started = []
-    for node in node_store.list_nodes():
+    for node in nodes:
         if not node["aktif"]:
             continue
         try:
@@ -381,6 +405,60 @@ def start_active_streams() -> list[str]:
             continue
         started.append(node["id"])
     return started
+
+
+WATCHDOG_INTERVAL = float(os.environ.get("STREAM_WATCHDOG_INTERVAL", "5"))
+
+
+def start_stream_watchdog():
+    """Nyalakan ulang ffmpeg yang mati (kamera putus / proses crash).
+
+    Tanpa ini playlist berhenti bertambah dan pemutar membeku sampai halaman
+    dimuat ulang. Backoff per node mencegah spawn berulang saat kamera benar-
+    benar mati, dan prune() membuang stream untuk node yang sudah dihapus.
+    """
+    if not FFMPEG_OK or not _truthy(os.environ.get("STREAM_WATCHDOG", "true")):
+        return None
+    if not _truthy(os.environ.get("STREAM_AUTOSTART", "true")):
+        return None
+
+    def loop() -> None:
+        backoff: dict[str, list[float]] = {}
+        while True:
+            time.sleep(WATCHDOG_INTERVAL)
+            try:
+                nodes = node_store.list_nodes()
+            except Exception:
+                continue
+
+            for node in nodes:
+                node_id = node["id"]
+                if not node["aktif"]:
+                    backoff.pop(node_id, None)
+                    continue
+
+                if hls_manager.get(node_id).running:
+                    backoff.pop(node_id, None)
+                    continue
+
+                now = time.time()
+                state = backoff.get(node_id)
+                if state and now < state[0]:
+                    continue
+
+                delay = min(state[1] * 2 if state else 10.0, 60.0)
+                backoff[node_id] = [now + delay, delay]
+                try:
+                    _start_node(node_store.get_node(node_id))
+                except node_store.NodeError:
+                    continue
+
+            hls_manager.prune([node["id"] for node in nodes if node["aktif"]])
+
+    thread = threading.Thread(target=loop, daemon=True, name="hls-watchdog")
+    thread.start()
+    print(f"[STREAM] Watchdog aktif (interval {WATCHDOG_INTERVAL:g} dtk).")
+    return thread
 
 
 def _access_log_handler() -> Path | None:
@@ -410,6 +488,7 @@ if __name__ == "__main__":
     access_log = _access_log_handler()
     if _truthy(os.environ.get("STREAM_AUTOSTART", "true")):
         print(f"[STREAM] Autostart: {', '.join(start_active_streams()) or '-'}")
+    start_stream_watchdog()
     if not _truthy(os.environ.get("STATS_COLLECTOR", "true")):
         print("[STATS] Kolektor dimatikan lewat STATS_COLLECTOR=false.")
     else:

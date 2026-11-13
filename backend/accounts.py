@@ -25,6 +25,41 @@ import firebase_init
 NIP_PREFIX = {"admin": "ADM-", "teknisi": "TKS-", "visitor": "VST-"}
 _NIP_AUTO_RE = re.compile(r"^(ADM|TKS|VST)-(\d{1,6})$", re.IGNORECASE)
 
+# --- Akses fitur -----------------------------------------------------------
+# Peran hanya menentukan nilai BAWAAN. Administrator bisa mengubah keempat
+# sakelar untuk akun mana pun, termasuk memberi fitur yang tidak lazim untuk
+# perannya (mis. Visitor dengan Command Center). Konsekuensinya `akses` adalah
+# sumber kebenaran otorisasi fitur; peran tidak lagi memotong nilainya.
+FEATURES = ("cctv", "statistik", "dashboard", "ai", "akun")
+ROLE_FEATURES = {
+    "admin": frozenset(FEATURES),
+    "teknisi": frozenset(("cctv", "statistik", "dashboard", "ai")),
+    "visitor": frozenset(("cctv", "statistik")),
+}
+
+
+def default_akses(peran: str) -> dict[str, bool]:
+    """Nilai bawaan sakelar untuk sebuah peran."""
+    allowed = ROLE_FEATURES.get(peran, ROLE_FEATURES["visitor"])
+    return {feature: feature in allowed for feature in FEATURES}
+
+
+def effective_akses(peran: str, raw: Any = None) -> dict[str, bool]:
+    """Akses efektif sebuah akun: bawaan peran, lalu ditimpa `raw`.
+
+    Kunci yang tidak ada memakai bawaan peran, sehingga akun lama tanpa field
+    ``akses`` berperilaku seperti sebelumnya. Hanya boolean yang dianggap
+    keputusan eksplisit; nilai lain (``null``, string) diabaikan agar kiriman
+    setengah jadi tidak diam-diam mengubah akses.
+    """
+    result = default_akses(peran)
+    data = raw if isinstance(raw, dict) else {}
+    for feature in FEATURES:
+        value = data.get(feature)
+        if isinstance(value, bool):
+            result[feature] = value
+    return result
+
 
 class AccountError(Exception):
     """Kesalahan validasi/bisnis akun dengan status HTTP yang sesuai."""
@@ -102,13 +137,15 @@ def _auto_nip(peran: str, accounts: list[dict[str, Any]]) -> str:
 
 def _profile(uid: str, raw: dict[str, Any] | None) -> dict[str, Any]:
     data = raw or {}
+    peran = str(data.get("peran") or "visitor")
     return {
         "uid": uid,
         "nama": str(data.get("nama") or ""),
         "nip": str(data.get("nip") or ""),
         "username": str(data.get("username") or ""),
         "email": str(data.get("email") or ""),
-        "peran": str(data.get("peran") or "visitor"),
+        "peran": peran,
+        "akses": effective_akses(peran, data.get("akses")),
         "created_at": str(data.get("created_at") or ""),
         "updated_at": str(data.get("updated_at") or ""),
     }
@@ -167,6 +204,7 @@ def ensure_self_profile(uid: str, email: str, payload: Any) -> dict[str, Any]:
         "username": username,
         "email": email.lower(),
         "peran": "visitor",
+        "akses": effective_akses("visitor"),
         "created_at": now,
         "updated_at": now,
     }
@@ -206,6 +244,7 @@ def create_account(payload: Any) -> dict[str, Any]:
         "username": username,
         "email": email,
         "peran": peran,
+        "akses": effective_akses(peran, payload.get("akses")),
         "created_at": now,
         "updated_at": now,
     }
@@ -224,7 +263,7 @@ def create_account(payload: Any) -> dict[str, Any]:
     return _profile(record.uid, profile)
 
 
-def update_account(uid: str, payload: Any) -> dict[str, Any]:
+def update_account(uid: str, payload: Any, requester_uid: str = "") -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise AccountError("Body harus berupa objek JSON.")
 
@@ -249,12 +288,34 @@ def update_account(uid: str, payload: Any) -> dict[str, Any]:
     if current["peran"] == "admin" and peran != "admin" and len(admins) <= 1:
         raise AccountError("Minimal harus ada satu Administrator.", 409)
 
+    # `akses` yang tidak dikirim mempertahankan nilai sekarang; kiriman parsial
+    # digabung supaya satu sakelar tidak menghapus sakelar lain. Peran yang
+    # berubah tanpa `akses` eksplisit kembali ke bawaan peran baru — sama
+    # dengan perilaku modal (mengubah peran mereset sakelar).
+    incoming = payload.get("akses")
+    if isinstance(incoming, dict):
+        merged = dict(current.get("akses") or {})
+        merged.update({k: v for k, v in incoming.items() if k in FEATURES})
+    elif peran != current["peran"]:
+        merged = {}
+    else:
+        merged = dict(current.get("akses") or {})
+    akses = effective_akses(peran, merged)
+
+    # Administrator yang mencabut akses Kelola Akun miliknya sendiri akan
+    # terkunci: halaman satu-satunya untuk memperbaikinya ikut hilang.
+    if uid == requester_uid and not akses["akun"]:
+        raise AccountError(
+            "Akses Kelola Akun tidak bisa dicabut dari akun yang sedang dipakai.", 409
+        )
+
     profile = {
         "nama": nama,
         "nip": nip,
         "username": username,
         "email": current["email"],
         "peran": peran,
+        "akses": akses,
         "created_at": current["created_at"] or _now(),
         "updated_at": _now(),
     }

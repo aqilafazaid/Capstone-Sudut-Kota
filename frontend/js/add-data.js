@@ -14,8 +14,9 @@
 
     App.init({ active: 'dashboard' });
 
-    const user = await Auth.requireOperator();
-    if (!user) return;
+    const gate = await Auth.guard('dashboard');
+    if (!gate.ok) { if (!gate.redirected) App.blocked('dashboard'); return; }
+    const user = gate.user;
 
     await Store.ready();
 

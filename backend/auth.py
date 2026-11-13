@@ -27,10 +27,27 @@ import firebase_init
 
 ROLE_CACHE_TTL = 60
 VALID_ROLES = ("admin", "teknisi", "visitor")
-WRITE_ROLES = ("admin", "teknisi")
+
+# --- Akses fitur -----------------------------------------------------------
+# Sama dengan model di accounts.py: peran adalah batas atas, `akses` per akun
+# hanya boleh mempersempit. Endpoint tulis memakai require_feature() supaya
+# sakelar di halaman Kelola Akun benar-benar menutup API, bukan hanya menu.
+FEATURES = ("cctv", "statistik", "dashboard", "ai", "akun")
+FEATURE_LABEL = {
+    "cctv": "CCTV Live",
+    "statistik": "Statistik",
+    "dashboard": "Command Center",
+    "ai": "Kontrol Modul AI",
+    "akun": "Kelola Akun",
+}
+ROLE_FEATURES = {
+    "admin": frozenset(FEATURES),
+    "teknisi": frozenset(("cctv", "statistik", "dashboard", "ai")),
+    "visitor": frozenset(("cctv", "statistik")),
+}
 
 _lock = threading.Lock()
-_role_cache: dict[str, tuple[str, float]] = {}
+_profile_cache: dict[str, tuple[dict[str, Any], float]] = {}
 
 # Titik suntik untuk tes: tidak ada token Firebase sungguhan saat unit test.
 _verifier: Callable[[str], dict[str, Any]] | None = None
@@ -60,7 +77,7 @@ def set_role_resolver(resolver: Callable[[str], str] | None) -> None:
 
 def reset_cache() -> None:
     with _lock:
-        _role_cache.clear()
+        _profile_cache.clear()
 
 
 def configured() -> bool:
@@ -86,18 +103,55 @@ def _decode(token: str) -> dict[str, Any]:
     return fb_auth.verify_id_token(token, app=_app(), check_revoked=False)
 
 
-def role_of(uid: str) -> str:
-    """Peran operator dari RTDB, dengan cache singkat."""
+def default_akses(peran: str) -> dict[str, bool]:
+    """Nilai bawaan sakelar untuk sebuah peran."""
+    allowed = ROLE_FEATURES.get(peran, ROLE_FEATURES["visitor"])
+    return {feature: feature in allowed for feature in FEATURES}
+
+
+def _merge_akses(peran: str, raw: Any) -> dict[str, bool]:
+    """Bawaan peran yang ditimpa boolean eksplisit dari profil."""
+    result = default_akses(peran)
+    data = raw if isinstance(raw, dict) else {}
+    for feature in FEATURES:
+        value = data.get(feature)
+        if isinstance(value, bool):
+            result[feature] = value
+    return result
+
+
+def feature_allows(peran: str, akses: Any, feature: str) -> bool:
+    """Nilai `akses` akun; bila tidak ada, jatuh ke bawaan peran.
+
+    Peran bukan lagi pemotong: Administrator boleh memberi fitur apa pun ke
+    akun mana pun. Bawaan peran hanya mengisi kunci yang tidak diset.
+    """
+    data = akses if isinstance(akses, dict) else {}
+    value = data.get(feature)
+    if isinstance(value, bool):
+        return value
+    return feature in ROLE_FEATURES.get(peran, ROLE_FEATURES["visitor"])
+
+
+def _state_of(uid: str) -> dict[str, Any]:
+    """Peran + akses efektif satu akun, dengan cache singkat.
+
+    Satu pembacaan RTDB per TTL untuk keduanya; kegagalan baca selalu
+    menghasilkan ``visitor`` tanpa akses tambahan (jangan pernah menaikkan
+    hak saat sumber tidak bisa dipastikan).
+    """
     if _role_resolver is not None:
-        return _role_resolver(uid)
+        peran = _role_resolver(uid)
+        return {"peran": peran, "akses": default_akses(peran)}
 
     now = time.time()
     with _lock:
-        cached = _role_cache.get(uid)
+        cached = _profile_cache.get(uid)
     if cached and now - cached[1] < ROLE_CACHE_TTL:
-        return cached[0]
+        return dict(cached[0])
 
     peran = "visitor"
+    raw_akses: Any = None
     try:
         from firebase_admin import db as fb_db
 
@@ -105,13 +159,28 @@ def role_of(uid: str) -> str:
         candidate = str(data.get("peran") or "").strip().lower()
         if candidate in VALID_ROLES:
             peran = candidate
+        raw_akses = data.get("akses")
     except Exception:
-        # RTDB tidak terjangkau: jangan pernah menaikkan hak akses.
         peran = "visitor"
+        raw_akses = None
 
+    state = {
+        "peran": peran,
+        "akses": _merge_akses(peran, raw_akses),
+    }
     with _lock:
-        _role_cache[uid] = (peran, now)
-    return peran
+        _profile_cache[uid] = (state, now)
+    return dict(state)
+
+
+def role_of(uid: str) -> str:
+    """Peran operator dari RTDB, dengan cache singkat."""
+    return str(_state_of(uid)["peran"])
+
+
+def akses_of(uid: str) -> dict[str, bool]:
+    """Akses fitur efektif akun (gabungan peran + `akses` tersimpan)."""
+    return dict(_state_of(uid)["akses"])
 
 
 def profile_of(uid: str) -> dict[str, Any] | None:
@@ -124,12 +193,14 @@ def profile_of(uid: str) -> dict[str, Any] | None:
         return None
     if not isinstance(data, dict) or not data:
         return None
+    peran = role_of(uid)
     return {
         "uid": uid,
         "nama": str(data.get("nama") or ""),
         "nip": str(data.get("nip") or ""),
         "username": str(data.get("username") or ""),
-        "peran": role_of(uid),
+        "peran": peran,
+        "akses": akses_of(uid),
     }
 
 
@@ -167,6 +238,7 @@ def authenticate(required: bool = True) -> dict[str, Any] | None:
         "uid": uid,
         "email": str(claims.get("email") or ""),
         "peran": role_of(uid),
+        "akses": akses_of(uid),
     }
 
 
@@ -184,6 +256,33 @@ def require_role(*roles: str):
                 raise AuthError(
                     f"Peran '{user['peran']}' tidak diizinkan untuk aksi ini.", 403
                 )
+            g.user = user
+            return view(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def require_feature(feature: str):
+    """Decorator: token valid + fitur dibuka untuk akun ini.
+
+    Hanya `akses` akun yang menentukan (bawaan peran dipakai bila kunci tidak
+    diset). Administrator bisa memberi fitur apa pun lewat halaman Kelola Akun,
+    jadi tidak ada pemeriksaan peran tambahan di sini.
+    """
+    label = FEATURE_LABEL.get(feature, feature)
+
+    def decorator(view):
+        @wraps(view)
+        def wrapper(*args, **kwargs):
+            user = authenticate(required=True)
+            if user is None:  # tidak mungkin: required=True selalu mengembalikan user
+                raise AuthError("Token tidak valid.", 401)
+
+            if not feature_allows(user["peran"], user.get("akses"), feature):
+                raise AuthError(f"Fitur '{label}' tidak diaktifkan untuk akun ini.", 403)
+
             g.user = user
             return view(*args, **kwargs)
 
