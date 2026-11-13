@@ -35,7 +35,7 @@
             document.documentElement.classList.add('dark');
         }
     </script>
-    <link rel="stylesheet" href="css/style.css?v=20261113j">
+    <link rel="stylesheet" href="css/style.css?v=20261113k">
 
     <style>
         .text-gradient-primary {
@@ -415,12 +415,14 @@
                             <i class="fa-brands fa-instagram mr-2"></i> Memuat kiriman Instagram terbaru...
                         </div>
                     </div>
-                    <p class="mt-5 text-center text-[10px] sk-muted leading-relaxed">
-                        Ditampilkan langsung oleh Instagram (official embed), bukan salinan.
-                        Bila kotak tidak muncul (diblokir jaringan/ekstensi), buka
+                    <div id="instagram-pager" class="mt-6 flex items-center justify-center gap-4 flex-wrap"></div>
+                    <p id="instagram-updated" class="mt-3 text-center text-[10px] sk-muted"></p>
+                    <p class="mt-2 text-center text-[10px] sk-muted leading-relaxed">
+                        Sumber: akun resmi
                         <a href="https://www.instagram.com/dishub_kotapekalongan" target="_blank" rel="noopener" class="sk-accent underline">@dishub_kotapekalongan</a>
-                        atau
+                        dan
                         <a href="https://www.instagram.com/pjukotapekalongan" target="_blank" rel="noopener" class="sk-accent underline">@pjukotapekalongan</a>.
+                        Feed diperbarui otomatis oleh backend; gambar disimpan ulang di server.
                     </p>
                 </div>
             </div>
@@ -432,15 +434,15 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-    <script src="js/public-config.js?v=20261113j"></script>
-    <script src="js/firebase-config.js?v=20261113j"></script>
-    <script src="js/firebase-client.js?v=20261113j"></script>
-    <script src="js/config.js?v=20261113j"></script>
+    <script src="js/public-config.js?v=20261113k"></script>
+    <script src="js/firebase-config.js?v=20261113k"></script>
+    <script src="js/firebase-client.js?v=20261113k"></script>
+    <script src="js/config.js?v=20261113k"></script>
 
-    <script src="js/store.js?v=20261113j"></script>
-    <script src="js/auth.js?v=20261113j"></script>
-    <script src="js/app.js?v=20261113j"></script>
-    <script src="js/sosmed.js?v=20261113j"></script>
+    <script src="js/store.js?v=20261113k"></script>
+    <script src="js/auth.js?v=20261113k"></script>
+    <script src="js/app.js?v=20261113k"></script>
+    <script src="js/sosmed.js?v=20261113k"></script>
     <script>
         App.init({ active: 'home' });
 

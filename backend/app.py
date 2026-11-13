@@ -41,6 +41,7 @@ from flask_cors import CORS
 import accounts
 import auth
 import nodes as node_store
+from social import instagram as social_instagram
 import stats as stats_store
 from streamer import MEDIA_ROOT as HLS_ROOT
 from streamer import manager as hls_manager
@@ -144,7 +145,6 @@ def create_app() -> Flask:
     )
 
     node_store.init_db()
-    node_store.seed_defaults()
 
     auth.register_error_handlers(app)
     accounts.register_error_handlers(app)
@@ -334,6 +334,34 @@ def create_app() -> Flask:
         yang belum mengirim snapshot tampil 0 dengan status OFFLINE.
         """
         return jsonify(stats_store.live_snapshots())
+
+    # --- Media sosial: kiriman Instagram asli ---------------------------
+    @app.get("/api/sosmed/instagram")
+    def sosmed_instagram():
+        """Publik: kiriman Instagram asli, berhalaman, dengan cache.
+
+        Scrape hanya dijalankan ketika cache kedaluwarsa (IG_CACHE_SECONDS);
+        permintaan berikutnya dilayani dari data/instagram-cache.json.
+        """
+        try:
+            page_no = int(request.args.get("page", "1"))
+        except ValueError:
+            page_no = 1
+        try:
+            per_page = int(request.args.get("per_page", "6"))
+        except ValueError:
+            per_page = 6
+        result = social_instagram.page(page_no, per_page)
+        response = jsonify(result)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.get("/api/sosmed/instagram/image/<code>.jpg")
+    def sosmed_instagram_image(code):
+        path = social_instagram.image_file(code)
+        if not path:
+            return jsonify(error="Gambar tidak tersedia."), 404
+        return send_file(path, mimetype="image/jpeg", max_age=3600)
 
     @app.post("/api/stats/collect")
     @auth.require_feature("dashboard")

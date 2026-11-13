@@ -42,30 +42,8 @@ CREATE TABLE IF NOT EXISTS meta (
 );
 """
 
-SEED_NODES = [
-    {
-        "id": "cam_29", "channel": "29", "nama": "Simpang Ponolawen",
-        "zona": "Kota Pekalongan", "jalan": "Simpang Ponolawen",
-        "kota": "KOTA PEKALONGAN",
-        "rtsp": "rtsp://10.28.110.253:554/Streaming/Channels/2901",
-        "aktif": False,
-    },
-    {
-        "id": "cam_35", "channel": "35", "nama": "Simpang Grogolan / Alun-Alun",
-        "zona": "Kota Pekalongan", "jalan": "Simpang Grogolan",
-        "kota": "KOTA PEKALONGAN",
-        "rtsp": "rtsp://10.28.110.253:554/Streaming/Channels/3501",
-        "aktif": False,
-    },
-    {
-        "id": "cam_43", "channel": "43", "nama": "Simpang THR / Pusri",
-        "zona": "Kota Pekalongan", "jalan": "Simpang THR",
-        "kota": "KOTA PEKALONGAN",
-        "rtsp": "rtsp://10.28.110.253:554/Streaming/Channels/4301",
-        "aktif": False,
-    },
-]
-
+# Tidak ada node bawaan: direktori kamera diisi lewat Dashboard dan
+# database baru selalu kosong.
 
 
 class NodeError(Exception):
@@ -116,26 +94,6 @@ def _db():
 def init_db() -> None:
     with _DB_LOCK, _db() as conn:
         conn.executescript(SCHEMA)
-
-
-# --- Penanda seed -----------------------------------------------------------
-# Tanpa penanda ini, `seed_defaults()` menanam ulang node bawaan setiap kali
-# tabel kosong — jadi node yang sengaja dihapus operator muncul lagi setelah
-# backend restart. Sekali sebuah database pernah diisi, isinya milik operator.
-SEED_KEY = "seeded"
-
-
-def _seeded(conn: sqlite3.Connection) -> bool:
-    row = conn.execute("SELECT value FROM meta WHERE key = ?", (SEED_KEY,)).fetchone()
-    return bool(row and str(row[0]) == "1")
-
-
-def _mark_seeded(conn: sqlite3.Connection, value: bool = True) -> None:
-    conn.execute(
-        "INSERT INTO meta(key, value) VALUES(?, ?) "
-        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        (SEED_KEY, "1" if value else "0"),
-    )
 
 
 def _now() -> str:
@@ -296,31 +254,11 @@ def delete_node(node_id: str) -> bool:
     return cursor.rowcount > 0
 
 
-def seed_defaults(force: bool = False) -> None:
-    """Isi node bawaan hanya pada database yang belum pernah di-seed.
+def reset_nodes() -> None:
+    """Kosongkan direktori node (aksi eksplisit operator).
 
-    ``force=True`` dipakai tombol "Reset data node" (memang ingin menanam ulang).
-    Tanpa ``force``, database yang sudah pernah diisi tidak pernah ditanami lagi
-    walau tabelnya kosong — kalau tidak, node yang dihapus operator akan kembali
-    setiap backend dinyalakan.
+    Tidak ada seed: setelah reset direktori benar-benar kosong, dan backend
+    tidak pernah menanam node sendiri saat start.
     """
     with _DB_LOCK, _db() as conn:
-        if not force:
-            if _seeded(conn):
-                return
-            # Database lama (dibuat sebelum ada tabel `meta`): anggap sudah
-            # di-seed supaya isinya tidak berubah.
-            if conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]:
-                _mark_seeded(conn)
-                return
-
-        for node in SEED_NODES:
-            _insert(conn, dict(node))
-        _mark_seeded(conn)
-
-
-def reset_nodes() -> None:
-    """Kosongkan direktori lalu tanam seed bawaan (aksi eksplisit operator)."""
-    with _DB_LOCK, _db() as conn:
         conn.execute("DELETE FROM nodes")
-    seed_defaults(force=True)

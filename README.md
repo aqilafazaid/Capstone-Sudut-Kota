@@ -12,7 +12,7 @@ Halaman berjalan tanpa build step dan tanpa server Python: cukup HTML, CSS, dan 
 |--------|--------|
 | Frontend statis (`frontend/`) | **Selesai** — 9 halaman, pemutar HLS, panel kontrol AI, CRUD node, statistik + ekspor, akses fitur per akun |
 | Firebase Auth + Realtime Database | **Aktif** — identitas di Firebase Auth; profil/peran/`akses` dan agregat statistik di RTDB |
-| Backend lokal (`backend/`) | Flask API + kolektor statistik + engine AI (ffmpeg/HLS), seed node sekali pakai |
+| Backend lokal (`backend/`) | Flask API + kolektor statistik + engine AI (ffmpeg/HLS) + scraper feed Instagram (Playwright) |
 | Deployment Vercel | Siap — `vercel.json` di root, `outputDirectory: frontend`, `rewrites` `/api` + `/hls` ke Funnel (same-origin) |
 | Pengujian | `test/` di root (lokal saja, diabaikan git & Vercel) |
 
@@ -65,6 +65,7 @@ Capstone-Sudut-Kota/
 │   ├── auth.py                verifikasi Firebase ID token + peran
 │   ├── accounts.py            CRUD akun lewat Admin SDK + RTDB
 │   ├── nodes.py               penyimpanan SQLite + validasi RTSP
+│   ├── social/instagram.py    scrape Instagram asli (Playwright) + cache
 │   ├── firebase_init.py       Admin SDK dari backend/.env
 │   ├── streamer/hls.py        RTSP → HLS (ffmpeg)
 │   ├── ai_engine/
@@ -230,9 +231,8 @@ Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 | Konfigurasi Firebase Web SDK | `backend/.env` → `frontend/js/firebase-config.js` | kunci publik; hasil `sync_public_config.py` |
 | Alamat backend untuk Vercel | `vercel.json` → `rewrites` `/api` + `/hls`; `frontend/js/public-config.js` (`backendBase: ""`, `funnelBase`) | Halaman Vercel memakai origin sendiri; proxy Vercel yang meneruskan ke Funnel |
 
-Node bawaan hanya ditanam sekali: tabel `meta` menyimpan penanda `seeded`, jadi node yang
-dihapus operator tetap hilang setelah backend restart (dulu tabel kosong memicu seed ulang).
-`POST /api/nodes/reset` sengaja menanam ulang seed.
+Tidak ada node bawaan: tabel `nodes` mulai kosong dan backend tidak pernah menanam node
+sendiri. `POST /api/nodes/reset` mengosongkan direktori beserta folder HLS-nya.
 
 ### Sinkronisasi data
 
@@ -318,7 +318,9 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 | POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node |
 | POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
 | GET | `/api/status` | teknisi, admin | path database, daftar model |
-| POST | `/api/nodes/reset` | teknisi, admin | reset node ke seed |
+| POST | `/api/nodes/reset` | teknisi, admin | kosongkan direktori node + folder HLS |
+| GET | `/api/sosmed/instagram?page=N&per_page=6` | publik | kiriman Instagram asli (scrape + cache), berhalaman |
+| GET | `/api/sosmed/instagram/image/<code>.jpg` | publik | gambar kiriman yang disimpan backend |
 | POST | `/api/stats/collect` | teknisi, admin | paksa satu sampel statistik |
 | GET/PUT/DELETE | `/api/akun[/<uid>]` | admin | kelola akun petugas |
 | GET | `/api/akun/me` | login | profil sendiri |
@@ -425,13 +427,13 @@ curl -s https://capstone-sudut-kota.vercel.app/api/health   # harus JSON backend
 `/api` dan `/hls` melewati edge Vercel (traffic ikut terhitung). Untuk demo capstone ini
 wajar; bila kuota jadi masalah, buka halaman lewat `http://127.0.0.1:8080` (nginx lokal).
 
-## Data awal
+## Data node (tanpa seed)
 
-Backend menyemai 3 node Pekalongan (`cam_29`, `cam_35`, `cam_43`) **hanya sekali**, yaitu saat
-`backend/data/sudutkota.db` belum pernah diisi. Penanda `meta.seeded` membuat node yang dihapus
-operator tetap hilang setelah backend restart; `POST /api/nodes/reset` (tombol **Reset data**)
-sengaja menanam ulang seed. Tidak ada node demo/stream uji yang ditanam otomatis:
-`ALLOW_TEST_SOURCES` kini hanya mengizinkan sumber `http(s)://` untuk node yang Anda buat sendiri.
+**Tidak ada node bawaan.** Database baru selalu kosong, dan backend tidak pernah menanam node
+sendiri saat start. Direktori kamera diisi operator lewat **Dashboard → Tambah Data**.
+
+Tombol **Kosongkan direktori** (`POST /api/nodes/reset`, fitur `dashboard`) menghapus seluruh
+node beserta folder HLS-nya. Akun Firebase **tidak** ikut terhapus.
 
 - `localStorage['sudutkota.nodes.cache.v3']` — cache baca, bukan sumber kebenaran.
 - `localStorage['sudutkota.ai.v1']` — status AI lokal (belum tersinkron ke RTDB).
@@ -440,22 +442,30 @@ sengaja menanam ulang seed. Tidak ada node demo/stream uji yang ditanam otomatis
 
 ## Kabar terbaru (Instagram)
 
-Seksi **Kabar Terbaru** di beranda menampilkan ringkasan kiriman asli dari
-`@dishub_kotapekalongan` dan `@pjukotapekalongan` — bukan kartu contoh, bukan gambar stok.
+Seksi **Kabar Terbaru** di beranda menampilkan kiriman asli dari
+`@dishub_kotapekalongan` dan `@pjukotapekalongan`, **berhalaman** dan diperbarui backend —
+tidak ada input manual, tidak ada kartu contoh.
 
-- **Data**: `frontend/data/instagram.json` — `accounts` (handle, label, URL, ikon) dan
-  `posts` (handle, kind `p`/`reel`, code, tanggal, permalink, caption). Diisi dari halaman
-  embed resmi Instagram milik tiap post.
-- **Render**: `frontend/js/sosmed.js` membuat kartu, meng-escape seluruh teks, dan menautkan
-  setiap kiriman ke post aslinya. Bila JSON gagal dimuat, halaman hanya menampilkan tautan akun.
-- **Memperbarui**: salin kiriman terbaru (caption + permalink dari Instagram) ke `posts`,
-  ubah `updated`, commit. Tanpa build step.
-- **Tanpa iframe/embed.js**: embed resmi Instagram tidak merender isi di halaman ini
-  (halaman `/embed/` diisi lewat JS dan URL CDN-nya kedaluwarsa), jadi foto/video lengkap
-  dibuka di Instagram lewat tombol *Lihat di Instagram*.
+- **Ambil data**: `backend/social/instagram.py` menjalankan Chromium headless (Playwright)
+  sekali per kedaluwarsa cache: buka profil → kumpulkan tautan `/p/` dan `/reel/` → buka
+  halaman embed resmi tiap post → ambil caption, tanggal, jumlah suka, dan URL gambar.
+  Instagram menutup semua endpoint anonim (429), jadi DOM yang dirender adalah sumbernya.
+- **Gambar**: diunduh ke `backend/media/instagram/<code>.jpg` dan disajikan lewat
+  `/api/sosmed/instagram/image/<code>.jpg`. Tidak ada hotlink CDN yang bisa kedaluwarsa.
+- **Cache**: `backend/data/instagram-cache.json`, umur `IG_CACHE_SECONDS` (default 900 detik).
+  Scrape hanya dipicu permintaan pertama setelah cache basi; `IG_HANDLES` mengganti daftar akun
+  (default kedua akun di atas).
+- **API**: `GET /api/sosmed/instagram?page=N&per_page=6` → `posts[]`, `page`, `pages`, `total`,
+  `fetched_at`, `errors[]`.
+- **UI**: kartu berisi gambar, chip akun, caption ringkas, tombol **Selengkapnya/Ringkas**,
+  **Lihat di Instagram**, dan pager Sebelumnya/Berikutnya. Bila scrape gagal, yang tampil
+  hanya tautan akun — bukan teks karangan.
+- **Prasyarat**: `pip install -r requirements.txt` lalu `python -m playwright install chromium`
+  (sekali per mesin, ±150 MB). Tanpa Chromium, endpoint mengembalikan `ok:false` dan halaman
+  menampilkan tautan akun.
 
-Tombol **Reset data** memanggil `POST /api/nodes/reset` (fitur `dashboard`),
-mengembalikan node ke seed backend. Akun Firebase **tidak** ikut direset.
+Tombol **Kosongkan direktori** memanggil `POST /api/nodes/reset` (fitur `dashboard`);
+direktori node dan folder HLS-nya dihapus. Akun Firebase **tidak** ikut dihapus.
 
 ## Titik integrasi backend dan Firebase
 
@@ -567,7 +577,7 @@ pernah ikut commit atau deploy — hanya ada di mesin operator.
 
 ```bash
 # dari root repo (semua skrip berdiri sendiri)
-backend/.venv/Scripts/python.exe test/test_node_seed.py        # seed sekali + CRUD node
+backend/.venv/Scripts/python.exe test/test_node_no_seed.py     # tidak ada seed node
 backend/.venv/Scripts/python.exe test/test_stats_live.py       # normalisasi /api/stats/live
 backend/.venv/Scripts/python.exe test/test_akses_backend.py    # matriks peran x fitur
 backend/.venv/Scripts/python.exe test/test_akses_routes.py     # dekorator fitur di route
@@ -682,9 +692,8 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
 2. **Ingress publik.** Halaman Vercel berjalan di HTTPS; backend dijangkau lewat HTTPS
    juga. Jalur aktif: `tailscale funnel --bg 8080` → nginx:8080, dinyalakan dan dimatikan
    oleh `start-backend.bat`. Flask tetap di loopback dan tidak pernah dipublikasikan.
-3. **Direktori node kosong.** `backend/data/sudutkota.db` sudah dibersihkan; seed **tidak**
-   muncul kembali otomatis. Tambahkan node lewat Dashboard, atau panggil
-   `POST /api/nodes/reset` bila ingin 3 node bawaan (`cam_29`, `cam_35`, `cam_43`) kembali.
+3. **Direktori node kosong.** Tidak ada seed; tambahkan kamera lewat Dashboard
+   (`Tambah Data`). `POST /api/nodes/reset` justru mengosongkan direktori.
 4. **Kredensial RTSP.** URL RTSP tersimpan plaintext di `backend/data/sudutkota.db` dan
    tidak pernah dikirim ke peramban. Kata sandi lama yang pernah tertulis di kode masih
    ada di riwayat git — ganti kata sandi perangkat bila repo pernah dibagikan. Enkripsi

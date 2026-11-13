@@ -234,12 +234,12 @@
     el.cards.addEventListener('click', onDeleteClick);
 
     el.resetDemo.addEventListener('click', async () => {
-        if (!confirm('Kembalikan seluruh data node ke kondisi awal? Akun operator tidak diubah.')) return;
+        if (!confirm('Kosongkan seluruh direktori node? Semua konfigurasi kamera dan folder HLS-nya ikut dihapus, akun operator tidak diubah.')) return;
         try {
             await Store.resetDemo();
-            App.toast('Data node dikembalikan ke kondisi awal.', 'success');
+            App.toast('Direktori node dikosongkan.', 'success');
         } catch (err) {
-            App.toast(err.message || 'Gagal mereset data node.', 'error');
+            App.toast(err.message || 'Gagal mengosongkan direktori node.', 'error');
         }
     });
 
