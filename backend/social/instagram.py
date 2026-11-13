@@ -93,7 +93,7 @@ _CAPTION_JS = r"""() => {
   const imgs = [...document.querySelectorAll('img')].filter(i => /cdninstagram|fbcdn/.test(i.src));
   imgs.sort((a, b) => (b.naturalWidth || 0) - (a.naturalWidth || 0));
   let image = imgs.length ? imgs[0].src : '';
-  if (image) image = image.replace(/s150x150/, 's1080x1080').replace(/p150x150/, 'p1080x1080');
+  if (image) image = image.replace(/s150x150/, 's640x640').replace(/p150x150/, 'p640x640');
 
   return {
     caption: caption,
@@ -149,6 +149,23 @@ def _clean_caption(text: str) -> str:
     return cleaned.strip()
 
 
+def _normalize_image(path: Path, max_width: int = 720, quality: int = 82) -> None:
+    """Kecilkan gambar agar halaman tidak mengunduh file 0,5–1 MB per kartu."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return
+    resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", 1)
+    try:
+        with Image.open(path) as img:
+            if img.width > max_width:
+                ratio = max_width / img.width
+                img = img.resize((max_width, max(1, int(img.height * ratio))), resample)
+            img.convert("RGB").save(path, "JPEG", quality=quality, optimize=True)
+    except Exception:
+        pass
+
+
 def _download_image(context, url: str, code: str) -> bool:
     if not url:
         return False
@@ -164,6 +181,7 @@ def _download_image(context, url: str, code: str) -> bool:
         if len(body) < 1000:
             return False
         target.write_bytes(body)
+        _normalize_image(target)
         return True
     except Exception:
         return False
