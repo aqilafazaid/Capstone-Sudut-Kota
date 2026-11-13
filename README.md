@@ -625,9 +625,9 @@ untuk `/js/`.
 
 ## Responsif
 
-Semua halaman diuji pada 9 halaman × 15 ukuran viewport (320×568 sampai 2560×1080, termasuk
-ponsel landscape 740×360 dan 844×390): tidak ada luapan horizontal dan tidak ada konten tertutup
-navbar.
+Semua halaman diuji pada 9 halaman × 17 ukuran viewport (320×568 sampai 3440×1440, termasuk
+ponsel landscape 740×360, 844×390, layar pendek 1920×600 dan 1024×600, serta ultrawide 21:9):
+tidak ada luapan horizontal dan tidak ada konten tertutup navbar.
 
 Navbar memakai `position: fixed` dengan tinggi tetap yang ditetapkan di CSS — `--sk-nav-h: 64px`
 dan `80px` pada ≥768 px — sehingga `main { padding-top: calc(var(--sk-nav-h) + 20px) !important }`
@@ -639,8 +639,17 @@ Titik penyesuaian utama:
 - **Navbar** — logo mengecil di ponsel (`text-base`), tombol 36 px, dan pada <640 px tombol Keluar
   pindah ke menu ponsel supaya satu baris tetap muat; tautan desktop baru muncul di ≥1024 px dan
   baris tidak lagi melipat di 768–1023 px (`md:flex-nowrap` + pencarian `md:min-w-0`).
-- **Kontainer** — `.sk-shell` (`max-width: 1400px`) naik ke 1600 px pada ≥1920 px, jadi konten
-  tidak mengambang kecil di tengah monitor ultrawide.
+- **Kontainer** — `.sk-shell` (`max-width: 1400px`) naik ke 1600 px pada ≥1920 px dan 1760 px pada
+  ≥2400 px, jadi konten tidak mengambang kecil di tengah monitor ultrawide.
+- **Jarak antar-bagian** — section beranda `py-6 md:py-8` (24/32 px tiap sisi → 48/64 px antar
+  bagian), `main` atas `84/100 px` mengikuti tinggi navbar, dan padding bawah halaman `pb-24`
+  agar bar bawah tidak menutup baris terakhir. Sebelumnya `py-10 md:py-16` menghasilkan 128 px
+  ruang kosong antar bagian.
+- **CCTV Live** — dua kolom (pemutar + daftar node 340 px) baru aktif di ≥1280 px; di bawahnya
+  panel ditumpuk dan daftar node memakai lebar penuh. Pada 1024–1279 px sebelumnya sidebar hanya
+  ~230 px sehingga judul dan nama node terlipat.
+- **Baris ikon layanan beranda** — `md:justify-center`, jadi ikon tidak menumpuk di kiri pada
+  layar lebar.
 - **Dashboard** — di bawah 768 px tabel 5 kolom diganti kartu per node: nama, id/channel, status,
   zona/jalan, badge AI, dan tombol Edit/Hapus berlabel. Tabel tetap dipakai pada layar lebar.
 - **Statistik** — tombol interval menjadi grid 4 kolom di ponsel; kolom kontrol judul menumpuk
@@ -648,6 +657,9 @@ Titik penyesuaian utama:
 - **Layar pendek** (<520 px tinggi, mis. ponsel landscape) — padding atas `main` dan `glass-card`
   dirapatkan agar konten tidak terdorong keluar layar.
 - **Media** — `img, canvas, video, svg` dibatasi `max-width: 100%`.
+
+Pengukuran ulang: `backend/.venv/Scripts/python.exe test/audit_responsive.py` — memeriksa luapan
+horizontal, jarak antar-bagian >80 px, padding section ≥96 px, dan footer tertutup bar tetap.
 
 ## Kelola akun
 

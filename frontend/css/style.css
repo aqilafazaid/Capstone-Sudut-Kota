@@ -399,17 +399,19 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
 .cam-name { font-size: 0.85rem; font-weight: 600; color: var(--sk-text-muted); line-height: 1.4; }
 
 /* --- 10. LAYOUT RESPONSIF HALAMAN STREAM --- */
-@media (min-width: 1024px) {
-    .layout-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2rem; align-items: start; }
-    .col-player { grid-column: span 9; }
-    .col-list { grid-column: span 3; height: calc(100vh - 200px); overflow: hidden; display: flex; flex-direction: column; }
+/* Dua kolom baru aktif di 1280px: pada 1024–1279 sidebar hanya kebagian ~230px
+   sehingga judul dan nama node terlipat. Di bawah 1280 panel ditumpuk. */
+@media (min-width: 1280px) {
+    .layout-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.5rem; align-items: start; }
+    .col-player { grid-column: auto; min-width: 0; }
+    .col-list { grid-column: auto; height: calc(100vh - 200px); overflow: hidden; display: flex; flex-direction: column; }
     .list-scroll-area { flex: 1; overflow-y: auto; padding-right: 4px; }
 }
-@media (max-width: 1023px) {
-    .layout-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+@media (max-width: 1279px) {
+    .layout-grid { display: flex; flex-direction: column; gap: 1.25rem; }
     .col-player, .col-list { width: 100%; }
     .col-list { height: auto; }
-    .list-scroll-area { height: 500px; max-height: 65vh; overflow-y: auto; }
+    .list-scroll-area { max-height: 50vh; overflow-y: auto; }
     .cam-name-label { font-size: 0.95rem; }
     .player-header { padding: 12px 14px; }
 }
@@ -529,6 +531,7 @@ img, canvas, video, svg { max-width: 100%; }
 @media (min-width: 768px)  { .sk-shell { padding-inline: 1.5rem; } }
 @media (min-width: 1024px) { .sk-shell { padding-inline: 2rem; } }
 @media (min-width: 1920px) { .sk-shell { max-width: 1600px; } }
+@media (min-width: 2400px) { .sk-shell { max-width: 1760px; } }
 
 /* Kapsul kaca untuk widget jam/sapaan di header. */
 .glass-pill {
