@@ -35,6 +35,9 @@ import re
 import shutil
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -137,10 +140,94 @@ def reset(exe: str) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# Kesiapan backend + verifikasi jalur publik
+# ---------------------------------------------------------------------------
+
+def env_values() -> dict[str, str]:
+    """Baca backend/.env tanpa dependensi tambahan (kunci=tanda kutip diabaikan)."""
+    data: dict[str, str] = {}
+    if not ENV_FILE.exists():
+        return data
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        data[key.strip()] = value.strip().strip('"').strip("'")
+    return data
+
+
+def http_probe(url: str, method: str = "GET", origin: str = "") -> tuple[int, dict[str, str]]:
+    """Kembalikan (status, header) tanpa melempar exception."""
+    request = urllib.request.Request(url, method=method)
+    if origin:
+        request.add_header("Origin", origin)
+        request.add_header("Access-Control-Request-Method", "GET")
+        request.add_header("Access-Control-Request-Headers", "authorization")
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            return response.status, {k.lower(): v for k, v in response.headers.items()}
+    except urllib.error.HTTPError as exc:
+        return exc.code, {k.lower(): v for k, v in (exc.headers or {}).items()}
+    except Exception:
+        return 0, {}
+
+
+def wait_health(port: int, timeout: int) -> bool:
+    """Tunggu nginx+Flask menjawab /api/health sebelum Funnel dibuka.
+
+    Tanpa ini Funnel menyala saat Flask masih impor modul, sehingga permintaan
+    pertama dari halaman Vercel (termasuk login) menerima 502.
+    """
+    deadline = time.time() + timeout
+    announced = False
+    while time.time() < deadline:
+        status, _ = http_probe(f"http://127.0.0.1:{port}/api/health")
+        if status == 200:
+            print(f"[funnel] backend siap di :{port} - Funnel dinyalakan.")
+            return True
+        if not announced:
+            print(f"[funnel] menunggu backend di :{port} siap ...")
+            announced = True
+        time.sleep(0.5)
+    return False
+
+
+def verify(public_url: str) -> int:
+    """Cek jalur publik: /api/health dan preflight CORS origin Vercel."""
+    if not public_url:
+        print("[funnel] verifikasi dilewati: URL publik tidak diketahui.")
+        return 0
+
+    ok = True
+    status, _ = http_probe(public_url + "/api/health")
+    print(f"[funnel] cek  {public_url}/api/health -> {status or 'tidak terjangkau'}")
+    ok = ok and status == 200
+
+    origins = [part.strip() for part in
+               (env_values().get("ALLOWED_ORIGINS") or os.environ.get("ALLOWED_ORIGINS", "")).split(",")
+               if part.strip()]
+    vercel = [item for item in origins if item.startswith("https://") and ".vercel.app" in item]
+    for origin in vercel[:2]:
+        status, headers = http_probe(public_url + "/api/akun/me", "OPTIONS", origin)
+        allow = headers.get("access-control-allow-origin", "-")
+        good = status == 200 and allow == origin
+        ok = ok and good
+        print(f"[funnel] cek  preflight {origin} -> {status} ACAO={allow}")
+
+    print("[funnel] verifikasi:", "OK" if ok else "ADA MASALAH - lihat pesan di atas")
+    return 0 if ok else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Siapkan Tailscale Funnel untuk backend.")
     parser.add_argument("--port", type=int, default=5000)
     parser.add_argument("--reset", action="store_true", help="tutup akses publik lalu keluar")
+    parser.add_argument("--wait-health", type=int, default=0, metavar="SECONDS",
+                        help="tunggu /api/health di --port siap sebelum menyalakan Funnel")
+    parser.add_argument("--verify", action="store_true",
+                        help="setelah aktif, cek /api/health publik + preflight CORS")
     args = parser.parse_args()
 
     exe = tailscale_exe()
@@ -150,6 +237,11 @@ def main() -> int:
 
     if args.reset:
         return reset(exe)
+
+    if args.wait_health and not wait_health(args.port, args.wait_health):
+        print(f"[funnel] backend belum menjawab di :{args.port} selama {args.wait_health} dtk;")
+        print("         Funnel tidak dinyalakan supaya halaman Vercel tidak menerima 502.")
+        return 4
 
     try:
         url = node_url(exe)
@@ -170,7 +262,7 @@ def main() -> int:
         host = next(host for host, proxy, public in entries
                     if public and f":{args.port}" in proxy)
         print(f"[funnel] aktif: https://{host.split(':')[0]}/api/health -> 127.0.0.1:{args.port}")
-        return 0
+        return verify(url) if args.verify else 0
 
     output, code = enable(exe, args.port)
     link = ENABLE_LINK_RE.search(output or "")
@@ -181,7 +273,7 @@ def main() -> int:
         return 2
     if code == 0:
         print(f"[funnel] aktif: {url}")
-        return 0
+        return verify(url) if args.verify else 0
 
     detail = (output or "").strip().splitlines()
     print("[funnel] gagal menyalakan Funnel" + (f": {detail[0]}" if detail else "."))

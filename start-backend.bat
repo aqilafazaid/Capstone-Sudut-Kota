@@ -54,14 +54,22 @@ if not exist "%NGINX_EXE%" (
     exit /b 1
 )
 
+set "FLASK_ADOPTED=0"
 netstat -ano | findstr /R /C:":%PORT% .*LISTENING" >nul
 if not errorlevel 1 (
-    echo [backend] GAGAL: port %PORT% sudah dipakai proses lain. Cek dengan:
-    echo               netstat -ano ^| findstr :%PORT%
-    echo           Hentikan proses itu dulu - Flask hanya boleh satu instance.
-    echo.
-    pause
-    exit /b 1
+    rem Port terpakai: boleh dilanjutkan HANYA bila itu backend Sudut Kota yang sehat.
+    "%VENV_PY%" -c "import json,urllib.request;print(json.load(urllib.request.urlopen('http://127.0.0.1:%PORT%/api/health',timeout=3)).get('service',''))" 2>nul | findstr /C:"sudut-kota-backend" >nul
+    if not errorlevel 1 (
+        set "FLASK_ADOPTED=1"
+        echo [backend] Flask sudah berjalan dan sehat; instance kedua tidak dijalankan.
+    ) else (
+        echo [backend] GAGAL: port %PORT% dipakai proses lain ^(bukan Sudut Kota^). Cek dengan:
+        echo               netstat -ano ^| findstr :%PORT%
+        echo           Hentikan proses itu dulu - Flask hanya boleh satu instance.
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
 set "NGINX_STARTED=0"
@@ -114,14 +122,19 @@ if defined GATEWAY_EXPOSED (
     exit /b 1
 )
 
-if "%SK_NO_FUNNEL%"=="1" (
-    echo [backend] SK_NO_FUNNEL=1 - Funnel dilewati, hanya loopback.
-) else (
-    echo [backend] menyiapkan Tailscale Funnel ke nginx:%GATEWAY%
-    "%VENV_PY%" scripts\funnel_serve.py --port %GATEWAY%
-    if errorlevel 2 (
-        echo [backend] Funnel belum aktif; mode lokal tetap jalan.
+set "FUNNEL_STARTED=0"
+
+rem Flask sudah jalan sebelumnya: cukup pastikan Funnel menunjuk ke nginx, lalu keluar.
+if "!FLASK_ADOPTED!"=="1" (
+    if not "%SK_NO_FUNNEL%"=="1" (
+        "%VENV_PY%" scripts\funnel_serve.py --port %GATEWAY% --wait-health 20 --verify
     )
+    echo.
+    echo [backend] nginx : http://127.0.0.1:%GATEWAY%
+    echo [backend] Flask : http://%API_HOST%:%PORT%  ^(sudah berjalan, tidak ada proses baru^)
+    echo [backend] Untuk berhenti, tekan Ctrl+C di jendela backend yang lama.
+    echo.
+    exit /b 0
 )
 
 echo.
@@ -133,10 +146,21 @@ echo [backend] Bila Ctrl+C melewati pembersihan, tutup manual:
 echo           backend\gateway\stop-nginx.bat
 echo.
 
+if "%SK_NO_FUNNEL%"=="1" (
+    echo [backend] SK_NO_FUNNEL=1 - Funnel dilewati, hanya loopback.
+) else (
+    rem Funnel dibuka di latar belakang SETELAH /api/health menjawab. Sebelumnya
+    rem Funnel menyala lebih dulu, jadi permintaan pertama dari halaman Vercel
+    rem (termasuk login) sempat menerima 502 selama Flask masih impor modul.
+    echo [backend] Funnel disiapkan di latar belakang ^(menunggu backend siap^)...
+    start "" /b "%VENV_PY%" scripts\funnel_serve.py --port %GATEWAY% --wait-health 90 --verify
+    set "FUNNEL_STARTED=1"
+)
+
 "%VENV_PY%" app.py
 set "CODE=!ERRORLEVEL!"
 
-if not "%SK_NO_FUNNEL%"=="1" (
+if "!FUNNEL_STARTED!"=="1" (
     "%VENV_PY%" scripts\funnel_serve.py --reset >nul 2>&1
     echo [backend] Funnel dimatikan.
 )

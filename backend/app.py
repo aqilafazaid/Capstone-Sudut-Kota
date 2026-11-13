@@ -63,13 +63,24 @@ def _truthy(value: object) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+# Pola origin Vercel milik proyek ini: domain produksi dan setiap URL preview
+# (`capstone-sudut-kota-<hash>.vercel.app`) yang dibuat otomatis setelah push.
+# Tanpa pola ini, login dari URL preview gagal karena preflight tidak membawa
+# Access-Control-Allow-Origin (halaman melaporkan "gagal menghubungi server").
+DEFAULT_ORIGIN_PATTERNS = [r"https://capstone-sudut-kota[a-z0-9-]*\.vercel\.app"]
+
+
 def _origins() -> list[str]:
     raw = os.environ.get(
         "ALLOWED_ORIGINS",
         "http://127.0.0.1:8080,http://localhost:8080,"
         "http://127.0.0.1:8787,http://localhost:8787",
     )
-    return [part.strip() for part in raw.split(",") if part.strip()]
+    origins = [part.strip() for part in raw.split(",") if part.strip()]
+    extra = os.environ.get("ALLOWED_ORIGIN_PATTERNS", "")
+    origins.extend(part.strip() for part in extra.split(",") if part.strip())
+    origins.extend(DEFAULT_ORIGIN_PATTERNS)
+    return origins
 
 
 # Origin frontend yang diizinkan (domain Vercel ditambahkan lewat ALLOWED_ORIGINS).

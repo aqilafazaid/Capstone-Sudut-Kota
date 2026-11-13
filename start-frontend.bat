@@ -36,6 +36,18 @@ if not defined PY (
     exit /b 1
 )
 
+rem Backend dicek lebih dulu: halaman 8787 memanggil Flask di :5000, jadi login,
+rem CRUD, dan statistik akan gagal tanpa backend yang hidup.
+%PY% -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:5000/api/health',timeout=2)" >nul 2>&1
+if errorlevel 1 (
+    echo [!] Backend belum menjawab di http://127.0.0.1:5000/api/health
+    echo     Login dan statistik akan gagal sampai backend jalan. Buka terminal lain:
+    echo         start-backend.bat
+    echo.
+) else (
+    echo [frontend] backend aktif di http://127.0.0.1:5000
+)
+
 netstat -ano | findstr /R /C:":%PORT% .*LISTENING" >nul
 if not errorlevel 1 (
     echo [!] Port %PORT% sudah dipakai proses lain - mungkin server lain sudah jalan.

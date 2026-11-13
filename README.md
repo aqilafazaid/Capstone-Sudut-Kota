@@ -93,7 +93,7 @@ lagi memindai `backend/` dan tidak mencari entrypoint Python. `backend/`, `docs/
 `tools/` dibuang dari upload lewat `.vercelignore`. **Root Directory proyek dibiarkan kosong**
 (root repo) — mengarahkannya ke `frontend` membuat `vercel.json` di root tidak terbaca.
 
-## Menjalankan lokal
+## Menjalankan Project
 
 Dua mode, keduanya memakai **nginx sebagai pintu masuk** dengan Flask di loopback.
 
@@ -109,7 +109,16 @@ lalu `backend/scripts/funnel_serve.py` yang:
 1. menulis `PUBLIC_BACKEND_URL` di `backend/.env` sesuai nama node Tailscale,
 2. menjalankan ulang `scripts/sync_public_config.py` bila `frontend/js/public-config.js`
    belum memuat alamat itu (ikuti perintah commit & push yang dicetak),
-3. menyalakan `tailscale funnel --bg 8080`, dan mematikannya lagi saat backend berhenti.
+3. **menunggu `http://127.0.0.1:8080/api/health` menjawab 200** sebelum menyalakan
+   `tailscale funnel --bg 8080` — tanpa urutan ini, permintaan pertama dari halaman
+   Vercel (termasuk login) menerima **502** selama Flask masih impor modul,
+4. menjalankan verifikasi: `/api/health` publik dan preflight CORS untuk origin Vercel,
+5. mematikan Funnel lagi saat backend berhenti (hanya bila skrip inilah yang menyalakannya).
+
+Menjalankan `start-backend.bat` dua kali kini aman: bila port 5000 sudah dipegang backend
+Sudut Kota yang sehat (`/api/health` menjawab `service: sudut-kota-backend`), instance baru
+tidak dijalankan — skrip hanya memastikan Funnel menunjuk ke nginx lalu keluar. Port yang
+dipakai proses lain tetap ditolak dengan pesan yang jelas.
 
 Funnel hanya mencapai nginx: `/api` di-proxy ke Flask, `/hls` dilayani dari disk. Flask
 tidak pernah dipublikasikan, sehingga `limit_req`, batas body, dan header keamanan nginx
@@ -125,16 +134,35 @@ start-frontend.bat    :: terminal 2 -> http://127.0.0.1:8787 (browser terbuka se
 Halaman 8787 memanggil `http://127.0.0.1:5000` langsung (`js/config.js` memilih sendiri)
 untuk siklus edit cepat; buka `http://127.0.0.1:8080` untuk menguji jalur nginx yang sama
 dengan produksi. Funnel tetap menyala, jadi halaman Vercel ikut berfungsi.
+`start-frontend.bat` memeriksa `/api/health` lebih dulu dan memberi peringatan bila backend
+belum jalan (tanpa backend, login di 8787 akan gagal).
 
 Server statis 8787 **hanya listen di loopback** — tidak ada akses dari LAN. Keduanya
 berhenti dengan `Ctrl+C`; `start-frontend.bat` menerima port lain
 (`start-frontend.bat 8788`) dan tidak membuka browser bila `SK_NO_OPEN=1`.
-`start-backend.bat` memakai port tetap (5000 Flask, 8080 nginx) dan menolak jalan bila
-salah satunya sudah dipakai. Set `SK_NO_FUNNEL=1` untuk menjalankan backend tanpa membuka
-akses publik.
+`start-backend.bat` memakai port tetap (5000 Flask, 8080 nginx). Set `SK_NO_FUNNEL=1` untuk
+menjalankan backend tanpa membuka akses publik.
 
 Funnel harus diaktifkan sekali per mesin di konsol admin Tailscale; bila belum, skrip
 mencetak tautannya dan backend tetap jalan — halaman 8787 tidak terpengaruh.
+
+### Jika login dari Vercel gagal
+
+| Gejala | Sebab | Tindakan |
+|---|---|---|
+| "Gagal menghubungi server" / preflight tanpa `Access-Control-Allow-Origin` | Halaman dibuka dari URL **preview** (`capstone-sudut-kota-<hash>.vercel.app`) yang belum ada di `ALLOWED_ORIGINS` | Sejak pola `https://capstone-sudut-kota*.vercel.app` ditambahkan, semua preview proyek ini diizinkan. Restart Flask setelah mengubah `.env`. |
+| Halaman Vercel memuat tetapi API 502 | Funnel menyala sebelum Flask siap, atau backend mati | `start-backend.bat` sekarang menunggu `/api/health` dulu. Cek `http://127.0.0.1:8080/api/health`; bila 502, Flask belum jalan. |
+| `auth/unauthorized-domain` atau tautan reset kata sandi ditolak | Domain Vercel belum terdaftar di Firebase → Authentication → Settings → Authorized domains | Tambahkan `capstone-sudut-kota.vercel.app` (preview tidak bisa wildcard di Firebase). |
+| Login berhasil tetapi halaman menolak akses | Profil RTDB tidak punya fitur yang diminta | Administrator membuka Kelola Akun dan menyalakan sakelar fitur terkait. |
+
+Cek cepat dari mesin operator:
+
+```bash
+curl -s https://<node>.ts.net/api/health
+curl -s -o /dev/null -D - -X OPTIONS https://<node>.ts.net/api/akun/me \
+     -H "Origin: https://capstone-sudut-kota.vercel.app" \
+     -H "Access-Control-Request-Method: GET" | grep -i access-control-allow-origin
+```
 
 Langkah manual (setara dua skrip di atas):
 
@@ -467,23 +495,36 @@ agregat contoh tidak tercampur hitungan YOLO. Rentang baca dibatasi `STATS_MAX_D
 
 ## Pengujian
 
-Seluruh kode uji berada di `test/` di root repo. Direktori itu **diabaikan git dan Vercel**
-(`.gitignore` + `.vercelignore` memuat `test/`), jadi tidak pernah ikut commit atau deploy —
-hanya ada di mesin operator.
+Seluruh kode uji, audit, dan diagnosa berada di `test/` di root repo. Direktori itu
+**diabaikan git dan Vercel** (`.gitignore` + `.vercelignore` memuat `test/`), jadi tidak
+pernah ikut commit atau deploy — hanya ada di mesin operator.
 
 ```bash
-# dari root repo
-backend/.venv/Scripts/python.exe test/test_node_seed.py    # 6 cek: seed sekali + CRUD
-backend/.venv/Scripts/python.exe test/test_stats_live.py   # 9 cek: normalisasi /api/stats/live
+# dari root repo (semua skrip berdiri sendiri)
+backend/.venv/Scripts/python.exe test/test_node_seed.py        # seed sekali + CRUD node
+backend/.venv/Scripts/python.exe test/test_stats_live.py       # normalisasi /api/stats/live
+backend/.venv/Scripts/python.exe test/test_akses_backend.py    # matriks peran x fitur
+backend/.venv/Scripts/python.exe test/test_akses_routes.py     # dekorator fitur di route
+backend/.venv/Scripts/python.exe test/test_hls_stream.py       # argumen ffmpeg + purge/prune
+backend/.venv/Scripts/python.exe test/test_hls_crud.py         # CRUD node membersihkan media/
+backend/.venv/Scripts/python.exe test/test_hls_ffmpeg_e2e.py   # HLS nyata: segmen ~2 dtk
+
+# diagnosa read-only (butuh backend/.env berisi kredensial)
+backend/.venv/Scripts/python.exe test/check_auth_cfg.py        # authorized domains + provider
+backend/.venv/Scripts/python.exe test/check_accounts.py        # Auth <-> RTDB konsisten
 ```
 
 Aturan yang dipakai:
 
-- Test baru **wajib** dibuat di `test/`, bukan di `backend/` atau root.
-- Tiap skrip berdiri sendiri: mencetak `PASS`/`FAIL` per cek, ringkasan `HASIL: n/n lulus`,
-  dan keluar dengan kode 1 bila ada yang gagal.
-- Tanpa kredensial: klien RTDB di-stub, dan database memakai `NODE_DB` ke folder sementara
-  sehingga `backend/data/sudutkota.db` tidak tersentuh.
+- Skrip uji, audit, cek, dan diagnosa baru **wajib** dibuat di `test/`, bukan di `backend/`
+  atau root. Pengecualian: `backend/scripts/audit_accounts.py` adalah **tool operator**
+  yang dikirim bersama aplikasi dan dirujuk dokumentasi, bukan kode uji.
+- Tiap skrip berdiri sendiri: mencetak `PASS`/`FAIL` per cek, ringkasan `HASIL: n/n lulus`
+  (atau `gagal: tidak ada`), dan keluar dengan kode 1 bila ada yang gagal.
+- Path diturunkan dari `Path(__file__).resolve().parent.parent`, bukan hardcode —
+  repo boleh dipindah tanpa menyunting skrip.
+- Tanpa kredensial untuk suite uji: klien RTDB di-stub, database memakai `NODE_DB` ke folder
+  sementara sehingga `backend/data/sudutkota.db` dan `backend/media/hls` tidak tersentuh.
 
 ## Cache aset lokal
 
