@@ -19,7 +19,9 @@
 (function (global) {
     'use strict';
 
-    const NODES_CACHE_KEY = 'sudutkota.nodes.cache.v2';
+    /* v3: cache node lama (sebelum pembersihan database) tidak boleh dipakai
+       lagi — kalau backend sempat mati, direktori akan tampil dari cache usang. */
+    const NODES_CACHE_KEY = 'sudutkota.nodes.cache.v3';
     const AI_KEY = 'sudutkota.ai.v1';
 
     const DEFAULT_AI = {
@@ -101,10 +103,9 @@
     let readyPromise = null;
 
     const statsCache = new Map();
-    /* Agregat statistik dari Firebase (GET /api/stats/telemetry). Selama belum
-       ada sampel, halaman memakai simulasi deterministik lama. */
+    /* Agregat statistik dari Firebase (GET /api/stats/telemetry) — satu-satunya
+       sumber angka. Tidak ada simulasi di peramban. */
     let statsTelemetry = null;
-    let statsSource = 'simulasi';
     let statsLoadedAt = null;
     let statsLoading = null;
 
@@ -135,69 +136,47 @@
     }
 
     /* ---------------------------------------------------------------------
-       Telemetri demo
-       Nilai bergerak acak di sekitar angka yang masuk akal untuk satu simpang.
+       Telemetri live (RTDB)
+       Angka kartu CCTV diambil dari snapshot engine AI di Firebase lewat
+       backend (`GET /api/stats/live`). Tidak ada simulasi di peramban: node
+       yang belum mengirim snapshot tampil 0 dengan status OFFLINE.
        --------------------------------------------------------------------- */
-    const telemetry = {};
+    const OFFLINE_SNAPSHOT = {
+        status: 'OFFLINE', jumlah_mobil: 0, jumlah_motor: 0, jumlah_truk: 0,
+        jumlah_bus: 0, total_kendaraan: 0, server_fps: 0, stale: true
+    };
 
-    function seedTelemetry(cam) {
-        return {
-            timestamp: Date.now() / 1000,
-            jumlah_mobil: 8 + Math.floor(Math.random() * 12),
-            jumlah_motor: 20 + Math.floor(Math.random() * 30),
-            jumlah_truk: 1 + Math.floor(Math.random() * 4),
-            jumlah_bus: Math.floor(Math.random() * 3),
-            total_kendaraan: 0,
-            server_fps: 22 + Math.random() * 6,
-            night_vision_status: !!aiState[cam.id]?.lowlight,
-            status: cam.aktif ? 'ONLINE' : 'OFFLINE',
-            engine: cam.aktif ? 'demo' : 'offline'
-        };
-    }
+    let liveSnapshots = {};
+    let livePromise = null;
 
-    function stepTelemetry(cam) {
-        const prev = telemetry[cam.id] || seedTelemetry(cam);
-        if (!cam.aktif) {
-            return { ...prev, timestamp: Date.now() / 1000, status: 'OFFLINE', engine: 'offline' };
-        }
-        const drift = (value, min, max, delta) => {
-            const next = value + (Math.random() * 2 - 1) * delta;
-            return Math.max(min, Math.min(max, Math.round(next)));
-        };
-        const mobil = drift(prev.jumlah_mobil, 0, 45, 2);
-        const motor = drift(prev.jumlah_motor, 0, 90, 3);
-        const truk = drift(prev.jumlah_truk, 0, 9, 1);
-        const bus = drift(prev.jumlah_bus, 0, 5, 1);
-        return {
-            timestamp: Date.now() / 1000,
-            jumlah_mobil: mobil,
-            jumlah_motor: motor,
-            jumlah_truk: truk,
-            jumlah_bus: bus,
-            total_kendaraan: mobil + motor + truk + bus,
-            server_fps: Math.round((18 + Math.random() * 10) * 10) / 10,
-            night_vision_status: !!aiState[cam.id]?.lowlight,
-            status: 'ONLINE',
-            engine: 'demo'
-        };
+    function fetchLive() {
+        if (livePromise) return livePromise;
+        livePromise = apiRead('stats/live')
+            .then(data => {
+                liveSnapshots = (data && data.nodes) ? data.nodes : {};
+                return liveSnapshots;
+            })
+            .catch(err => {
+                liveSnapshots = {};
+                console.warn('[Store] Telemetri live tidak tersedia:', err.message || err);
+                return liveSnapshots;
+            })
+            .finally(() => { livePromise = null; });
+        return livePromise;
     }
 
     /* ---------------------------------------------------------------------
        Statistik
-       Data dibangkitkan secara deterministik dari (id node + tanggal + jam),
-       sehingga angka tetap sama ketika halaman dimuat ulang. Ini data
-       simulasi sampai telemetri Firebase tersambung.
+       Seluruh angka berasal dari agregat Firebase (`GET /api/stats/telemetry`).
+       Tidak ada model simulasi di sini: bila RTDB belum punya sampel, halaman
+       menampilkan nol dengan penanda "belum ada data".
        --------------------------------------------------------------------- */
-    const HOUR_WEIGHT = [3, 2, 2, 2, 3, 5, 9, 16, 22, 18, 13, 12, 14, 13, 13, 16, 22, 24, 19, 14, 10, 8, 6, 4];
     const DAY_LABEL = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
     const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-    /** Awal arsip simulasi. Dipakai oleh periode "Seluruhnya". */
-    const DATA_START = new Date(2019, 0, 1);
-
     /**
      * Definisi periode. `unit` menentukan lebar bucket, `days` panjang rentang
-     * (null = sejak DATA_START). Rata-rata & puncak selalu per bucket.
+     * (null = sejak sampel Firebase paling awal). Rata-rata & puncak per bucket.
      */
     const PERIODS = {
         '1d': { label: '1 Hari', unit: 'hour', days: 1, bucketName: 'Jam', avgLabel: 'Rata-rata / Jam', peakLabel: 'Jam Tersibuk' },
@@ -208,25 +187,6 @@
         '5y': { label: '5 Tahun', unit: 'quarter', days: 1826, bucketName: 'Kuartal', avgLabel: 'Rata-rata / Kuartal', peakLabel: 'Kuartal Tersibuk' },
         all: { label: 'Seluruhnya', unit: 'year', days: null, bucketName: 'Tahun', avgLabel: 'Rata-rata / Tahun', peakLabel: 'Tahun Tersibuk' }
     };
-
-    function hash32(text) {
-        let h = 2166136261;
-        for (let i = 0; i < text.length; i += 1) {
-            h ^= text.charCodeAt(i);
-            h = Math.imul(h, 16777619);
-        }
-        return h >>> 0;
-    }
-
-    function mulberry32(seed) {
-        let a = seed;
-        return function () {
-            a |= 0; a = (a + 0x6D2B79F5) | 0;
-            let t = Math.imul(a ^ (a >>> 15), 1 | a);
-            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-        };
-    }
 
     function dateKey(date) {
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -249,50 +209,15 @@
         return `${date.getDate()} ${MONTH_LABEL[date.getMonth()]} ${date.getFullYear()}`;
     }
 
-    /**
-     * Dua puluh empat nilai dasar satu node pada satu hari.
-     * Deterministik per (node, tanggal) sehingga angka hari ini sama dengan
-     * hari itu di dalam periode mana pun.
-     */
-    function daySeries(cam, dayKey) {
-        const series = new Array(24).fill(0);
-        if (!cam.aktif) return series;
-
-        const rng = mulberry32(hash32(`${cam.id}|${dayKey}`));
-        for (let hour = 0; hour < 24; hour += 1) {
-            series[hour] = HOUR_WEIGHT[hour] * (0.7 + rng() * 0.7);
-        }
-        return series;
-    }
-
-    /** Sebaran 0..1 deterministik dari sebuah angka (tanpa RNG tambahan). */
-    function hashUnit(x) {
-        const s = Math.sin(x * 12.9898) * 43758.5453;
-        return s - Math.floor(s);
-    }
-
-    function hourCompose(base) {
-        const mobil = Math.round(base * 0.35);
-        const motor = Math.round(base * 0.55);
-        /* Faktor 0,4..1,6 pada porsi 6% dan 4% supaya truk/bus tidak selalu
-           jatuh ke angka yang sama di jam yang berbeda. */
-        const noise = hashUnit(base);
-        const truk = Math.round(base * 0.06 * (0.4 + noise * 1.2));
-        const bus = Math.round(base * 0.04 * (0.4 + (1 - noise) * 1.2));
-        return { mobil, motor, truk, bus, total: mobil + motor + truk + bus };
-    }
-
-    function composeSeries(series) {
-        const acc = { mobil: 0, motor: 0, truk: 0, bus: 0, total: 0 };
-        for (let hour = 0; hour < series.length; hour += 1) {
-            const value = hourCompose(series[hour]);
-            acc.mobil += value.mobil;
-            acc.motor += value.motor;
-            acc.truk += value.truk;
-            acc.bus += value.bus;
-            acc.total += value.total;
-        }
-        return acc;
+    /** Tanggal sampel Firebase paling awal; fallback bila arsip kosong. */
+    function earliestTelemetryDay(fallback) {
+        const daily = statsTelemetry && statsTelemetry.daily ? Object.keys(statsTelemetry.daily) : [];
+        let earliest = null;
+        daily.forEach(text => {
+            const date = new Date(`${text}T00:00:00`);
+            if (!isNaN(date) && (!earliest || date < earliest)) earliest = date;
+        });
+        return earliest || fallback;
     }
 
     function bucketOf(date, unit, withWeekday) {
@@ -427,7 +352,6 @@
             nodes = nodes.filter(n => n.id !== id);
             if (nodes.length === before) return false;
             delete aiState[id];
-            delete telemetry[id];
             statsCache.clear();
             writeJson(NODES_CACHE_KEY, nodes);
             writeJson(AI_KEY, aiState);
@@ -452,25 +376,26 @@
             return { ...aiState[id] };
         },
 
-        /* --- Telemetri --- */
+        /* --- Telemetri (snapshot RTDB) --- */
         getTelemetry(id) {
             const cam = this.get(id);
             if (!cam) return null;
-            telemetry[id] = stepTelemetry(cam);
-            return { ...telemetry[id] };
+            return { ...OFFLINE_SNAPSHOT, ...(liveSnapshots[id] || {}) };
         },
 
-        /** Polling 2 detik; mengembalikan fungsi untuk berhenti. */
+        /** Polling 2 detik ke /api/stats/live; mengembalikan fungsi berhenti. */
         subscribeTelemetry(id, callback) {
-            const tick = () => {
-                const cam = this.get(id);
-                if (!cam) return;
-                telemetry[id] = stepTelemetry(cam);
-                callback({ ...telemetry[id] });
+            let stopped = false;
+
+            const tick = async () => {
+                if (!stopped) await fetchLive();
+                if (stopped) return;
+                callback({ ...OFFLINE_SNAPSHOT, ...(liveSnapshots[id] || {}) });
             };
+
             tick();
             const timer = setInterval(tick, 2000);
-            return () => clearInterval(timer);
+            return () => { stopped = true; clearInterval(timer); };
         },
 
         onChange(callback) {
@@ -493,8 +418,8 @@
             const cfg = PERIODS[key];
             const cameras = nodes.map(n => ({ ...n }));
             const activeCameras = cameras.filter(c => c.aktif);
-            const useFirebase = statsSource === 'firebase' && !!statsTelemetry;
-            const countedCameras = useFirebase ? cameras : activeCameras;
+            /* Firebase satu-satunya sumber angka. Tanpa sampel -> semua nol. */
+            const countedCameras = activeCameras;
             const today = startOfDay(new Date());
             const buckets = [];
             const perNodeMap = new Map(cameras.map(cam => [cam.id, {
@@ -506,10 +431,6 @@
 
             if (cfg.unit === 'hour') {
                 const todayKey = dateKey(today);
-                const seriesByNode = countedCameras.map(cam => ({
-                    cam,
-                    series: useFirebase ? null : daySeries(cam, todayKey)
-                }));
 
                 for (let hour = 0; hour < 24; hour += 1) {
                     const bucket = {
@@ -518,10 +439,8 @@
                         mobil: 0, motor: 0, truk: 0, bus: 0, total: 0
                     };
 
-                    seriesByNode.forEach(({ cam, series }) => {
-                        const value = useFirebase
-                            ? firebaseHour(cam.id, todayKey, hour)
-                            : hourCompose(series[hour]);
+                    countedCameras.forEach(cam => {
+                        const value = firebaseHour(cam.id, todayKey, hour);
                         bucket.mobil += value.mobil;
                         bucket.motor += value.motor;
                         bucket.truk += value.truk;
@@ -539,7 +458,7 @@
                     buckets.push(bucket);
                 }
             } else {
-                rangeStart = cfg.days ? addDays(today, -(cfg.days - 1)) : new Date(DATA_START);
+                rangeStart = cfg.days ? addDays(today, -(cfg.days - 1)) : earliestTelemetryDay(today);
                 const withWeekday = cfg.days === 7;
                 const byKey = new Map();
 
@@ -554,9 +473,7 @@
                     const dayKey = dateKey(day);
                     for (let i = 0; i < countedCameras.length; i += 1) {
                         const cam = countedCameras[i];
-                        const totals = useFirebase
-                            ? firebaseDay(cam.id, dayKey)
-                            : composeSeries(daySeries(cam, dayKey));
+                        const totals = firebaseDay(cam.id, dayKey);
 
                         bucket.mobil += totals.mobil;
                         bucket.motor += totals.motor;
@@ -587,7 +504,8 @@
                 avgLabel: cfg.avgLabel,
                 peakLabel: cfg.peakLabel,
                 generatedAt: new Date(),
-                dataSource: useFirebase ? 'firebase' : 'simulasi',
+                dataSource: 'firebase',
+                hasData: !!statsTelemetry,
                 rangeLabel: key === '1d'
                     ? `Hari ini, ${shortDate(today)}`
                     : key === 'all'
@@ -615,7 +533,8 @@
 
         /**
          * Muat agregat statistik dari Firebase lewat backend.
-         * Bila belum ada sampel (atau backend mati), tetap memakai simulasi.
+         * Tidak ada fallback simulasi: bila RTDB belum punya sampel, halaman
+         * menampilkan nol dan penanda "belum ada data".
          */
         async loadStats(force) {
             if (statsLoading && !force) return statsLoading;
@@ -623,22 +542,16 @@
             statsLoading = (async () => {
                 try {
                     const data = await apiRead('stats/telemetry');
-                    if (data && data.has_data && data.daily && Object.keys(data.daily).length) {
-                        statsTelemetry = data;
-                        statsSource = 'firebase';
-                    } else {
-                        statsTelemetry = null;
-                        statsSource = 'simulasi';
-                    }
+                    const hasDaily = data && data.daily && Object.keys(data.daily).length;
+                    statsTelemetry = (data && data.has_data && hasDaily) ? data : null;
                     statsLoadedAt = new Date();
                 } catch (err) {
                     statsTelemetry = null;
-                    statsSource = 'simulasi';
                     statsLoadedAt = new Date();
                     console.warn('[Store] Statistik Firebase tidak tersedia:', err.message || err);
                 }
                 statsCache.clear();
-                emit('stats:change', { source: statsSource });
+                emit('stats:change', { source: 'firebase', hasData: !!statsTelemetry });
                 return Store.statsInfo();
             })();
 
@@ -652,7 +565,7 @@
         /** Status sumber angka untuk label halaman dan ekspor. */
         statsInfo() {
             return {
-                source: statsSource,
+                source: 'firebase',
                 hasData: !!statsTelemetry,
                 loadedAt: statsLoadedAt,
                 generatedAt: statsTelemetry ? statsTelemetry.generated_at : null,
@@ -667,7 +580,6 @@
             aiState = {};
             statsCache.clear();
             statsTelemetry = null;
-            statsSource = 'simulasi';
             writeJson(NODES_CACHE_KEY, nodes);
             writeJson(AI_KEY, aiState);
             emit('store:change', { type: 'reset' });

@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS nodes (
     updated_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_nodes_zona ON nodes(zona);
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 SEED_NODES = [
@@ -143,6 +147,26 @@ def _db():
 def init_db() -> None:
     with _DB_LOCK, _db() as conn:
         conn.executescript(SCHEMA)
+
+
+# --- Penanda seed -----------------------------------------------------------
+# Tanpa penanda ini, `seed_defaults()` menanam ulang node bawaan setiap kali
+# tabel kosong — jadi node yang sengaja dihapus operator muncul lagi setelah
+# backend restart. Sekali sebuah database pernah diisi, isinya milik operator.
+SEED_KEY = "seeded"
+
+
+def _seeded(conn: sqlite3.Connection) -> bool:
+    row = conn.execute("SELECT value FROM meta WHERE key = ?", (SEED_KEY,)).fetchone()
+    return bool(row and str(row[0]) == "1")
+
+
+def _mark_seeded(conn: sqlite3.Connection, value: bool = True) -> None:
+    conn.execute(
+        "INSERT INTO meta(key, value) VALUES(?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (SEED_KEY, "1" if value else "0"),
+    )
 
 
 def _now() -> str:
@@ -304,17 +328,30 @@ def delete_node(node_id: str) -> bool:
 
 
 def seed_defaults(force: bool = False, seed_demo: bool | None = None) -> None:
-    """Isi tabel kosong dengan node Pekalongan; demo hanya bila diizinkan."""
-    if count_nodes() and not force:
-        return
+    """Isi node bawaan hanya pada database yang belum pernah di-seed.
 
+    ``force=True`` dipakai tombol "Reset data node" (memang ingin menanam ulang).
+    Tanpa ``force``, database yang sudah pernah diisi tidak pernah ditanami lagi
+    walau tabelnya kosong — kalau tidak, node yang dihapus operator akan kembali
+    setiap backend dinyalakan.
+    """
     demo = allow_test_sources() if seed_demo is None else seed_demo
     with _DB_LOCK, _db() as conn:
+        if not force:
+            if _seeded(conn):
+                return
+            # Database lama (dibuat sebelum ada tabel `meta`): anggap sudah
+            # di-seed supaya isinya tidak berubah.
+            if conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]:
+                _mark_seeded(conn)
+                return
+
         for node in SEED_NODES:
             _insert(conn, dict(node))
         if demo:
             for node in DEMO_NODES:
                 _insert(conn, dict(node))
+        _mark_seeded(conn)
 
 
 def reset_nodes(seed_demo: bool | None = None) -> None:

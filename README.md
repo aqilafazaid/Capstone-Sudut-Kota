@@ -3,14 +3,18 @@
 Frontend statis untuk Sistem Informasi Eksekutif pengawasan CCTV Dishub Kota Pekalongan.
 Halaman berjalan tanpa build step dan tanpa server Python: cukup HTML, CSS, dan JavaScript.
 
+> Dokumen ini **selalu diperbarui setiap ada perubahan kode** (endpoint, perilaku, struktur,
+> konfigurasi). Kalau sebuah perubahan tidak tercatat di sini, perubahan itu belum selesai.
+
 ## Status
 
 | Bagian | Status |
 |--------|--------|
-| Frontend statis (`frontend/`) | **Selesai** — 8 halaman, pemutar HLS, panel kontrol AI, CRUD node, statistik + ekspor |
-| Firebase Auth + Realtime Database | **Aktif** — identitas di Firebase Auth; profil/peran dan agregat statistik di RTDB |
-| Backend lokal (`backend/`) | Flask API + kolektor statistik + engine AI (ffmpeg/HLS) |
+| Frontend statis (`frontend/`) | **Selesai** — 9 halaman, pemutar HLS, panel kontrol AI, CRUD node, statistik + ekspor, akses fitur per akun |
+| Firebase Auth + Realtime Database | **Aktif** — identitas di Firebase Auth; profil/peran/`akses` dan agregat statistik di RTDB |
+| Backend lokal (`backend/`) | Flask API + kolektor statistik + engine AI (ffmpeg/HLS), seed node sekali pakai |
 | Deployment Vercel | Siap — `vercel.json` di root, `outputDirectory: frontend` |
+| Pengujian | `test/` di root (lokal saja, diabaikan git & Vercel) |
 
 ## Navigasi
 
@@ -18,10 +22,11 @@ Menu: **Dashboard · Stream · Statistik · Akun**, seluruhnya disuntikkan `js/a
 identik di semua halaman. **Beranda tidak lagi jadi item menu** — logo bundar + tulisan SUDUT KOTA di
 kiri navbar yang menjadi tautan ke `index.html` (dan diberi cincin biru saat halaman aktif).
 
-- **Dashboard hanya muncul untuk Administrator dan Teknisi**, **Akun hanya untuk Administrator**.
-  **Visitor hanya boleh membuka Stream dan Statistik**; membuka Dashboard, Tambah Data, Kelola
-  Akun, atau Beranda akan dialihkan ke Stream dengan pesan penolakan. Tautan muncul/hilang
-  seketika saat login atau logout tanpa memuat ulang halaman.
+- **Menu mengikuti field `akses` akun**, bukan peran mentah: Dashboard, Stream, Statistik,
+  Akun, dan panel Modul AI muncul/hilang seketika saat login, logout, atau saat Administrator
+  mengubah sakelar di Kelola Akun. Membuka halaman yang tidak diizinkan menampilkan panel
+  “Akses Fitur Dinonaktifkan” di halaman itu sendiri (bukan redirect yang bisa memantul);
+  pengguna tanpa sesi diarahkan ke login.
 - **Teks berjalan** di bar bawah (tampil ≥1024 px) memakai marquee dua salinan identik yang
   digeser tepat satu salinan, jadi sambungannya tidak terlihat dan tidak ada jeda kosong.
   Kecepatannya tetap ~55 px/detik berapa pun panjang teksnya dan berhenti saat kursor berada di atas
@@ -50,7 +55,7 @@ Capstone-Sudut-Kota/
 │   │   ├── firebase-config.js DIHASILKAN: konfigurasi Firebase Web SDK
 │   │   ├── firebase-client.js inisialisasi Firebase App + Auth
 │   │   ├── auth.js            sesi, peran, ID token (Firebase Auth)
-│   │   ├── store.js           klien /api/nodes + cache baca
+│   │   ├── store.js           klien /api/nodes + /api/stats/* (tanpa simulasi)
 │   │   ├── app.js             navbar, tema, jam, toast
 │   │   └── …                  main.js, dashboard.js, add-data.js, akun.js, statistik.js
 │   ├── asset/
@@ -71,12 +76,12 @@ Capstone-Sudut-Kota/
 │   ├── data/sudutkota.db      konfigurasi kamera (gitignored)
 │   ├── media/hls/             keluaran ffmpeg (gitignored)
 │   ├── scripts/               sync_public_config.py, seed_accounts.py, apply_rtdb_rules.py
-│   ├── tests/
 │   ├── .env / .env.example
 │   └── requirements.txt
+├── test/                       ← kode uji (gitignored + vercelignored, lokal saja)
 ├── docs/                      catatan desain lokal (gitignored)
 ├── vercel.json                deploy: framework Other, output frontend/
-├── .vercelignore              backend/, docs/, tools/ tidak ikut upload
+├── .vercelignore              backend/, docs/, tools/, test/ tidak ikut upload
 ├── start-backend.bat          Windows: nginx + Flask + Tailscale Funnel (satu klik)
 ├── start-frontend.bat         Windows: server statis loopback 8787 (mode lokal)
 └── README.md
@@ -171,9 +176,13 @@ Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 | Konfigurasi kamera (RTSP) | `backend/data/sudutkota.db` (SQLite) | sumber kebenaran; RTSP tidak pernah dikirim ke peramban |
 | Identitas operator | Firebase Authentication | email + kata sandi |
 | Profil & peran operator | RTDB `<RTDB_ROOT>/akun/<uid>` | ditulis backend lewat Admin SDK, bukan klien |
-| Statistik | RTDB `<RTDB_ROOT>/statistik/<tanggal>/<jam>/<node>` dan `<RTDB_ROOT>/statistik_harian/<tanggal>/<node>` | agregat sampel telemetri AI + agregat harian, ditulis kolektor backend |
+| Statistik | RTDB `<RTDB_ROOT>/statistik/<tanggal>/<jam>/<node>` dan `<RTDB_ROOT>/statistik_harian/<tanggal>/<node>` | agregat sampel telemetri AI + agregat harian, ditulis kolektor backend. **Satu-satunya sumber angka**; tidak ada simulasi di peramban |
 | Konfigurasi Firebase Web SDK | `backend/.env` → `frontend/js/firebase-config.js` | kunci publik; hasil `sync_public_config.py` |
 | Alamat backend untuk Vercel | `backend/.env` (`PUBLIC_BACKEND_URL`) → `frontend/js/public-config.js` | hasil skrip yang sama |
+
+Node bawaan hanya ditanam sekali: tabel `meta` menyimpan penanda `seeded`, jadi node yang
+dihapus operator tetap hilang setelah backend restart (dulu tabel kosong memicu seed ulang).
+`POST /api/nodes/reset` sengaja menanam ulang seed.
 
 Klien tidak pernah membaca atau menulis RTDB. Semua akses data lewat backend, sehingga
 rules RTDB dapat menolak seluruh akses klien:
@@ -223,6 +232,7 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 | GET | `/hls/<cam>/index.m3u8`, `/hls/<cam>/seg_*.ts` | publik | playlist & segmen |
 | GET | `/api/streams` | publik | status proses ffmpeg |
 | GET | `/api/stats/telemetry` | publik | agregat statistik per jam/hari dari RTDB (`?days=N`) |
+| GET | `/api/stats/live` | publik | snapshot terakhir tiap node dari RTDB (`cam_<channel>`) |
 | GET | `/api/nodes/<id>` | teknisi, admin | detail + RTSP untuk form edit |
 | POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node |
 | POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
@@ -234,13 +244,12 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 | GET | `/api/akun/me` | login | profil sendiri |
 | POST | `/api/akun/self` | login | buat profil saat pendaftaran (peran visitor) |
 
-Otorisasi memakai header `Authorization: Bearer <idToken> (Firebase). Peran diambil dari
-RTDB dan di-cache 60 detik di backend; pemeriksaan peran **tidak** terjadi di peramban.
-Halaman yang butuh peran tetap memanggil `Auth.requireOperator()`/`requireAdmin()`, tetapi
-itu hanya untuk tampilan — endpoint tetap menolak sendiri. Endpoint tulis memakai
-`@auth.require_feature("dashboard"|"akun")`, yang hanya membaca field `akses` akun
-(bawaan peran dipakai bila kunci tidak diset). Menu dan pagar halaman membaca nilai
-yang sama lewat `Auth.can()`.
+Otorisasi memakai header `Authorization: Bearer <idToken>` (Firebase). Peran dan `akses`
+diambil dari RTDB dan di-cache 60 detik di backend; pemeriksaan wewenang **tidak** terjadi
+di peramban. Halaman tetap memanggil `Auth.can()`/`Auth.guard(feature)` untuk menu dan pagar
+tampilan, tetapi itu hanya kosmetik — endpoint tetap menolak sendiri. Endpoint tulis
+memakai `@auth.require_feature("dashboard"|"akun")`, yang hanya membaca field `akses`
+akun (bawaan peran dipakai bila kunci tidak diset).
 
 `copy: true` meneruskan video apa adanya (hemat CPU); `copy: false` men-transcode H.264
 (wajib bila sumber bukan H.264). Engine AI selalu memakai jalur transcode.
@@ -325,15 +334,17 @@ Kata sandi diminta lewat prompt, tidak masuk riwayat shell.
 
 ## Data awal
 
-Backend menyemai 3 node Pekalongan (`cam_29`, `cam_35`, `cam_43`) saat
-`backend/data/sudutkota.db` masih kosong. Keempat stream uji publik hanya ikut bila
-`ALLOW_TEST_SOURCES=true`; default-nya `false`.
+Backend menyemai 3 node Pekalongan (`cam_29`, `cam_35`, `cam_43`) **hanya sekali**, yaitu saat
+`backend/data/sudutkota.db` belum pernah diisi. Penanda `meta.seeded` membuat node yang dihapus
+operator tetap hilang setelah backend restart; `POST /api/nodes/reset` (tombol **Reset data**)
+sengaja menanam ulang seed. Keempat stream uji publik hanya ikut bila `ALLOW_TEST_SOURCES=true`;
+default-nya `false`.
 
-- `localStorage['sudutkota.nodes.cache.v2']` — cache baca, bukan sumber kebenaran.
+- `localStorage['sudutkota.nodes.cache.v3']` — cache baca, bukan sumber kebenaran.
 - `localStorage['sudutkota.ai.v1']` — status AI lokal (belum tersinkron ke RTDB).
 - `localStorage['sudutkota.backend']` — override alamat backend di lingkungan non-lokal.
 
-Tombol **Reset data** memanggil `POST /api/nodes/reset` (teknisi/admin),
+Tombol **Reset data** memanggil `POST /api/nodes/reset` (fitur `dashboard`),
 mengembalikan node ke seed backend. Akun Firebase **tidak** ikut direset.
 
 ## Titik integrasi backend dan Firebase
@@ -351,16 +362,18 @@ Store.getAi(id)                  Store.setAi(id, patch)
 Store.subscribeTelemetry(id, cb) Store.onChange(cb)
 Store.loadStats(force)           Store.statsInfo()      Store.stats(period)
 
-// auth.js — Firebase Auth + peran dari /api/akun/me
+// auth.js — Firebase Auth + peran/akses dari /api/akun/me
 Auth.login(identifier, password) Auth.register({...})   Auth.logout()
 Auth.user()                      Auth.isOperator()      Auth.isAdmin()
-Auth.requireOperator()           Auth.requireAdmin()    Auth.requirePage()
-Auth.canAccess(page, role)       Auth.homeFor(role)
+Auth.can(feature)                Auth.guard(feature)    Auth.features()
+Auth.featureLabel(feature)       Auth.roleFeatures()    Auth.homeFor(role)
 ```
 
 Akun sudah sepenuhnya di Firebase Authentication + RTDB, dan statistik dibaca dari
-agregat RTDB lewat `Store.loadStats()`. Yang masih lokal hanya status toggle AI
-(`localStorage['sudutkota.ai.v1']`) dan telemetri demo di halaman Stream.
+agregat RTDB lewat `Store.loadStats()`. Kartu kendaraan di halaman Stream memakai
+`GET /api/stats/live` (snapshot `cam_<channel>` di RTDB) lewat
+`Store.subscribeTelemetry()`. Tidak ada angka simulasi di peramban; yang masih lokal
+hanya status toggle AI (`localStorage['sudutkota.ai.v1']`).
 
 ## Halaman Statistik & Ekspor
 
@@ -427,9 +440,9 @@ satu muat halaman tidak pernah menarik seluruh arsip jam (yang berarti ±26.000 
 untuk satu tahun). Sampel yang lebih tua dari `STATS_STALE_SECONDS` dilewati agar stream
 mati tidak menambah angka.
 
-Selama belum ada satu pun sampel (mis. AI belum berjalan), halaman memakai simulasi
-deterministik lama dan menandainya **data simulasi**. Untuk demo, agregat contoh diisi
-lewat endpoint khusus (teknisi/admin) atau langsung dari konsol backend:
+Selama belum ada satu pun sampel (mis. AI belum berjalan), halaman menampilkan nol dan
+menandainya **belum ada data di Firebase** — tidak ada simulasi di peramban. Untuk demo,
+agregat contoh diisi lewat endpoint khusus (fitur `dashboard`) atau langsung dari konsol backend:
 
 ```bash
 # teknisi/admin yang login; token Firebase di header Authorization
@@ -445,17 +458,37 @@ python -c "import stats; print(stats.seed_dummy(days=365, reset=False))"
 ```
 
 Tanpa `days`, rentangnya 2019-01-01 s.d. hari ini sehingga semua tab interval terisi.
-Angkanya deterministik per (node, tanggal) dan mengikuti model simulasi lama, sehingga
+Angkanya deterministik per (node, tanggal) dan mengikuti pola jam sibuk yang tetap, sehingga
 seluruh interval konsisten dan pengisian ulang tidak menggandakan angka. Setelah data ada,
 label halaman berubah menjadi **sumber: Firebase RTDB** dan ekspor PDF/CSV ikut menulis
 sumber itu. Sebelum data inferensi sungguhan dipakai, jalankan dengan `reset` supaya
 agregat contoh tidak tercampur hitungan YOLO. Rentang baca dibatasi `STATS_MAX_DAYS` hari
 (default 4000, cukup untuk periode "Seluruhnya").
 
+## Pengujian
+
+Seluruh kode uji berada di `test/` di root repo. Direktori itu **diabaikan git dan Vercel**
+(`.gitignore` + `.vercelignore` memuat `test/`), jadi tidak pernah ikut commit atau deploy —
+hanya ada di mesin operator.
+
+```bash
+# dari root repo
+backend/.venv/Scripts/python.exe test/test_node_seed.py    # 6 cek: seed sekali + CRUD
+backend/.venv/Scripts/python.exe test/test_stats_live.py   # 9 cek: normalisasi /api/stats/live
+```
+
+Aturan yang dipakai:
+
+- Test baru **wajib** dibuat di `test/`, bukan di `backend/` atau root.
+- Tiap skrip berdiri sendiri: mencetak `PASS`/`FAIL` per cek, ringkasan `HASIL: n/n lulus`,
+  dan keluar dengan kode 1 bila ada yang gagal.
+- Tanpa kredensial: klien RTDB di-stub, dan database memakai `NODE_DB` ke folder sementara
+  sehingga `backend/data/sudutkota.db` tidak tersentuh.
+
 ## Cache aset lokal
 
-Semua referensi aset lokal di HTML memakai query versi, misalnya `css/style.css?v=20261106h` dan
-`js/app.js?v=20261106h`. Tujuannya: server statis (nginx maupun `python -m http.server`) tidak
+Semua referensi aset lokal di HTML memakai query versi, misalnya `css/style.css?v=20261113f` dan
+`js/app.js?v=20261113f`. Tujuannya: server statis (nginx maupun `python -m http.server`) tidak
 mengirim `Cache-Control` untuk aset, sehingga peramban bisa menyajikan versi lama setelah berkas
 diubah. **Setiap kali `css/` atau `js/` diedit, naikkan angka versi itu di kesembilan halaman**
 (cari `?v=`); cukup satu penggantian global.
@@ -465,24 +498,22 @@ untuk `/js/`.
 
 ## Responsif
 
-Semua halaman diuji pada 8 halaman × 15 ukuran viewport (320×568 sampai 2560×1080, termasuk
+Semua halaman diuji pada 9 halaman × 15 ukuran viewport (320×568 sampai 2560×1080, termasuk
 ponsel landscape 740×360 dan 844×390): tidak ada luapan horizontal dan tidak ada konten tertutup
 navbar.
 
-Navbar memakai `position: fixed` dan barisnya bisa melipat pada rasio tertentu (mis. 320–360 px,
-atau 640–767 px saat kolom pencarian turun ke baris kedua). Karena itu padding atas `<main>` tidak
-lagi ditulis tetap di HTML: `app.js` mengukur tepi bawah navbar dan menaruhnya di variabel CSS
-`--sk-nav-h`, lalu `main { padding-top: calc(var(--sk-nav-h) + 20px) }`. Pengukuran diulang saat
-`resize`, `orientationchange`, font selesai dimuat, dan saat chip pengguna berubah setelah
-login/logout. Efeknya: tidak ada lagi kartu yang tertutup navbar pada rasio mana pun.
+Navbar memakai `position: fixed` dengan tinggi tetap yang ditetapkan di CSS — `--sk-nav-h: 64px`
+dan `80px` pada ≥768 px — sehingga `main { padding-top: calc(var(--sk-nav-h) + 20px) !important }`
+selalu tepat sejak render pertama. Dulu tinggi navbar diukur `app.js` saat runtime, tetapi nilai
+itu tertinggal satu frame (64 px saat navbar sudah 80 px) dan membuat kartu pertama tertutup.
 
 Titik penyesuaian utama:
 
 - **Navbar** — logo mengecil di ponsel (`text-base`), tombol 36 px, dan pada <640 px tombol Keluar
   pindah ke menu ponsel supaya satu baris tetap muat; tautan desktop baru muncul di ≥1024 px dan
   baris tidak lagi melipat di 768–1023 px (`md:flex-nowrap` + pencarian `md:min-w-0`).
-- **Kontainer** — `max-w-7xl` dinaikkan bertahap pada layar lebar (1408 px ≥1536, 1600 px ≥1920,
-  1760 px ≥2400) supaya konten tidak mengambang kecil di tengah monitor ultrawide.
+- **Kontainer** — `.sk-shell` (`max-width: 1400px`) naik ke 1600 px pada ≥1920 px, jadi konten
+  tidak mengambang kecil di tengah monitor ultrawide.
 - **Dashboard** — di bawah 768 px tabel 5 kolom diganti kartu per node: nama, id/channel, status,
   zona/jalan, badge AI, dan tombol Edit/Hapus berlabel. Tabel tetap dipakai pada layar lebar.
 - **Statistik** — tombol interval menjadi grid 4 kolom di ponsel; kolom kontrol judul menumpuk
@@ -493,23 +524,30 @@ Titik penyesuaian utama:
 
 ## Kelola akun
 
-Halaman `akun.html` (“Kelola Akun”) khusus Administrator (`Auth.requireAdmin()`); Teknisi dialihkan ke login dengan
-alasan `forbidden`, pengguna tanpa sesi dengan alasan `login`.
+Halaman `akun.html` (“Kelola Akun”) khusus pemilik fitur `akun` (`Auth.guard('akun')`); pengguna
+tanpa fitur itu melihat panel penolakan, pengguna tanpa sesi diarahkan ke login.
 
 Fitur:
 
 - Ringkasan jumlah akun per peran, pencarian (nama/NIP/ID), filter peran.
-- Tabel 4 kolom di ≥768 px dan kartu di bawahnya — keduanya dari satu fungsi render.
+- Tabel di ≥768 px dan kartu di bawahnya — keduanya dari satu fungsi render.
+- **Kolom “Akses Fitur”**: lima sakelar per akun — CCTV, Statistik, Dashboard, Modul AI, Akun.
+  Peran hanya mengisi nilai bawaan (`ROLE_FEATURES`); `akses` per akun adalah sumber kebenaran,
+  jadi Administrator boleh memberi fitur di luar bawaan peran. Nilai yang tidak ada dianggap
+  `true`, hanya boolean `false` yang mencabut.
 - CRUD lewat modal: tambah, ubah, hapus. Peran yang tersedia hanya **Administrator, Teknisi, dan
   Visitor** — tidak ada peran lain, dan `auth.js` menolak nilai di luar ketiganya (jatuh ke Visitor).
-- Aturan yang ditegakkan di `auth.js`, bukan hanya di UI: username dan NIP harus unik, kata sandi
-  minimal 6 karakter, akun yang sedang dipakai tidak bisa dihapus, dan minimal satu Administrator
-  harus tersisa.
+- Aturan yang ditegakkan di backend, bukan hanya di UI: username dan NIP harus unik, kata sandi
+  minimal 6 karakter, akun yang sedang dipakai tidak bisa dihapus, minimal satu Administrator
+  harus tersisa, dan Administrator tidak bisa mencabut fitur `akun` dari akunnya sendiri
+  (backend membalas 409 supaya tidak terkunci).
 - Saat mengubah akun tanpa mengisi kata sandi, kata sandi lama dipertahankan.
+- `PUT /api/akun/<uid>` menggabungkan kiriman parsial; `{"akses":{"cctv":false}}` hanya mematikan
+  CCTV. Perubahan peran tanpa `akses` eksplisit mengembalikan ke bawaan peran baru.
 
-API yang ditambahkan ke `auth.js`: `list()`, `count()`, `create()`, `update()`, `remove()`,
-`requireAdmin()`, `resetAccounts()`. Semuanya mengembalikan `{ ok, user? , error? }`. Ketika Firebase
-Auth dipasang, cukup ganti implementasi tujuh fungsi itu; `akun.js` tidak perlu diubah.
+API di `auth.js`: `list()`, `count()`, `create()`, `update()`, `remove()`, `can(feature)`,
+`guard(feature)`, `features()`, `featureLabel()`, `roleFeatures()`, `resetAccounts()`. Semuanya
+mengembalikan `{ ok, user?, error? }` untuk operasi tulis.
 
 ## Sumber stream: satu RTSP
 
@@ -521,7 +559,7 @@ memutar `hls_url` yang diturunkan backend (`/hls/<id>/index.m3u8`). Tidak ada la
 - `rtsp://`/`rtsps://` diterima. `http(s)://` hanya bila `ALLOW_TEST_SOURCES=true`,
   untuk stream uji lokal seperti berkas HLS publik.
 - `GET /api/nodes` tidak memuat `rtsp`; `GET /api/nodes/<id>` mengembalikannya untuk
-  form edit dan membutuhkan `X-SK-Token`.
+  form edit dan membutuhkan ID token Firebase (`Authorization: Bearer`) plus fitur `dashboard`.
 - Peramban tidak pernah membuka RTSP. Label AI hanya menandai apakah modul AI aktif;
   URL HLS-nya sama.
 
@@ -536,8 +574,9 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
 2. **Ingress publik.** Halaman Vercel berjalan di HTTPS; backend dijangkau lewat HTTPS
    juga. Jalur aktif: `tailscale funnel --bg 8080` → nginx:8080, dinyalakan dan dimatikan
    oleh `start-backend.bat`. Flask tetap di loopback dan tidak pernah dipublikasikan.
-3. **Stream Pekalongan belum menyala.** Node `cam_29`, `cam_35`, `cam_43` masih
-   `aktif: false`; ffmpeg baru dijalankan setelah node diaktifkan dan RTSP-nya terjangkau.
+3. **Direktori node kosong.** `backend/data/sudutkota.db` sudah dibersihkan; seed **tidak**
+   muncul kembali otomatis. Tambahkan node lewat Dashboard, atau panggil
+   `POST /api/nodes/reset` bila ingin 3 node bawaan (`cam_29`, `cam_35`, `cam_43`) kembali.
 4. **Kredensial RTSP.** URL RTSP tersimpan plaintext di `backend/data/sudutkota.db` dan
    tidak pernah dikirim ke peramban. Kata sandi lama yang pernah tertulis di kode masih
    ada di riwayat git — ganti kata sandi perangkat bila repo pernah dibagikan. Enkripsi

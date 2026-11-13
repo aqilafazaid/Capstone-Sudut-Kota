@@ -17,9 +17,10 @@ kendaraan-menit bila sampel diambil tiap menit), ditambah ``samples`` dan
 dilewati supaya stream yang mati tidak terus menambah angka.
 
 Selama engine AI belum pernah mengirim telemetri, RTDB tidak punya satu pun
-sampel sehingga halaman jatuh ke simulasi peramban. ``seed_dummy()`` mengisi
-agregat contoh yang deterministik ke dua koleksi di atas; angkanya mengikuti
-model simulasi lama sehingga seluruh periode (1 hari .. Seluruhnya) konsisten.
+sampel sehingga halaman menampilkan nol. Tidak ada simulasi di peramban:
+``seed_dummy()`` adalah satu-satunya pembangkit data contoh dan menulisnya
+langsung ke dua koleksi RTDB di atas; angkanya deterministik sehingga seluruh
+periode (1 hari .. Seluruhnya) konsisten.
 Jalankan ``seed_dummy(reset=True)`` sebelum data inferensi sungguhan dipakai.
 """
 
@@ -253,6 +254,100 @@ def _meta() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Baca agregat untuk halaman Statistik
 # ---------------------------------------------------------------------------
+
+def _empty_live(reason: str) -> dict[str, Any]:
+    return {
+        "status": "OFFLINE",
+        "stale": True,
+        "age_seconds": None,
+        "timestamp": None,
+        "jumlah_mobil": 0,
+        "jumlah_motor": 0,
+        "jumlah_truk": 0,
+        "jumlah_bus": 0,
+        "total_kendaraan": 0,
+        "server_fps": 0.0,
+        "night_vision_status": False,
+        "engine": "",
+        "reason": reason,
+    }
+
+
+def live_snapshots(nodes: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Snapshot terakhir per node, dibaca langsung dari RTDB ``cam_<channel>``.
+
+    Halaman CCTV memakai ini untuk kartu Mobil/Motor/Truk/Bus/Total/FPS.
+    Tidak ada simulasi di peramban: bila engine AI belum menulis snapshot
+    (atau sudah basi), nilainya nol dan ``status`` = OFFLINE.
+    """
+    if nodes is None:
+        import nodes as node_store
+
+        nodes = node_store.list_nodes()
+
+    now = datetime.now(WIB)
+    result: dict[str, Any] = {
+        "ok": True,
+        "generated_at": now.isoformat(),
+        "stale_seconds": stale_seconds(),
+        "nodes": {},
+    }
+
+    if firebase_init.missing_keys() or not _configured():
+        result.update(ok=False, reason="firebase belum dikonfigurasi")
+        return result
+
+    stale = stale_seconds()
+
+    for node in nodes:
+        node_id = str(node.get("id") or "").strip()
+        channel = str(node.get("channel") or "").strip()
+        if not node_id:
+            continue
+        if not channel:
+            result["nodes"][node_id] = _empty_live("tanpa channel")
+            continue
+
+        try:
+            raw = _ref("cam_" + channel).get()
+        except Exception as exc:  # RTDB tidak terjangkau: satu node gagal, lanjut
+            result["nodes"][node_id] = _empty_live(type(exc).__name__)
+            continue
+
+        if not isinstance(raw, dict) or not raw:
+            result["nodes"][node_id] = _empty_live("belum ada telemetri")
+            continue
+
+        counts = _counts(raw)
+        stamp = _snapshot_time(raw, now)
+        age = round((now - stamp).total_seconds(), 1) if stamp else None
+        fresh = age is not None and age <= stale
+        status = str(raw.get("status") or ("ONLINE" if fresh else "OFFLINE")).upper()
+        if not fresh:
+            status = "OFFLINE"
+
+        try:
+            fps = round(float(raw.get("server_fps") or 0), 1)
+        except (TypeError, ValueError):
+            fps = 0.0
+
+        result["nodes"][node_id] = {
+            "status": status,
+            "stale": not fresh,
+            "age_seconds": age,
+            "timestamp": stamp.timestamp() if stamp else None,
+            "jumlah_mobil": counts["mobil"],
+            "jumlah_motor": counts["motor"],
+            "jumlah_truk": counts["truk"],
+            "jumlah_bus": counts["bus"],
+            "total_kendaraan": counts["total"],
+            "server_fps": fps,
+            "night_vision_status": bool(raw.get("night_vision_status")),
+            "engine": str(raw.get("engine") or ""),
+        }
+
+    return result
+
 
 def read_telemetry(days: int | None = None) -> dict[str, Any]:
     """Agregat siap-pakai untuk ``Store.stats()`` di peramban.

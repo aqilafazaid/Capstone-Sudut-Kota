@@ -76,8 +76,9 @@ docs/
 # ==========================================
 # 10. TES (LOKAL SAJA)
 # ==========================================
-# Suite tes hanya ada di mesin operator: tidak ikut repo maupun deploy.
-# Salin ulang dari mesin lokal bila perlu menjalankan `python -m unittest`.
+# Semua kode uji wajib berada di ./test — tidak ikut repo, tidak ikut deploy.
+# Jalankan dari root: backend/.venv/Scripts/python.exe test/test_*.py
+test/
 backend/tests/
 tests/
 test_*.py

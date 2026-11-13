@@ -312,6 +312,15 @@ def create_app() -> Flask:
         response.headers["Cache-Control"] = "no-store"
         return response
 
+    @app.get("/api/stats/live")
+    def stats_live():
+        """Publik: snapshot telemetri terakhir tiap node, langsung dari RTDB.
+
+        Dipakai kartu statistik halaman CCTV. Tidak ada angka simulasi: node
+        yang belum mengirim snapshot tampil 0 dengan status OFFLINE.
+        """
+        return jsonify(stats_store.live_snapshots())
+
     @app.post("/api/stats/collect")
     @auth.require_feature("dashboard")
     def stats_collect():

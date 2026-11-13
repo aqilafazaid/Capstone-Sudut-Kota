@@ -96,12 +96,12 @@
         setTimeout(() => URL.revokeObjectURL(url), 4000);
     }
 
-    /** Keterangan sumber di kop PDF/CSV mengikuti data yang benar-benar dipakai. */
+    /** Semua angka berasal dari Firebase; label membedakan arsip kosong. */
     function sourceLabel() {
-        const info = Store.statsInfo ? Store.statsInfo() : { source: 'simulasi' };
-        return info.source === 'firebase'
+        const info = Store.statsInfo ? Store.statsInfo() : { hasData: false };
+        return info.hasData
             ? 'Firebase RTDB (agregat telemetri AI)'
-            : 'Simulasi frontend (belum tersambung Firebase)';
+            : 'Firebase RTDB (belum ada sampel telemetri)';
     }
 
     /* --- Render ---------------------------------------------------------- */
@@ -109,9 +109,9 @@
         const s = state.data.summary;
         el.rangeLabel.textContent = state.data.rangeLabel;
         if (el.source) {
-            const firebase = state.data.dataSource === 'firebase';
-            el.source.textContent = firebase ? 'sumber: Firebase RTDB' : 'data simulasi';
-            el.source.className = firebase
+            const hasData = state.data.hasData !== false;
+            el.source.textContent = hasData ? 'sumber: Firebase RTDB' : 'belum ada data di Firebase';
+            el.source.className = hasData
                 ? 'text-emerald-700 dark:text-emerald-400/90'
                 : 'text-amber-700 dark:text-amber-400/80';
         }
@@ -752,8 +752,8 @@
         if (state.data) paintCharts();
     });
 
-    /* Render simulasi dulu agar halaman tidak pernah kosong, lalu ganti dengan
-       agregat Firebase bila tersedia. */
+    /* Render angka Firebase lebih dulu (nol bila arsip kosong), jadi halaman
+       tidak pernah kosong dan tidak pernah menampilkan angka karangan. */
     Store.ready()
         .then(() => {
             load('1d');

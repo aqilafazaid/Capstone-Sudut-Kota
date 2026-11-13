@@ -25,6 +25,7 @@ README.md
 AGENTS.md
 
 # Berkas tes: hanya untuk mesin operator, tidak ikut deploy.
+test/
 backend/tests/
 tests/
 test_*.py
