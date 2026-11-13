@@ -366,14 +366,14 @@
                 <span class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 border-4 border-white dark:border-[#0a143c] active:scale-95 transition-transform group-hover:scale-105">
                     <i class="fa-solid ${link.icon} text-lg"></i>
                 </span>
-                <span class="text-[9px] font-display font-bold uppercase tracking-widest mt-1 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}">${link.short}</span>
+                <span class="text-[10px] font-display font-bold uppercase tracking-widest mt-1 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}">${link.short}</span>
             </a>`;
         }
 
         return `
             <a href="${link.href}" class="flex flex-col items-center justify-center w-full h-full gap-1 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 <i class="fa-solid ${link.icon} text-lg"></i>
-                <span class="text-[9px] font-display font-bold uppercase tracking-widest">${link.short}</span>
+                <span class="text-[10px] font-display font-bold uppercase tracking-widest">${link.short}</span>
             </a>`;
     }
 
@@ -408,7 +408,7 @@
                 <div class="radar-scanner"></div>
                 <img src="${LOGO}" alt="Logo Sudut Kota" class="h-14 sm:h-16 w-auto relative z-10 drop-shadow-2xl rounded-full">
                 <h1 class="font-display font-black text-lg sm:text-xl text-[#0a143c] dark:text-white tracking-[0.2em] mt-4 relative z-10">SUDUT KOTA</h1>
-                <p class="text-[9px] font-bold tracking-[0.3em] text-blue-600 dark:text-blue-400 uppercase mt-2 relative z-10">Memuat Sistem ATCS...</p>
+                <p class="text-[10px] font-bold tracking-[0.3em] text-blue-600 dark:text-blue-400 uppercase mt-2 relative z-10">Memuat Sistem ATCS...</p>
             </div>
         </div>`;
     }

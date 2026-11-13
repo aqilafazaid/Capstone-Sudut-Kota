@@ -416,6 +416,26 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
     .player-header { padding: 12px 14px; }
 }
 
+/* --- Target sentuh & field di layar kecil ----------------------------- */
+/* iOS Safari memperbesar seluruh halaman saat field <16px difokuskan, lalu
+   pengguna harus mencubit untuk kembali. Semua field jadi 16px di ponsel. */
+@media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+    select,
+    textarea { font-size: 16px !important; }
+
+    /* Tombol/tautan teks yang tadinya setinggi 17–33px diberi tinggi sentuh
+       penuh tanpa mengubah tampilan visualnya. */
+    .tap-link { display: inline-flex; align-items: center; min-height: 40px; }
+    .period-tab { min-height: 40px; }
+    .sk-btn { min-height: 40px; }
+
+    /* Menu ponsel & tautan footer: tiap tautan jadi baris setinggi 40–44px. */
+    #mobile-menu li > a,
+    #mobile-menu > a { display: flex; align-items: center; min-height: 44px; padding-inline: .5rem; border-radius: .5rem; }
+    footer li > a { display: inline-flex; align-items: center; min-height: 40px; }
+}
+
 @keyframes scroll-mobile {
     0%, 15% { transform: translateX(0); }
     85%, 100% { transform: translateX(var(--scroll-dist)); }
