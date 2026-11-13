@@ -23,7 +23,7 @@ import os
 import re
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -108,7 +108,7 @@ _LINKS_JS = r"""() => [...document.querySelectorAll('a[href*="/p/"], a[href*="/r
     .filter(Boolean)"""
 
 
-def _collect_links(page, handle: str) -> list[dict[str, str]]:
+def _collect_links(page, handle: str) -> list[dict[str, Any]]:
     page.goto(f"https://www.instagram.com/{handle}/", wait_until="domcontentloaded", timeout=45000)
     page.wait_for_selector('a[href*="/p/"], a[href*="/reel/"]', timeout=20000)
     raw = page.evaluate(_LINKS_JS) or []
@@ -123,11 +123,14 @@ def _collect_links(page, handle: str) -> list[dict[str, str]]:
         if kind not in {"p", "reel"} or code in seen:
             continue
         seen.add(code)
+        label, iso = _date_label(code)
         found.append({
             "handle": handle,
             "kind": kind,
             "code": code,
             "permalink": f"https://www.instagram.com/{kind}/{code}/",
+            "date": label,
+            "taken_at": iso,
         })
         if len(found) >= POSTS_PER_HANDLE:
             break
@@ -139,6 +142,35 @@ _CAPTION_NOISE = re.compile(
     r"|\bTambahkan\s+komentar\b|\bAdd\s+a\s+comment\b|\bBalas\b|\bReply\b)",
     re.IGNORECASE,
 )
+
+# Shortcode Instagram adalah base64 dari media id; 41 bit pertamanya adalah
+# milidetik sejak epoch yang digeser 1.314.220.021.721 ms. Dipakai untuk
+# mendapatkan tanggal unggah tanpa API.
+_SHORTCODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+_MONTHS_ID = ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli",
+              "Agustus", "September", "Oktober", "November", "Desember")
+_MEDIA_EPOCH_MS = 1314220021721
+_WIB = timezone(timedelta(hours=7))
+
+
+def _taken_at(code: str):
+    """Waktu unggah dari shortcode; None bila kode tidak valid."""
+    try:
+        value = 0
+        for char in code:
+            value = value * 64 + _SHORTCODE_ALPHABET.index(char)
+        ms = (value >> 23) + _MEDIA_EPOCH_MS
+        return datetime.fromtimestamp(ms / 1000, tz=_WIB)
+    except (ValueError, OverflowError, OSError):
+        return None
+
+
+def _date_label(code: str):
+    """(label Indonesia, ISO) untuk tanggal unggah."""
+    moment = _taken_at(code)
+    if not moment:
+        return "", ""
+    return f"{moment.day} {_MONTHS_ID[moment.month - 1]} {moment.year}", moment.isoformat(timespec="seconds")
 
 
 def _clean_caption(text: str) -> str:
@@ -223,9 +255,11 @@ def scrape() -> dict[str, Any]:
                         # Caption dirender setelah media; tunggu elemennya.
                         page.wait_for_selector('div.Caption', timeout=15000)
                         info = page.evaluate(_CAPTION_JS) or {}
+                        label, iso = _date_label(item["code"])
                         item.update({
                             "caption": _clean_caption(info.get("caption") or ""),
-                            "date": (info.get("date") or "").strip(),
+                            "date": label or (info.get("date") or "").strip(),
+                            "taken_at": iso,
                             "likes": (info.get("likes") or "").strip(),
                             "image_ok": _download_image(context, info.get("image") or "", item["code"]),
                         })

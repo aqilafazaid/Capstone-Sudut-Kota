@@ -51,7 +51,11 @@
         var caption = String(post.caption || '').trim();
         var long = caption.length > 240;
         var date = post.date || '';
-        var likes = post.likes ? post.likes + ' suka' : '';
+        var likes = String(post.likes || '').trim();
+        var meta = [];
+        if (likes) meta.push(likes + ' suka');
+        if (date) meta.push(date);
+        var metaText = meta.join(' \u00b7 ') || 'Instagram';
 
         return '' +
             '<article class="bg-white dark:bg-[#0a143c] rounded-[1.5rem] border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden flex flex-col">' +
@@ -82,7 +86,7 @@
                         (long ? 'line-clamp-4' : '') + '" data-caption>' + esc(caption || '(tanpa teks)') + '</p>' +
                     (long ? '<button type="button" data-more class="self-start text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">Selengkapnya</button>' : '') +
                     '<footer class="mt-auto flex items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-white/5">' +
-                        '<span class="text-[10px] text-slate-400 uppercase font-medium">' + esc(date || likes || 'Instagram') + '</span>' +
+                        '<span class="text-[10px] text-slate-400 font-semibold">' + esc(metaText) + '</span>' +
                         '<a href="' + esc(post.permalink) + '" target="_blank" rel="noopener" ' +
                            'class="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5">' +
                             'Lihat di Instagram <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>' +
