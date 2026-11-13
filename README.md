@@ -455,8 +455,12 @@ tidak ada input manual, tidak ada kartu contoh.
 - **Cache**: `backend/data/instagram-cache.json`, umur `IG_CACHE_SECONDS` (default 900 detik).
   Scrape hanya dipicu permintaan pertama setelah cache basi; `IG_HANDLES` mengganti daftar akun
   (default kedua akun di atas).
-- **API**: `GET /api/sosmed/instagram?page=N&per_page=6` → `posts[]`, `page`, `pages`, `total`,
+- **API**: `GET /api/sosmed/instagram?page=N&per_page=6` → `posts[]` (`handle`, `kind`, `code`,
+  `permalink`, `caption`, `date`, `taken_at`, `likes`, `image_ok`), `page`, `pages`, `total`,
   `fetched_at`, `errors[]`.
+- **Tanggal unggah**: diturunkan dari shortcode post (41 bit pertama media id = milidetik epoch
+  yang digeser `1314220021721` ms), jadi tersedia untuk semua post tanpa API. Setiap kartu
+  menampilkan **jumlah suka dan tanggal** sekaligus, mis. `18 suka · 12 Maret 2026`.
 - **UI**: kartu berisi gambar, chip akun, caption ringkas, tombol **Selengkapnya/Ringkas**,
   **Lihat di Instagram**, dan pager Sebelumnya/Berikutnya. Bila scrape gagal, yang tampil
   hanya tautan akun — bukan teks karangan.
