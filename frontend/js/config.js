@@ -5,8 +5,11 @@
 
    Saat halaman disajikan nginx (http://localhost:8080), backendBase = ''
    sehingga /api dan /hls same-origin. Saat memakai `python -m http.server 8787`,
-   default diarahkan ke http://127.0.0.1:5000. Di Vercel, isi
-   localStorage['sudutkota.backend'] dengan URL publik nginx (HTTPS).
+   default diarahkan ke http://127.0.0.1:5000. Di Vercel, `public-config.js`
+   membiarkan backendBase kosong: vercel.json mem-proxy /api dan /hls ke
+   Tailscale Funnel, jadi peramban tidak pernah membuka koneksi lintas-origin
+   ke *.ts.net (nama itu di mesin operator diresolve ke IP tailnet 100.x dan
+   diblokir Chrome lewat Private Network Access).
    ========================================================================== */
 
 (function (global) {
