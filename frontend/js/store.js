@@ -64,7 +64,7 @@
 
     /** GET publik: daftar node tidak memuat RTSP. */
     async function apiRead(path) {
-        const response = await fetch(SK_CONFIG.api(path), {
+        const response = await SK_CONFIG.apiFetch(path, {
             headers: { 'Accept': 'application/json' }
         });
         return readResponse(response);
@@ -80,12 +80,12 @@
         if (token) headers['Authorization'] = 'Bearer ' + token;
         opts.headers = headers;
 
-        const response = await fetch(SK_CONFIG.api(path), opts);
+        const response = await SK_CONFIG.apiFetch(path, opts);
         if (response.status === 401 && global.Auth) {
             const fresh = await global.Auth.idToken(true);
             if (fresh) {
                 opts.headers['Authorization'] = 'Bearer ' + fresh;
-                return readResponse(await fetch(SK_CONFIG.api(path), opts));
+                return readResponse(await SK_CONFIG.apiFetch(path, opts));
             }
         }
         return readResponse(response);

@@ -138,6 +138,9 @@ def create_app() -> Flask:
         app,
         resources={r"/api/*": {"origins": ALLOWED_ORIGINS}},
         allow_headers=["Authorization", "Content-Type"],
+        # Halaman Vercel (HTTPS publik) yang dibuka di mesin operator memanggil
+        # backend lewat loopback/tailnet; Chrome menolak tanpa header ini.
+        allow_private_network=True,
     )
 
     node_store.init_db()

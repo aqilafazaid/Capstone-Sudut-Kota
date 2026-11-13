@@ -45,15 +45,67 @@
         return backendBase ? backendBase + '/' + clean : '/' + clean;
     }
 
+    /* Di mesin operator, nama *.ts.net sering diresolve ke IP tailnet (100.x).
+       Chrome memblokir permintaan dari origin HTTPS publik ke alamat privat
+       (Private Network Access), jadi halaman Vercel di mesin itu tidak bisa
+       memanggil backend walau backend sehat. Flask tetap listen di loopback,
+       sehingga 127.0.0.1:5000 jadi jalur cadangan untuk mesin yang sama. */
+    var LOOPBACK_BASE = 'http://127.0.0.1:5000';
+    var isPublicPage = !LOCAL;
+    var resolvedBase = '';
+
+    function apiPath(path) {
+        return String(path || '').replace(/^\/+/, '');
+    }
+
+    /** Daftar { base, url } yang dicoba berurutan untuk satu path API. */
+    function apiTargets(path) {
+        var clean = 'api/' + apiPath(path);
+        var targets = [{ base: resolvedBase || backendBase, url: join(clean) }];
+        if (!resolvedBase && isPublicPage && backendBase) {
+            targets.push({
+                base: LOOPBACK_BASE,
+                url: LOOPBACK_BASE + '/' + clean
+            });
+        }
+        return targets;
+    }
+
     global.SK_CONFIG = {
         backendBase: backendBase,
+        loopbackBase: isPublicPage ? LOOPBACK_BASE : '',
 
         /** Basis folder HLS: <backend>/hls */
         hlsBase: join('hls').replace(/\/$/, ''),
 
         /** Endpoint REST backend. */
         api: function (path) {
-            return join('api/' + String(path || '').replace(/^\/+/, ''));
+            return join('api/' + apiPath(path));
+        },
+
+        apiTargets: apiTargets,
+
+        /**
+         * fetch ke backend dengan fallback loopback.
+         * Kandidat pertama backendBase; bila gagal di level jaringan (bukan
+         * HTTP 4xx/5xx), coba 127.0.0.1:5000 sekali dan ingat base yang berhasil.
+         */
+        apiFetch: function (path, options) {
+            var targets = apiTargets(path);
+            function attempt(index) {
+                return fetch(targets[index].url, options).then(function (response) {
+                    if (index > 0) resolvedBase = targets[index].base;
+                    return response;
+                }).catch(function (cause) {
+                    if (index + 1 < targets.length) return attempt(index + 1);
+                    var error = new Error('Tidak dapat menghubungi ' + targets[index].url);
+                    error.url = targets[index].url;
+                    error.candidates = targets.map(function (t) { return t.url; });
+                    error.cause = cause;
+                    throw error;
+                });
+            }
+            return attempt(0);
         },
 
         /** Tambahkan backendBase ke path relatif; URL absolut dibiarkan. */

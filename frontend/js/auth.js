@@ -114,11 +114,12 @@
         const url = api(path);
         let response;
         try {
-            response = await fetch(url, opts);
+            response = await global.SK_CONFIG.apiFetch(path, opts);
         } catch (cause) {
-            const error = new Error('Tidak dapat menghubungi ' + url);
-            error.url = url;
-            error.cause = cause;
+            const error = new Error(cause.message || ('Tidak dapat menghubungi ' + url));
+            error.url = cause.url || url;
+            error.candidates = cause.candidates || [url];
+            error.cause = cause.cause || cause;
             throw error;
         }
         const data = await response.json().catch(function () { return {}; });
