@@ -92,19 +92,49 @@ def main() -> int:
     backup.write_text(json.dumps(dump, indent=2, ensure_ascii=False), encoding="utf-8")
     print("cadangan:", backup)
 
+    # Penghapusan dibatch supaya tidak menembak RTDB ribuan kali:
+    # - direktori node kosong  -> seluruh koleksi memang yatim, hapus 2 root;
+    # - satu hari yatim penuh  -> hapus node hari itu;
+    # - selain itu             -> hapus per (hari, node).
+    whole_tree = not known
     removed_daily = removed_hourly = 0
-    for day, hits in dump["daily"].items():
-        for node_id in hits:
-            stats._ref(stats.DAILY_ROOT, day, node_id).delete()
-            removed_daily += 1
-    for day, hours in dump["hourly"].items():
-        for hour, hits in hours.items():
-            for node_id in hits:
-                stats._ref(stats.HOURS_ROOT, day, hour, node_id).delete()
-                removed_hourly += 1
+
+    if whole_tree:
+        removed_daily = sum(len(hits) for hits in dump["daily"].values())
+        removed_hourly = sum(len(hits) for hours in dump["hourly"].values()
+                             for hits in hours.values())
+        stats._ref(stats.DAILY_ROOT).delete()
+        stats._ref(stats.HOURS_ROOT).delete()
+        # Metadata seed ikut dibuang: kalau tidak, API masih melaporkan
+        # "seeded_days" untuk arsip yang sudah tidak ada.
+        stats._ref(stats.META_ROOT).delete()
+        print("meta seed (seeded_days) dihapus.")
+    else:
+        for day, hits in dump["daily"].items():
+            per_day = {nid for nid in (daily.get(day) or {})}
+            if per_day <= stale:
+                stats._ref(stats.DAILY_ROOT, day).delete()
+                removed_daily += len(hits)
+            else:
+                for node_id in hits:
+                    stats._ref(stats.DAILY_ROOT, day, node_id).delete()
+                    removed_daily += 1
+        for day, hours in dump["hourly"].items():
+            per_day = set()
+            for per_node in (hourly_today.get(day) or {}).values():
+                per_day.update((per_node or {}).keys())
+            if per_day <= stale:
+                stats._ref(stats.HOURS_ROOT, day).delete()
+                removed_hourly += sum(len(h) for h in hours.values())
+            else:
+                for hour, hits in hours.items():
+                    for node_id in hits:
+                        stats._ref(stats.HOURS_ROOT, day, hour, node_id).delete()
+                        removed_hourly += 1
 
     stats.invalidate_cache()
-    print(f"dihapus: {removed_daily} entri harian, {removed_hourly} entri per jam")
+    print(f"dihapus: {removed_daily} entri harian, {removed_hourly} entri per jam"
+          + (" (seluruh koleksi)" if whole_tree else ""))
     print("Rollback: import ulang isi", backup.name, "ke", stats.DAILY_ROOT, "/", stats.HOURS_ROOT)
     return 0
 

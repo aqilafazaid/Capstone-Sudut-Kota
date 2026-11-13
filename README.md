@@ -258,7 +258,10 @@ cd backend
 
 Cadangan ditulis ke `backend/data/backup/stats-prune-<stamp>.json` sebelum penghapusan, jadi
 arsip bisa dikembalikan. **Perhatian:** bila direktori node kosong, semua arsip dianggap yatim —
-purge akan mengosongkan halaman Statistik.
+purge akan mengosongkan halaman Statistik. Dalam kondisi itu skrip menghapus kedua koleksi
+sekaligus (bukan per entri) beserta metadata seed `statistik_meta`, sehingga
+`/api/stats/telemetry` melaporkan `has_data: false` dan halaman menampilkan
+"belum ada data di Firebase".
 
 Klien tidak pernah membaca atau menulis RTDB. Semua akses data lewat backend, sehingga
 rules RTDB dapat menolak seluruh akses klien:
