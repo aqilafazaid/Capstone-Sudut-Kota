@@ -341,19 +341,6 @@ def create_app() -> Flask:
         result = stats_store.collect_once()
         return jsonify(result), (200 if result.get("ok") else 503)
 
-    @app.post("/api/stats/seed")
-    @auth.require_feature("dashboard")
-    def stats_seed():
-        """Isi agregat contoh ke RTDB. ``{"days": 365, "reset": true}``."""
-        payload = request.get_json(silent=True) or {}
-        raw_days = payload.get("days")
-        try:
-            days = int(raw_days) if raw_days is not None else None
-        except (TypeError, ValueError):
-            days = None
-        result = stats_store.seed_dummy(days=days, reset=bool(payload.get("reset")))
-        return jsonify(result), (200 if result.get("ok") else 503)
-
     # --- HLS: dipakai saat dev tanpa nginx (python -m http.server 8787) --
     @app.get("/hls/<path:filename>")
     def hls_file(filename):

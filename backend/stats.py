@@ -17,16 +17,13 @@ kendaraan-menit bila sampel diambil tiap menit), ditambah ``samples`` dan
 dilewati supaya stream yang mati tidak terus menambah angka.
 
 Selama engine AI belum pernah mengirim telemetri, RTDB tidak punya satu pun
-sampel sehingga halaman menampilkan nol. Tidak ada simulasi di peramban:
-``seed_dummy()`` adalah satu-satunya pembangkit data contoh dan menulisnya
-langsung ke dua koleksi RTDB di atas; angkanya deterministik sehingga seluruh
-periode (1 hari .. Seluruhnya) konsisten.
-Jalankan ``seed_dummy(reset=True)`` sebelum data inferensi sungguhan dipakai.
+sampel sehingga halaman menampilkan nol. Tidak ada data contoh yang dibangkitkan
+di mana pun: satu-satunya penulis koleksi ini adalah kolektor di bawah, dari
+snapshot AI yang sungguhan.
 """
 
 from __future__ import annotations
 
-import math
 import os
 import threading
 from datetime import date, datetime, timedelta, timezone
@@ -442,152 +439,6 @@ def read_telemetry(days: int | None = None) -> dict[str, Any]:
         _cache["at"] = datetime.now(WIB).timestamp()
         _cache["span"] = span
     return payload
-
-
-# ---------------------------------------------------------------------------
-# Data contoh (dummy) — model deterministik yang sama dengan simulasi frontend
-# ---------------------------------------------------------------------------
-
-HOUR_WEIGHT = [3, 2, 2, 2, 3, 5, 9, 16, 22, 18, 13, 12, 14, 13, 13, 16, 22, 24, 19, 14, 10, 8, 6, 4]
-
-
-def _hash32(text: str) -> int:
-    value = 2166136261
-    for char in text:
-        value ^= ord(char)
-        value = (value * 16777619) & 0xFFFFFFFF
-    return value
-
-
-def _mulberry32(seed: int):
-    """Port ``mulberry32`` milik store.js supaya angka lama tetap sama."""
-    state = seed & 0xFFFFFFFF
-
-    def next_float() -> float:
-        nonlocal state
-        state = (state + 0x6D2B79F5) & 0xFFFFFFFF
-        first = ((state ^ (state >> 15)) * (1 | state)) & 0xFFFFFFFF
-        mixed = (first + (((first ^ (first >> 7)) * (61 | first)) & 0xFFFFFFFF)) & 0xFFFFFFFF
-        mixed ^= first
-        return ((mixed ^ (mixed >> 14)) & 0xFFFFFFFF) / 4294967296
-
-    return next_float
-
-
-def _hash_unit(value: float) -> float:
-    raw = math.sin(value * 12.9898) * 43758.5453
-    return raw - math.floor(raw)
-
-
-def _round(value: float) -> int:
-    """``Math.round`` JavaScript: setengah selalu ke atas, bukan banker's rounding."""
-    return int(math.floor(value + 0.5))
-
-
-def _compose(base: float) -> dict[str, int]:
-    mobil = _round(base * 0.35)
-    motor = _round(base * 0.55)
-    # Faktor 0,4..1,6 supaya porsi truk/bus tidak selalu jatuh di angka yang sama.
-    noise = _hash_unit(base)
-    truk = _round(base * 0.06 * (0.4 + noise * 1.2))
-    bus = _round(base * 0.04 * (0.4 + (1.0 - noise) * 1.2))
-    return {"mobil": mobil, "motor": motor, "truk": truk, "bus": bus,
-            "total": mobil + motor + truk + bus}
-
-
-def _hour_series(node_id: str, day: date) -> list[dict[str, int]]:
-    """24 bucket satu node pada satu hari, deterministik per (node, tanggal)."""
-    rng = _mulberry32(_hash32(f"{node_id}|{day.isoformat()}"))
-    series = []
-    for hour in range(24):
-        series.append(_compose(HOUR_WEIGHT[hour] * (0.7 + rng() * 0.7)))
-    return series
-
-
-def seed_dummy(
-    days: int | None = None,
-    reset: bool = False,
-    nodes: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """Tulis agregat contoh ke RTDB supaya halaman tidak kosong.
-
-    ``days`` dihitung mundur dari hari ini; ``None`` berarti sejak ``DATA_START``
-    (rentang penuh yang dipakai periode "Seluruhnya"). Semua node ikut diisi,
-    termasuk yang sedang offline: riwayat memang tidak hilang saat kamera mati.
-    ``reset=True`` mengosongkan kedua koleksi lebih dulu — pakai sebelum data
-    inferensi sungguhan dipakai.
-    """
-    if firebase_init.missing_keys() or not _configured():
-        return {"ok": False, "reason": "firebase belum dikonfigurasi"}
-
-    if nodes is None:
-        import nodes as node_store
-
-        nodes = node_store.list_nodes()
-
-    node_ids = [str(node["id"]) for node in nodes if node.get("id")]
-    if not node_ids:
-        return {"ok": False, "reason": "belum ada node"}
-
-    today = datetime.now(WIB).date()
-    span = days if days and days > 0 else (today - DATA_START).days + 1
-    start = max(DATA_START, today - timedelta(days=span - 1))
-
-    if reset:
-        _ref(HOURS_ROOT).delete()
-        _ref(DAILY_ROOT).delete()
-
-    daily: dict[str, dict[str, dict[str, int]]] = {}
-    hourly_today: dict[str, dict[str, dict[str, int]]] = {}
-
-    day = start
-    while day <= today:
-        series_by_node = {node_id: _hour_series(node_id, day) for node_id in node_ids}
-        day_totals: dict[str, dict[str, int]] = {}
-        for node_id, series in series_by_node.items():
-            totals = _empty_bucket()
-            for value in series:
-                _add(totals, value)
-            day_totals[node_id] = totals
-        daily[day.isoformat()] = day_totals
-        if day == today:
-            # Bentuknya harus sama dengan kolektor: statistik/<tanggal>/<HH>/<node>.
-            for node_id, series in series_by_node.items():
-                for hour in range(24):
-                    hourly_today.setdefault(f"{hour:02d}", {})[node_id] = series[hour]
-        day += timedelta(days=1)
-
-    if hourly_today:
-        _ref(HOURS_ROOT, today.isoformat()).update(hourly_today)
-
-    # Satu ``update`` per potongan agar payload tetap jauh di bawah batas 16 MB.
-    written = 0
-    chunk: dict[str, Any] = {}
-    for day_key in sorted(daily):
-        chunk[day_key] = daily[day_key]
-        if len(chunk) >= 30:
-            _ref(DAILY_ROOT).update(chunk)
-            written += len(chunk)
-            chunk = {}
-    if chunk:
-        _ref(DAILY_ROOT).update(chunk)
-        written += len(chunk)
-
-    _ref(META_ROOT).update({
-        "seeded_at": datetime.now(WIB).isoformat(timespec="seconds"),
-        "seeded_days": written,
-        "seeded_first": start.isoformat(),
-        "seeded_last": today.isoformat(),
-    })
-
-    invalidate_cache()
-    return {
-        "ok": True,
-        "days": written,
-        "first": start.isoformat(),
-        "last": today.isoformat(),
-        "nodes": node_ids,
-    }
 
 
 # ---------------------------------------------------------------------------

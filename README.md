@@ -57,7 +57,8 @@ Capstone-Sudut-Kota/
 │   │   ├── auth.js            sesi, peran, ID token (Firebase Auth)
 │   │   ├── store.js           klien /api/nodes + /api/stats/* (tanpa simulasi)
 │   │   ├── app.js             navbar, tema, jam, toast
-│   │   └── …                  main.js, dashboard.js, add-data.js, akun.js, statistik.js
+│   │   └── …                  main.js, dashboard.js, add-data.js, akun.js, statistik.js, sosmed.js
+│   ├── data/instagram.json    ringkasan kiriman Instagram resmi (bukan data contoh)
 │   ├── asset/
 ├── backend/                   ← jalan di PC operator, tidak pernah di-deploy
 │   ├── app.py                 Flask API (127.0.0.1:5000)
@@ -318,7 +319,6 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 | GET | `/api/status` | teknisi, admin | path database, daftar model |
 | POST | `/api/nodes/reset` | teknisi, admin | reset node ke seed |
 | POST | `/api/stats/collect` | teknisi, admin | paksa satu sampel statistik |
-| POST | `/api/stats/seed` | teknisi, admin | isi agregat contoh (`{"days":365,"reset":true}`) |
 | GET/PUT/DELETE | `/api/akun[/<uid>]` | admin | kelola akun petugas |
 | GET | `/api/akun/me` | login | profil sendiri |
 | POST | `/api/akun/self` | login | buat profil saat pendaftaran (peran visitor) |
@@ -429,13 +429,29 @@ wajar; bila kuota jadi masalah, buka halaman lewat `http://127.0.0.1:8080` (ngin
 Backend menyemai 3 node Pekalongan (`cam_29`, `cam_35`, `cam_43`) **hanya sekali**, yaitu saat
 `backend/data/sudutkota.db` belum pernah diisi. Penanda `meta.seeded` membuat node yang dihapus
 operator tetap hilang setelah backend restart; `POST /api/nodes/reset` (tombol **Reset data**)
-sengaja menanam ulang seed. Keempat stream uji publik hanya ikut bila `ALLOW_TEST_SOURCES=true`;
-default-nya `false`.
+sengaja menanam ulang seed. Tidak ada node demo/stream uji yang ditanam otomatis:
+`ALLOW_TEST_SOURCES` kini hanya mengizinkan sumber `http(s)://` untuk node yang Anda buat sendiri.
 
 - `localStorage['sudutkota.nodes.cache.v3']` — cache baca, bukan sumber kebenaran.
 - `localStorage['sudutkota.ai.v1']` — status AI lokal (belum tersinkron ke RTDB).
 - `localStorage['sudutkota.backend']` — override alamat backend; kosongkan bila halaman
   Vercel harus memakai proxy `/api` (`localStorage.removeItem('sudutkota.backend')`).
+
+## Kabar terbaru (Instagram)
+
+Seksi **Kabar Terbaru** di beranda menampilkan ringkasan kiriman asli dari
+`@dishub_kotapekalongan` dan `@pjukotapekalongan` — bukan kartu contoh, bukan gambar stok.
+
+- **Data**: `frontend/data/instagram.json` — `accounts` (handle, label, URL, ikon) dan
+  `posts` (handle, kind `p`/`reel`, code, tanggal, permalink, caption). Diisi dari halaman
+  embed resmi Instagram milik tiap post.
+- **Render**: `frontend/js/sosmed.js` membuat kartu, meng-escape seluruh teks, dan menautkan
+  setiap kiriman ke post aslinya. Bila JSON gagal dimuat, halaman hanya menampilkan tautan akun.
+- **Memperbarui**: salin kiriman terbaru (caption + permalink dari Instagram) ke `posts`,
+  ubah `updated`, commit. Tanpa build step.
+- **Tanpa iframe/embed.js**: embed resmi Instagram tidak merender isi di halaman ini
+  (halaman `/embed/` diisi lewat JS dan URL CDN-nya kedaluwarsa), jadi foto/video lengkap
+  dibuka di Instagram lewat tombol *Lihat di Instagram*.
 
 Tombol **Reset data** memanggil `POST /api/nodes/reset` (fitur `dashboard`),
 mengembalikan node ke seed backend. Akun Firebase **tidak** ikut direset.
@@ -534,29 +550,13 @@ untuk satu tahun). Sampel yang lebih tua dari `STATS_STALE_SECONDS` dilewati aga
 mati tidak menambah angka.
 
 Selama belum ada satu pun sampel (mis. AI belum berjalan), halaman menampilkan nol dan
-menandainya **belum ada data di Firebase** — tidak ada simulasi di peramban. Untuk demo,
-agregat contoh diisi lewat endpoint khusus (fitur `dashboard`) atau langsung dari konsol backend:
+menandainya **belum ada data di Firebase**. **Tidak ada data contoh dan tidak ada endpoint
+penyemai statistik**: satu-satunya penulis koleksi ini adalah kolektor backend dari snapshot
+AI sungguhan. Bila butuh mengosongkan arsip, pakai `backend/scripts/prune_stats.py`
+(lihat *Sinkronisasi data*).
 
-```bash
-# teknisi/admin yang login; token Firebase di header Authorization
-curl -X POST http://127.0.0.1:5000/api/stats/seed \
-     -H "Authorization: Bearer <ID_TOKEN>" -H "Content-Type: application/json" \
-     -d '{"days": 365}'            # 365 hari terakhir
-#   -d '{"reset": true}'          # kosongkan kedua koleksi dulu, lalu isi ulang
-```
-
-```bash
-cd backend
-python -c "import stats; print(stats.seed_dummy(days=365, reset=False))"
-```
-
-Tanpa `days`, rentangnya 2019-01-01 s.d. hari ini sehingga semua tab interval terisi.
-Angkanya deterministik per (node, tanggal) dan mengikuti pola jam sibuk yang tetap, sehingga
-seluruh interval konsisten dan pengisian ulang tidak menggandakan angka. Setelah data ada,
-label halaman berubah menjadi **sumber: Firebase RTDB** dan ekspor PDF/CSV ikut menulis
-sumber itu. Sebelum data inferensi sungguhan dipakai, jalankan dengan `reset` supaya
-agregat contoh tidak tercampur hitungan YOLO. Rentang baca dibatasi `STATS_MAX_DAYS` hari
-(default 4000, cukup untuk periode "Seluruhnya").
+Rentang baca dibatasi `STATS_MAX_DAYS` hari (default 4000, cukup untuk periode
+"Seluruhnya").
 
 ## Pengujian
 

@@ -66,37 +66,6 @@ SEED_NODES = [
     },
 ]
 
-# Hanya dipakai bila ALLOW_TEST_SOURCES=true. Sumbernya HLS publik, bukan RTSP,
-# sehingga tidak boleh ikut pada konfigurasi produksi.
-DEMO_NODES = [
-    {
-        "id": "cam_uji-1", "channel": "", "nama": "Stream Uji 1 — Big Buck Bunny",
-        "zona": "Zona Uji (Demo)", "jalan": "Stream Uji 1 — Big Buck Bunny",
-        "kota": "STREAM UJI",
-        "rtsp": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", "aktif": True,
-    },
-    {
-        "id": "cam_uji-2", "channel": "", "nama": "Stream Uji 2 — Mux Multi-Bitrate",
-        "zona": "Zona Uji (Demo)", "jalan": "Stream Uji 2 — Mux Multi-Bitrate",
-        "kota": "STREAM UJI",
-        "rtsp": "https://stream.mux.com/v69RSHhFelSm4701snP22dYz2jICy4E4FUyk02rW4gxRM.m3u8",
-        "aktif": True,
-    },
-    {
-        "id": "cam_uji-3", "channel": "", "nama": "Stream Uji 3 — Apple BipBop",
-        "zona": "Zona Uji (Demo)", "jalan": "Stream Uji 3 — Apple BipBop",
-        "kota": "STREAM UJI",
-        "rtsp": "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8",
-        "aktif": True,
-    },
-    {
-        "id": "cam_uji-4", "channel": "", "nama": "Stream Uji 4 — Tears of Steel",
-        "zona": "Zona Uji (Demo)", "jalan": "Stream Uji 4 — Tears of Steel",
-        "kota": "STREAM UJI",
-        "rtsp": "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
-        "aktif": True,
-    },
-]
 
 
 class NodeError(Exception):
@@ -327,7 +296,7 @@ def delete_node(node_id: str) -> bool:
     return cursor.rowcount > 0
 
 
-def seed_defaults(force: bool = False, seed_demo: bool | None = None) -> None:
+def seed_defaults(force: bool = False) -> None:
     """Isi node bawaan hanya pada database yang belum pernah di-seed.
 
     ``force=True`` dipakai tombol "Reset data node" (memang ingin menanam ulang).
@@ -335,7 +304,6 @@ def seed_defaults(force: bool = False, seed_demo: bool | None = None) -> None:
     walau tabelnya kosong — kalau tidak, node yang dihapus operator akan kembali
     setiap backend dinyalakan.
     """
-    demo = allow_test_sources() if seed_demo is None else seed_demo
     with _DB_LOCK, _db() as conn:
         if not force:
             if _seeded(conn):
@@ -348,13 +316,11 @@ def seed_defaults(force: bool = False, seed_demo: bool | None = None) -> None:
 
         for node in SEED_NODES:
             _insert(conn, dict(node))
-        if demo:
-            for node in DEMO_NODES:
-                _insert(conn, dict(node))
         _mark_seeded(conn)
 
 
-def reset_nodes(seed_demo: bool | None = None) -> None:
+def reset_nodes() -> None:
+    """Kosongkan direktori lalu tanam seed bawaan (aksi eksplisit operator)."""
     with _DB_LOCK, _db() as conn:
         conn.execute("DELETE FROM nodes")
-    seed_defaults(force=True, seed_demo=seed_demo)
+    seed_defaults(force=True)

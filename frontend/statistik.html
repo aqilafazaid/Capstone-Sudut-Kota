@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261113h">
+    <link rel="stylesheet" href="css/style.css?v=20261113j">
 
     <!-- Pustaka ekspor & grafik, dimuat hanya di halaman ini -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -175,11 +175,10 @@
             <p class="mt-4 text-[10px] sk-muted leading-relaxed">
                 Angka dibaca dari Firebase RTDB: <code class="sk-accent">statistik_harian/&lt;tanggal&gt;/&lt;node&gt;</code>
                 untuk periode harian dan <code class="sk-accent">statistik/&lt;tanggal&gt;/&lt;jam&gt;/&lt;node&gt;</code> untuk 1 Hari.
-                Selama engine AI belum mengirim telemetri, isinya data contoh yang diisi lewat
-                <code class="sk-accent">POST /api/stats/seed</code>; hitungan inferensi YOLO ditambahkan kolektor
-                backend setiap <code class="sk-accent">STATS_SAMPLE_SECONDS</code> detik. Kosongkan data contoh
-                dengan <code class="sk-accent">{"reset": true}</code> pada endpoint yang sama sebelum pengambilan
-                data sungguhan.
+                Isinya hanya sampel inferensi YOLO yang ditulis kolektor backend setiap
+                <code class="sk-accent">STATS_SAMPLE_SECONDS</code> detik — tidak ada data contoh.
+                Selama engine AI belum pernah mengirim telemetri, halaman menampilkan nol dan
+                label <strong>belum ada data di Firebase</strong>.
             </p>
         </div>
     </div>
@@ -190,14 +189,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261113h"></script>
-<script src="js/firebase-config.js?v=20261113h"></script>
-<script src="js/firebase-client.js?v=20261113h"></script>
-<script src="js/config.js?v=20261113h"></script>
+<script src="js/public-config.js?v=20261113j"></script>
+<script src="js/firebase-config.js?v=20261113j"></script>
+<script src="js/firebase-client.js?v=20261113j"></script>
+<script src="js/config.js?v=20261113j"></script>
 
-<script src="js/store.js?v=20261113h"></script>
-<script src="js/auth.js?v=20261113h"></script>
-<script src="js/app.js?v=20261113h"></script>
-<script src="js/statistik.js?v=20261113h"></script>
+<script src="js/store.js?v=20261113j"></script>
+<script src="js/auth.js?v=20261113j"></script>
+<script src="js/app.js?v=20261113j"></script>
+<script src="js/statistik.js?v=20261113j"></script>
 </body>
 </html>
