@@ -573,7 +573,7 @@
             };
         },
 
-        /** Kembalikan node ke seed backend (akun Firebase tidak disentuh). */
+        /** Kosongkan direktori node + folder HLS (akun Firebase tidak disentuh). */
         async resetDemo() {
             const data = await apiRequest('nodes/reset', { method: 'POST' });
             nodes = Array.isArray(data.nodes) ? data.nodes : [];
