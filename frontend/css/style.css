@@ -416,6 +416,11 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
     .player-header { padding: 12px 14px; }
 }
 
+/* Batang gulir horizontal disembunyikan, tetapi area tetap bisa digeser
+   (sentuh, trackpad, Shift+wheel). Dipakai filter periode Statistik. */
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
 /* Label permanen di atas field: tetap terbaca setelah pengguna mengetik,
    karena placeholder hilang saat field terisi. */
 .sk-label {
