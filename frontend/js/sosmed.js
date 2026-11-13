@@ -34,6 +34,10 @@
         return assetBase() + '/api/sosmed/instagram/image/' + encodeURIComponent(code) + '.jpg';
     }
 
+    function avatarUrl(handle) {
+        return assetBase() + '/api/sosmed/instagram/avatar/' + encodeURIComponent(handle) + '.jpg';
+    }
+
     function timeLabel(iso) {
         if (!iso) return '';
         var date = new Date(iso);
@@ -69,8 +73,12 @@
                 '<div class="p-5 flex flex-col gap-3 flex-grow">' +
                     '<header class="flex items-center justify-between gap-3">' +
                         '<span class="flex items-center gap-2 min-w-0">' +
-                            '<span class="w-7 h-7 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white flex items-center justify-center shrink-0">' +
+                            '<span class="relative w-7 h-7 rounded-full overflow-hidden bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 text-white grid place-items-center shrink-0">' +
                                 '<i class="fa-brands fa-instagram text-[11px]"></i>' +
+                                (post.avatar
+                                    ? '<img src="' + esc(avatarUrl(post.handle)) + '" alt="Foto profil @' + esc(post.handle) + '" loading="lazy" ' +
+                                       'class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()">'
+                                    : '') +
                             '</span>' +
                             '<span class="min-w-0">' +
                                 '<a href="https://www.instagram.com/' + esc(post.handle) + '" target="_blank" rel="noopener" ' +

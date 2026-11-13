@@ -452,6 +452,11 @@ tidak ada input manual, tidak ada kartu contoh.
   Instagram menutup semua endpoint anonim (429), jadi DOM yang dirender adalah sumbernya.
 - **Gambar**: diunduh ke `backend/media/instagram/<code>.jpg` dan disajikan lewat
   `/api/sosmed/instagram/image/<code>.jpg`. Tidak ada hotlink CDN yang bisa kedaluwarsa.
+- **Foto profil**: diambil dari `img[alt="Foto profil <handle>"]` di halaman profil, disimpan di
+  `backend/media/instagram/avatars/<handle>.jpg` (150 px, tidak diubah ukurannya di URL karena
+  URL bertanda tangan jadi 403), dan disajikan lewat
+  `/api/sosmed/instagram/avatar/<handle>.jpg`. Setiap scrape menimpanya, jadi avatar ikut berubah
+  saat akun mengganti foto profil; browser memvalidasi ulang tiap 10 menit (ETag).
 - **Cache**: `backend/data/instagram-cache.json`, umur `IG_CACHE_SECONDS` (default 900 detik).
   Scrape hanya dipicu permintaan pertama setelah cache basi; `IG_HANDLES` mengganti daftar akun
   (default kedua akun di atas).

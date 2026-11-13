@@ -363,6 +363,13 @@ def create_app() -> Flask:
             return jsonify(error="Gambar tidak tersedia."), 404
         return send_file(path, mimetype="image/jpeg", max_age=3600)
 
+    @app.get("/api/sosmed/instagram/avatar/<handle>.jpg")
+    def sosmed_instagram_avatar(handle):
+        path = social_instagram.avatar_file(handle)
+        if not path:
+            return jsonify(error="Foto profil tidak tersedia."), 404
+        return send_file(path, mimetype="image/jpeg", max_age=600)
+
     @app.post("/api/stats/collect")
     @auth.require_feature("dashboard")
     def stats_collect():

@@ -30,6 +30,7 @@ from typing import Any
 BASE_DIR = Path(__file__).resolve().parent.parent
 CACHE_FILE = BASE_DIR / "data" / "instagram-cache.json"
 IMAGE_DIR = BASE_DIR / "media" / "instagram"
+AVATAR_DIR = IMAGE_DIR / "avatars"
 
 DEFAULT_HANDLES = ("dishub_kotapekalongan", "pjukotapekalongan")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -106,6 +107,13 @@ _CAPTION_JS = r"""() => {
 _LINKS_JS = r"""() => [...document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]')]
     .map(a => a.getAttribute('href'))
     .filter(Boolean)"""
+
+_AVATAR_JS = r"""() => {
+  const img = [...document.querySelectorAll('img')]
+    .find(i => /^(foto profil|profile picture)/i.test((i.alt || '').trim()));
+  // URL-nya bertanda tangan: mengubah ukuran di string membuatnya 403.
+  return img ? img.src : '';
+}"""
 
 
 def _collect_links(page, handle: str) -> list[dict[str, Any]]:
@@ -198,11 +206,13 @@ def _normalize_image(path: Path, max_width: int = 720, quality: int = 82) -> Non
         pass
 
 
-def _download_image(context, url: str, code: str) -> bool:
+def _download_image(context, url: str, code: str, directory: Path | None = None,
+                    max_width: int = 720) -> bool:
     if not url:
         return False
-    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
-    target = IMAGE_DIR / f"{code}.jpg"
+    directory = directory or IMAGE_DIR
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / f"{code}.jpg"
     if target.exists() and target.stat().st_size > 1000:
         return True
     try:
@@ -213,10 +223,15 @@ def _download_image(context, url: str, code: str) -> bool:
         if len(body) < 1000:
             return False
         target.write_bytes(body)
-        _normalize_image(target)
+        _normalize_image(target, max_width=max_width)
         return True
     except Exception:
         return False
+
+
+def _download_avatar(context, url: str, handle: str) -> bool:
+    """Foto profil akun; disimpan terpisah dari gambar post agar tidak ikut dipangkas."""
+    return _download_image(context, url, handle, directory=AVATAR_DIR, max_width=320)
 
 
 def scrape() -> dict[str, Any]:
@@ -225,6 +240,7 @@ def scrape() -> dict[str, Any]:
 
     posts: list[dict[str, Any]] = []
     errors: list[str] = []
+    avatars: dict[str, bool] = {}
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(
@@ -244,6 +260,12 @@ def scrape() -> dict[str, Any]:
                 except Exception as exc:
                     errors.append(f"{handle}: {type(exc).__name__}")
                     continue
+
+                try:
+                    avatar_url = page.evaluate(_AVATAR_JS) or ""
+                    avatars[handle] = _download_avatar(context, avatar_url, handle)
+                except Exception:
+                    avatars[handle] = False
 
                 for item in links:
                     if len(posts) >= MAX_POSTS:
@@ -274,6 +296,7 @@ def scrape() -> dict[str, Any]:
                         "fetched_at": datetime.now().isoformat(timespec="seconds"),
                         "handles": handles(),
                         "posts": posts,
+                        "avatars": avatars,
                         "errors": errors,
                         "partial": True,
                     })
@@ -285,6 +308,7 @@ def scrape() -> dict[str, Any]:
         "fetched_at": datetime.now().isoformat(timespec="seconds"),
         "handles": handles(),
         "posts": posts,
+        "avatars": avatars,
         "errors": errors,
     }
     if posts:
@@ -341,6 +365,11 @@ def page(page_no: int = 1, per_page: int = 6, force: bool = False) -> dict[str, 
     pages = max(1, (total + per_page - 1) // per_page)
     current = max(1, min(int(page_no), pages))
     start = (current - 1) * per_page
+    visible = []
+    for post in posts[start:start + per_page]:
+        item = dict(post)
+        item["avatar"] = avatar_file(item.get("handle", "")) is not None
+        visible.append(item)
     return {
         "ok": bool(posts),
         "fetched_at": data.get("fetched_at"),
@@ -351,9 +380,20 @@ def page(page_no: int = 1, per_page: int = 6, force: bool = False) -> dict[str, 
         "total": total,
         "has_prev": current > 1,
         "has_next": current < pages,
-        "posts": posts[start:start + per_page],
+        "posts": visible,
         "errors": data.get("errors") or [],
     }
+
+
+_HANDLE_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
+
+
+def avatar_file(handle: str) -> Path | None:
+    """Foto profil akun yang tersimpan; None bila belum pernah diunduh."""
+    if not handle or not _HANDLE_RE.match(handle):
+        return None
+    path = AVATAR_DIR / f"{handle}.jpg"
+    return path if path.exists() else None
 
 
 def image_file(code: str) -> Path | None:
