@@ -16,7 +16,11 @@
     'use strict';
 
     var PER_PAGE = 6;
-    var state = { page: 1, pages: 1, loading: false, data: null };
+    /* Selaras IG_CACHE_SECONDS=300 di backend; permintaan lebih sering dari ini
+       tetap dilayani dari cache, jadi tidak menambah beban ke Instagram. */
+    var REFRESH_MS = 5 * 60 * 1000;
+    var pollId = null;
+    var state = { page: 1, pages: 1, loading: false, data: null, expanded: {}, polls: 0 };
 
     function esc(text) {
         return String(text == null ? '' : text)
@@ -54,6 +58,7 @@
     function card(post) {
         var caption = String(post.caption || '').trim();
         var long = caption.length > 240;
+        var open = !!state.expanded[post.code];
         var date = post.date || '';
         var likes = String(post.likes || '').trim();
         var meta = [];
@@ -62,7 +67,7 @@
         var metaText = meta.join(' \u00b7 ') || 'Instagram';
 
         return '' +
-            '<article class="bg-white dark:bg-[#0a143c] rounded-[1.5rem] border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden flex flex-col">' +
+            '<article data-code="' + esc(post.code) + '" class="bg-white dark:bg-[#0a143c] rounded-[1.5rem] border border-slate-200 dark:border-white/5 shadow-sm overflow-hidden flex flex-col">' +
                 (post.image_ok
                     ? '<a href="' + esc(post.permalink) + '" target="_blank" rel="noopener" class="block bg-slate-100 dark:bg-slate-800">' +
                         '<img src="' + esc(imageUrl(post.code)) + '" alt="Kiriman @' + esc(post.handle) + '" loading="lazy" ' +
@@ -91,8 +96,8 @@
                         '</span>' +
                     '</header>' +
                     '<p class="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line ' +
-                        (long ? 'line-clamp-4' : '') + '" data-caption>' + esc(caption || '(tanpa teks)') + '</p>' +
-                    (long ? '<button type="button" data-more class="self-start text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">Selengkapnya</button>' : '') +
+                        (long && !open ? 'line-clamp-4' : '') + '" data-caption>' + esc(caption || '(tanpa teks)') + '</p>' +
+                    (long ? '<button type="button" data-more class="self-start text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">' + (open ? 'Ringkas' : 'Selengkapnya') + '</button>' : '') +
                     '<footer class="mt-auto flex items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-white/5">' +
                         '<span class="text-[10px] text-slate-400 font-semibold">' + esc(metaText) + '</span>' +
                         '<a href="' + esc(post.permalink) + '" target="_blank" rel="noopener" ' +
@@ -143,22 +148,31 @@
     function bindCards(host) {
         host.querySelectorAll('[data-more]').forEach(function (button) {
             button.addEventListener('click', function () {
+                var card = button.closest('[data-code]');
                 var caption = button.parentElement.querySelector('[data-caption]');
                 if (!caption) return;
                 var expanded = caption.classList.toggle('line-clamp-none');
                 caption.classList.toggle('line-clamp-4', !expanded);
                 button.textContent = expanded ? 'Ringkas' : 'Selengkapnya';
+                /* Ingat status buka/tutup supaya refresh senyap tidak melipatnya. */
+                if (card) {
+                    if (expanded) state.expanded[card.dataset.code] = true;
+                    else delete state.expanded[card.dataset.code];
+                }
             });
         });
     }
 
-    function load(page) {
+    function load(page, opts) {
+        var silent = !!(opts && opts.silent);
         var host = document.getElementById('instagram-feed');
         if (!host || state.loading) return;
         state.loading = true;
-        host.innerHTML = skeleton();
-        var pager = document.getElementById('instagram-pager');
-        if (pager) pager.innerHTML = '';
+        if (!silent) {
+            host.innerHTML = skeleton();
+            var pager = document.getElementById('instagram-pager');
+            if (pager) pager.innerHTML = '';
+        }
 
         var url = assetBase() + '/api/sosmed/instagram?page=' + page + '&per_page=' + PER_PAGE;
         fetch(url, { cache: 'no-store' })
@@ -171,6 +185,7 @@
                 state.page = data.page || page;
                 state.pages = data.pages || 1;
                 if (!data.posts || !data.posts.length) {
+                    if (silent) return;  /* biarkan kartu lama tetap tampil */
                     host.innerHTML = fallback('Kiriman belum bisa dimuat dari Instagram.');
                     renderPager(host, null);
                     return;
@@ -187,16 +202,39 @@
             })
             .catch(function (err) {
                 console.warn('[Sosmed] gagal memuat feed:', err.message || err);
+                if (silent) return;  /* refresh latar gagal: jangan rusak tampilan */
                 host.innerHTML = fallback('Feed Instagram tidak dapat dihubungi.');
                 renderPager(host, null);
             })
             .finally(function () { state.loading = false; });
     }
 
+    /* Refresh senyap: hanya area feed, tanpa skeleton, status buka/tutup dan
+       halaman aktif dipertahankan. Otomatis berhenti saat tab tidak aktif. */
+    function refreshSilently() {
+        if (document.visibilityState !== 'visible' || state.loading) return;
+        load(state.page, { silent: true });
+    }
+
+    function startPolling() {
+        if (pollId) return;
+        pollId = setInterval(function () {
+            state.polls += 1;
+            refreshSilently();
+        }, REFRESH_MS);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState !== 'visible') return;
+            var stamp = state.data && state.data.fetched_at
+                ? new Date(state.data.fetched_at).getTime() : 0;
+            if (Date.now() - stamp > REFRESH_MS) refreshSilently();
+        });
+    }
+
     function init() {
         var host = document.getElementById('instagram-feed');
         if (!host) return;
         load(1);
+        startPolling();
         var pager = document.getElementById('instagram-pager');
         if (pager) {
             pager.addEventListener('click', function (event) {
@@ -215,5 +253,10 @@
         init();
     }
 
-    global.SudutKotaSosmed = { reload: init, state: state };
+    global.SudutKotaSosmed = {
+        reload: init,
+        refresh: refreshSilently,
+        state: state,
+        refreshMs: REFRESH_MS
+    };
 })(window);

@@ -291,9 +291,12 @@ def scrape() -> dict[str, Any]:
                     time.sleep(PAUSE_SECONDS)
 
                 # Simpan per akun: scrape yang lambat tetap menyisakan hasil.
+                # fetched_at lama dipertahankan dan status partial membuat cache ini
+                # TIDAK dianggap segar, supaya pengunjung tidak menerima setengah feed.
                 if posts:
+                    previous = (_read_cache() or {}).get("fetched_at")
                     _write_cache({
-                        "fetched_at": datetime.now().isoformat(timespec="seconds"),
+                        "fetched_at": previous,
                         "handles": handles(),
                         "posts": posts,
                         "avatars": avatars,
@@ -332,7 +335,7 @@ def refresh(force: bool = False) -> dict[str, Any]:
     """Kembalikan cache; scrape ulang bila kedaluwarsa atau ``force``."""
     cached = _read_cache()
     fresh_enough = False
-    if cached.get("fetched_at") and cached.get("posts"):
+    if cached.get("fetched_at") and cached.get("posts") and not cached.get("partial"):
         try:
             age = datetime.now() - datetime.fromisoformat(cached["fetched_at"])
             fresh_enough = age.total_seconds() < cache_seconds()

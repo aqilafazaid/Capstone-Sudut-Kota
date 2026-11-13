@@ -457,9 +457,15 @@ tidak ada input manual, tidak ada kartu contoh.
   URL bertanda tangan jadi 403), dan disajikan lewat
   `/api/sosmed/instagram/avatar/<handle>.jpg`. Setiap scrape menimpanya, jadi avatar ikut berubah
   saat akun mengganti foto profil; browser memvalidasi ulang tiap 10 menit (ETag).
-- **Cache**: `backend/data/instagram-cache.json`, umur `IG_CACHE_SECONDS` (default 900 detik).
-  Scrape hanya dipicu permintaan pertama setelah cache basi; `IG_HANDLES` mengganti daftar akun
-  (default kedua akun di atas).
+- **Cache**: `backend/data/instagram-cache.json`, umur `IG_CACHE_SECONDS` (default **300 detik** =
+  5 menit). Scrape hanya dipicu permintaan pertama setelah cache basi; `IG_HANDLES` mengganti
+  daftar akun (default kedua akun di atas). Scrape yang berhenti di tengah menulis cache
+  `partial` dengan `fetched_at` lama, dan cache parsial **tidak** dianggap segar — pengunjung
+  tidak pernah menerima setengah feed.
+- **Refresh di halaman**: `sosmed.js` melakukan refresh senyap tiap **5 menit** hanya untuk area
+  feed (`#instagram-feed`, pager, teks "Diperbarui"), tanpa reload halaman dan tanpa skeleton.
+  Status **Selengkapnya** yang sedang terbuka dan halaman pager yang aktif dipertahankan; timer
+  berhenti saat tab tidak aktif dan menyusul sekali ketika tab kembali terlihat.
 - **API**: `GET /api/sosmed/instagram?page=N&per_page=6` → `posts[]` (`handle`, `kind`, `code`,
   `permalink`, `caption`, `date`, `taken_at`, `likes`, `image_ok`), `page`, `pages`, `total`,
   `fetched_at`, `errors[]`.
