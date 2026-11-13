@@ -13,7 +13,7 @@ Halaman berjalan tanpa build step dan tanpa server Python: cukup HTML, CSS, dan 
 | Frontend statis (`frontend/`) | **Selesai** — 9 halaman, pemutar HLS, panel kontrol AI, CRUD node, statistik + ekspor, akses fitur per akun |
 | Firebase Auth + Realtime Database | **Aktif** — identitas di Firebase Auth; profil/peran/`akses` dan agregat statistik di RTDB |
 | Backend lokal (`backend/`) | Flask API + kolektor statistik + engine AI (ffmpeg/HLS), seed node sekali pakai |
-| Deployment Vercel | Siap — `vercel.json` di root, `outputDirectory: frontend` |
+| Deployment Vercel | Siap — `vercel.json` di root, `outputDirectory: frontend`, `rewrites` `/api` + `/hls` ke Funnel (same-origin) |
 | Pengujian | `test/` di root (lokal saja, diabaikan git & Vercel) |
 
 ## Navigasi
@@ -75,7 +75,8 @@ Capstone-Sudut-Kota/
 │   │   └── temp/              (gitignored)
 │   ├── data/sudutkota.db      konfigurasi kamera (gitignored)
 │   ├── media/hls/             keluaran ffmpeg (gitignored)
-│   ├── scripts/               sync_public_config.py, seed_accounts.py, apply_rtdb_rules.py
+│   ├── scripts/               sync_public_config.py, seed_accounts.py, apply_rtdb_rules.py,
+│   │                          prune_stats.py (bersihkan agregat RTDB yatim)
 │   ├── .env / .env.example
 │   └── requirements.txt
 ├── test/                       ← kode uji (gitignored + vercelignored, lokal saja)
@@ -107,13 +108,25 @@ start-backend.bat     :: nginx + Flask + Tailscale Funnel
 lalu `backend/scripts/funnel_serve.py` yang:
 
 1. menulis `PUBLIC_BACKEND_URL` di `backend/.env` sesuai nama node Tailscale,
-2. menjalankan ulang `scripts/sync_public_config.py` bila `frontend/js/public-config.js`
-   belum memuat alamat itu (ikuti perintah commit & push yang dicetak),
+2. menjalankan `scripts/sync_public_config.py`, yang memperbarui tiga berkas:
+   `frontend/js/firebase-config.js`, `frontend/js/public-config.js`, dan **rewrite
+   `/api` + `/hls` di `vercel.json`** (ikuti perintah commit & push yang dicetak),
 3. **menunggu `http://127.0.0.1:8080/api/health` menjawab 200** sebelum menyalakan
    `tailscale funnel --bg 8080` — tanpa urutan ini, permintaan pertama dari halaman
    Vercel (termasuk login) menerima **502** selama Flask masih impor modul,
 4. menjalankan verifikasi: `/api/health` publik dan preflight CORS untuk origin Vercel,
 5. mematikan Funnel lagi saat backend berhenti (hanya bila skrip inilah yang menyalakannya).
+
+Halaman Vercel **tidak** memanggil `*.ts.net` dari peramban. `vercel.json` mem-proxy
+`/api/:path*` dan `/hls/:path*` ke Funnel, jadi semua permintaan same-origin. Ini bukan
+gaya-gayaan: di mesin operator, `desktop-…ts.net` ada di `hosts` (bagian MagicDNS Tailscale)
+dan menunjuk ke IP tailnet `100.x`. Chrome memblokir permintaan dari origin HTTPS publik ke
+alamat privat (Private Network Access), sehingga tanpa proxy halaman melaporkan
+"Tidak dapat menghubungi …/api/akun/me" walaupun backend sehat. Proxy juga menghapus CORS,
+mixed content, dan masalah sertifikat sekaligus.
+
+Konsekuensinya: **cukup `start-backend.bat`** untuk memakai frontend yang sudah ter-deploy.
+`start-frontend.bat` hanya untuk menyunting tampilan secara lokal.
 
 Menjalankan `start-backend.bat` dua kali kini aman: bila port 5000 sudah dipegang backend
 Sudut Kota yang sehat (`/api/health` menjawab `service: sudut-kota-backend`), instance baru
@@ -150,15 +163,22 @@ mencetak tautannya dan backend tetap jalan — halaman 8787 tidak terpengaruh.
 
 | Gejala | Sebab | Tindakan |
 |---|---|---|
-| "Gagal menghubungi server" / preflight tanpa `Access-Control-Allow-Origin` | Halaman dibuka dari URL **preview** (`capstone-sudut-kota-<hash>.vercel.app`) yang belum ada di `ALLOWED_ORIGINS` | Sejak pola `https://capstone-sudut-kota*.vercel.app` ditambahkan, semua preview proyek ini diizinkan. Restart Flask setelah mengubah `.env`. |
-| Halaman Vercel memuat tetapi API 502 | Funnel menyala sebelum Flask siap, atau backend mati | `start-backend.bat` sekarang menunggu `/api/health` dulu. Cek `http://127.0.0.1:8080/api/health`; bila 502, Flask belum jalan. |
+| "Tidak dapat menghubungi …/api/akun/me" padahal `https://<node>.ts.net/api/health` 200 lewat `curl` | Peramban memanggil `*.ts.net` yang di `hosts` menunjuk IP tailnet `100.x`; Chrome memblokir origin HTTPS publik → alamat privat (Private Network Access) | Pastikan `vercel.json` memuat `rewrites` `/api/:path*` dan `/hls/:path*` (dibuat `sync_public_config.py`), lalu commit + push. Halaman Vercel harus memanggil `/api/...` same-origin, bukan `https://<node>.ts.net`. |
+| `/api/health` lewat Vercel 404, bukan JSON backend | `vercel.json` belum punya `rewrites`, atau deployment lama masih dipakai | Jalankan `python backend/scripts/sync_public_config.py`, commit, push, tunggu build Vercel selesai. |
+| Halaman Vercel memuat tetapi API 502 | Funnel menyala sebelum Flask siap, atau backend mati | `start-backend.bat` menunggu `/api/health` dulu. Cek `http://127.0.0.1:8080/api/health`; bila 502, Flask belum jalan. |
 | `auth/unauthorized-domain` atau tautan reset kata sandi ditolak | Domain Vercel belum terdaftar di Firebase → Authentication → Settings → Authorized domains | Tambahkan `capstone-sudut-kota.vercel.app` (preview tidak bisa wildcard di Firebase). |
 | Login berhasil tetapi halaman menolak akses | Profil RTDB tidak punya fitur yang diminta | Administrator membuka Kelola Akun dan menyalakan sakelar fitur terkait. |
 
-Cek cepat dari mesin operator:
+Cek cepat dari mesin operator — tiga jalur berbeda:
 
 ```bash
+# 1. backend langsung (melewati Vercel)
 curl -s https://<node>.ts.net/api/health
+
+# 2. lewat proxy Vercel: harus mengembalikan JSON backend, bukan 404
+curl -s https://capstone-sudut-kota.vercel.app/api/health
+
+# 3. preflight CORS langsung ke Funnel (masih dipakai mode 8787/dev)
 curl -s -o /dev/null -D - -X OPTIONS https://<node>.ts.net/api/akun/me \
      -H "Origin: https://capstone-sudut-kota.vercel.app" \
      -H "Access-Control-Request-Method: GET" | grep -i access-control-allow-origin
@@ -206,11 +226,39 @@ Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 | Profil & peran operator | RTDB `<RTDB_ROOT>/akun/<uid>` | ditulis backend lewat Admin SDK, bukan klien |
 | Statistik | RTDB `<RTDB_ROOT>/statistik/<tanggal>/<jam>/<node>` dan `<RTDB_ROOT>/statistik_harian/<tanggal>/<node>` | agregat sampel telemetri AI + agregat harian, ditulis kolektor backend. **Satu-satunya sumber angka**; tidak ada simulasi di peramban |
 | Konfigurasi Firebase Web SDK | `backend/.env` → `frontend/js/firebase-config.js` | kunci publik; hasil `sync_public_config.py` |
-| Alamat backend untuk Vercel | `backend/.env` (`PUBLIC_BACKEND_URL`) → `frontend/js/public-config.js` | hasil skrip yang sama |
+| Alamat backend untuk Vercel | `vercel.json` → `rewrites` `/api` + `/hls`; `frontend/js/public-config.js` (`backendBase: ""`, `funnelBase`) | Halaman Vercel memakai origin sendiri; proxy Vercel yang meneruskan ke Funnel |
 
 Node bawaan hanya ditanam sekali: tabel `meta` menyimpan penanda `seeded`, jadi node yang
 dihapus operator tetap hilang setelah backend restart (dulu tabel kosong memicu seed ulang).
 `POST /api/nodes/reset` sengaja menanam ulang seed.
+
+### Sinkronisasi data
+
+| Data | Pemilik (satu-satunya) | Dibaca lewat |
+|---|---|---|
+| Node CCTV | `backend/data/sudutkota.db` (SQLite) | `GET /api/nodes`, cache `sudutkota.nodes.cache.v3` |
+| Akun | Firebase Auth (identitas) + RTDB `<RTDB_ROOT>/akun/<uid>` (profil, peran, `akses`) | `GET /api/akun/me`, `GET /api/akun` |
+| Statistik | RTDB `<RTDB_ROOT>/statistik*` | `GET /api/stats/telemetry` (agregat), `GET /api/stats/live` (snapshot) |
+
+Periksa ketiganya sekaligus (read-only):
+
+```bash
+backend/.venv/Scripts/python.exe test/check_sync.py
+```
+
+Skrip ini membandingkan isi SQLite dengan `/api/nodes`, memastikan statistik hanya berasal
+dari RTDB, dan mencocokkan user Firebase Auth dengan profil RTDB. Id statistik yang tidak
+punya node di SQLite dilaporkan sebagai `WARN` — arsip lama tetap tersimpan sampai dibersihkan:
+
+```bash
+cd backend
+.venv/Scripts/python.exe scripts/prune_stats.py --dry-run   # lihat yang akan dibuang
+.venv/Scripts/python.exe scripts/prune_stats.py             # cadangkan JSON lalu hapus
+```
+
+Cadangan ditulis ke `backend/data/backup/stats-prune-<stamp>.json` sebelum penghapusan, jadi
+arsip bisa dikembalikan. **Perhatian:** bila direktori node kosong, semua arsip dianggap yatim —
+purge akan mengosongkan halaman Statistik.
 
 Klien tidak pernah membaca atau menulis RTDB. Semua akses data lewat backend, sehingga
 rules RTDB dapat menolak seluruh akses klien:
@@ -355,10 +403,23 @@ Kata sandi diminta lewat prompt, tidak masuk riwayat shell.
    `outputDirectory: "frontend"`. Framework preset yang tersimpan sebagai Flask akan
    ditimpa, sehingga `backend/app.py` tidak lagi dicari sebagai entrypoint.
 3. `start-backend.bat` mengisi `PUBLIC_BACKEND_URL` di `backend/.env` dari nama node
-   Tailscale dan menjalankan `scripts/sync_public_config.py`; commit
-   `frontend/js/public-config.js` bila berubah (manual: isi sendiri lalu jalankan skripnya).
-4. Tambahkan domain Vercel ke `ALLOWED_ORIGINS` di `backend/.env`, lalu restart Flask.
+   Tailscale lalu menjalankan `scripts/sync_public_config.py`. Skrip itu menulis tiga berkas:
+   `frontend/js/firebase-config.js`, `frontend/js/public-config.js` (backendBase kosong), dan
+   `vercel.json` (`rewrites` `/api/:path*` + `/hls/:path*` ke Funnel). Commit ketiganya bila
+   berubah — tanpa `rewrites` di build Vercel, `/api/health` di domain Vercel menjawab 404.
+4. Tambahkan domain Vercel ke `ALLOWED_ORIGINS` di `backend/.env`, lalu restart Flask. Ini
+   hanya dipakai mode lintas-origin (halaman 8787 dan `*.vercel.app` saat proxy dimatikan);
+   jalur produksi memakai proxy same-origin.
 5. `cleanUrls` aktif, jadi `/cctv` dan `/cctv.html` sama-sama bekerja.
+
+Setelah deploy, uji dari luar mesin operator:
+
+```bash
+curl -s https://capstone-sudut-kota.vercel.app/api/health   # harus JSON backend
+```
+
+`/api` dan `/hls` melewati edge Vercel (traffic ikut terhitung). Untuk demo capstone ini
+wajar; bila kuota jadi masalah, buka halaman lewat `http://127.0.0.1:8080` (nginx lokal).
 
 ## Data awal
 
@@ -370,7 +431,8 @@ default-nya `false`.
 
 - `localStorage['sudutkota.nodes.cache.v3']` — cache baca, bukan sumber kebenaran.
 - `localStorage['sudutkota.ai.v1']` — status AI lokal (belum tersinkron ke RTDB).
-- `localStorage['sudutkota.backend']` — override alamat backend di lingkungan non-lokal.
+- `localStorage['sudutkota.backend']` — override alamat backend; kosongkan bila halaman
+  Vercel harus memakai proxy `/api` (`localStorage.removeItem('sudutkota.backend')`).
 
 Tombol **Reset data** memanggil `POST /api/nodes/reset` (fitur `dashboard`),
 mengembalikan node ke seed backend. Akun Firebase **tidak** ikut direset.
@@ -511,7 +573,8 @@ backend/.venv/Scripts/python.exe test/test_hls_ffmpeg_e2e.py   # HLS nyata: segm
 
 # diagnosa read-only (butuh backend/.env berisi kredensial)
 backend/.venv/Scripts/python.exe test/check_auth_cfg.py        # authorized domains + provider
-backend/.venv/Scripts/python.exe test/check_accounts.py        # Auth <-> RTDB konsisten
+backend/.venv/Scripts/python.exe test/check_accounts.py       # Auth <-> RTDB konsisten
+backend/.venv/Scripts/python.exe test/check_sync.py           # node/statistik/akun sinkron
 ```
 
 Aturan yang dipakai:
