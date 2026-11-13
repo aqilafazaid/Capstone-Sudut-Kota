@@ -161,6 +161,24 @@ menjalankan backend tanpa membuka akses publik.
 Funnel harus diaktifkan sekali per mesin di konsol admin Tailscale; bila belum, skrip
 mencetak tautannya dan backend tetap jalan — halaman 8787 tidak terpengaruh.
 
+### Hasil uji dua cara menjalankan
+
+Diuji langsung di mesin operator (Windows, `cmd`), bukan asumsi:
+
+| Skenario | Hasil |
+|---|---|
+| Cara 1 — hanya `start-backend.bat` | Flask `127.0.0.1:5000` + nginx `127.0.0.1:8080` hidup bersama, `/api/health` keduanya **200**, halaman 8080 **200**, Funnel `verifikasi: OK` |
+| Cara 2 — `start-backend.bat` + `start-frontend.bat` | 5000, 8080, dan 8787 hidup bersamaan; `8787/index.html` **200**; halaman 8787 memakai `backendBase = http://127.0.0.1:5000` dan feed termuat; preflight CORS dari origin 8787 dibalas `Access-Control-Allow-Origin: http://127.0.0.1:8787` |
+| `start-backend.bat` dijalankan dua kali | Instance kedua **tidak** dibuat: "Flask sudah berjalan dan sehat; instance kedua tidak dijalankan" + "nginx sudah jalan (pid …), dipakai ulang" + verifikasi Funnel; listener `:5000` tetap **1** |
+| `start-frontend.bat` dijalankan dua kali | Berhenti dengan pesan "Port 8787 sudah dipakai proses lain" dan saran `start-frontend.bat 8788`; server lama tidak terganggu |
+| `start-frontend.bat` tanpa backend | Memberi peringatan "Backend belum menjawab di http://127.0.0.1:5000/api/health" lalu tetap menyajikan halaman (login/statistik baru gagal) |
+| Flask dimatikan paksa saat backend jalan | Skrip backend melakukan pembersihan: nginx dihentikan dan Funnel di-reset, port 5000/8080 kembali bebas |
+
+Catatan saat memeriksa proses: satu instance Flask tampil sebagai **dua** `python.exe` — proses
+induk `backend\.venv\Scripts\python.exe` dan anaknya interpreter dasar. Itu normal (venv
+redirector Windows), bukan dua server; yang menentukan hanya **satu** listener di `:5000`.
+nginx juga tampil dua proses: master (PID di `backend\gateway\logs\nginx.pid`) dan worker.
+
 ### Jika login dari Vercel gagal
 
 | Gejala | Sebab | Tindakan |
