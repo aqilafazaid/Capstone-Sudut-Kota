@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261113u">
+    <link rel="stylesheet" href="css/style.css?v=20261113w">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -45,6 +45,7 @@
                 <div id="login-alert" class="hidden mb-6 p-3 rounded-xl text-xs font-bold flex items-start gap-3"></div>
 
                 <form id="login-form" class="space-y-5" novalidate>
+                    <label class="sk-label block mb-1.5" for="login-identifier">Email</label>
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fa-solid fa-id-badge text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
@@ -53,6 +54,7 @@
                             class="glass-input w-full pl-11 pr-4 py-3.5 text-sm font-semibold">
                     </div>
 
+                    <label class="sk-label block mb-1.5" for="password">Kata Sandi</label>
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fa-solid fa-key text-slate-500 group-focus-within:text-blue-400 transition-colors"></i>
@@ -99,14 +101,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261113u"></script>
-<script src="js/firebase-config.js?v=20261113u"></script>
-<script src="js/firebase-client.js?v=20261113u"></script>
-<script src="js/config.js?v=20261113u"></script>
+<script src="js/public-config.js?v=20261113w"></script>
+<script src="js/firebase-config.js?v=20261113w"></script>
+<script src="js/firebase-client.js?v=20261113w"></script>
+<script src="js/config.js?v=20261113w"></script>
 
-<script src="js/store.js?v=20261113u"></script>
-<script src="js/auth.js?v=20261113u"></script>
-<script src="js/app.js?v=20261113u"></script>
+<script src="js/store.js?v=20261113w"></script>
+<script src="js/auth.js?v=20261113w"></script>
+<script src="js/app.js?v=20261113w"></script>
 <script>
     App.init({ active: 'login' });
 

@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261113u">
+    <link rel="stylesheet" href="css/style.css?v=20261113w">
 
     <!-- Pustaka ekspor & grafik, dimuat hanya di halaman ini -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -47,7 +47,7 @@
     <div class="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
 
         <!-- JUDUL & AKSI -->
-        <div class="glass-card p-6 md:p-8 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 animate-fade-in-up">
+        <div class="glass-card p-5 md:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 animate-fade-in-up">
             <div class="flex items-center gap-4">
                 <div class="w-14 h-14 rounded-2xl sk-soft border flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)]">
                     <i class="fa-solid fa-chart-column"></i>
@@ -62,24 +62,24 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-2 w-full sm:pl-[72px] xl:pl-0 xl:w-auto xl:items-end">
-                <div class="grid grid-cols-4 gap-1 sk-panel-2 border sk-line rounded-xl p-1 w-full sm:w-auto sm:flex sm:items-center sm:gap-0.5 sm:shrink-0">
-                    <button type="button" data-period="1d" class="period-tab flex-1 sm:flex-none is-active px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Hari</button>
-                    <button type="button" data-period="1w" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Minggu</button>
-                    <button type="button" data-period="1m" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Bulan</button>
-                    <button type="button" data-period="3m" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">3 Bulan</button>
-                    <button type="button" data-period="1y" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Tahun</button>
-                    <button type="button" data-period="5y" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">5 Tahun</button>
-                    <button type="button" data-period="all" class="period-tab flex-1 sm:flex-none px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">Seluruhnya</button>
+            <div class="flex flex-col gap-3 w-full lg:w-auto lg:items-end">
+                <div class="flex gap-1 sk-panel-2 border sk-line rounded-xl p-1 w-full sm:w-fit sm:self-start lg:self-end overflow-x-auto hide-scrollbar">
+                    <button type="button" data-period="1d" class="period-tab is-active shrink-0 min-h-[40px] px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Hari</button>
+                    <button type="button" data-period="1w" class="period-tab shrink-0 min-h-[40px] px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Minggu</button>
+                    <button type="button" data-period="1m" class="period-tab shrink-0 min-h-[40px] px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Bulan</button>
+                    <button type="button" data-period="3m" class="period-tab shrink-0 min-h-[40px] px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">3 Bulan</button>
+                    <button type="button" data-period="1y" class="period-tab shrink-0 min-h-[40px] px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">1 Tahun</button>
+                    <button type="button" data-period="5y" class="period-tab shrink-0 min-h-[40px] px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">5 Tahun</button>
+                    <button type="button" data-period="all" class="period-tab shrink-0 min-h-[40px] px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider sk-muted border border-transparent whitespace-nowrap">Seluruhnya</button>
                 </div>
 
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="grid grid-cols-2 gap-2 w-full sm:flex sm:w-fit sm:self-start lg:self-end">
                     <button id="btn-export-pdf" type="button"
-                            class="shrink-0 px-2.5 py-3 rounded-xl sk-btn-soft-danger text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
+                            class="w-full xl:w-auto min-h-[40px] px-3 py-2.5 rounded-xl sk-btn-soft-danger text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2">
                         <i class="fa-solid fa-file-pdf"></i> PDF
                     </button>
                     <button id="btn-export-csv" type="button"
-                            class="shrink-0 px-2.5 py-3 rounded-xl sk-btn-soft-success text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
+                            class="w-full xl:w-auto min-h-[40px] px-3 py-2.5 rounded-xl sk-btn-soft-success text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2">
                         <i class="fa-solid fa-file-csv"></i> CSV
                     </button>
                 </div>
@@ -189,14 +189,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261113u"></script>
-<script src="js/firebase-config.js?v=20261113u"></script>
-<script src="js/firebase-client.js?v=20261113u"></script>
-<script src="js/config.js?v=20261113u"></script>
+<script src="js/public-config.js?v=20261113w"></script>
+<script src="js/firebase-config.js?v=20261113w"></script>
+<script src="js/firebase-client.js?v=20261113w"></script>
+<script src="js/config.js?v=20261113w"></script>
 
-<script src="js/store.js?v=20261113u"></script>
-<script src="js/auth.js?v=20261113u"></script>
-<script src="js/app.js?v=20261113u"></script>
-<script src="js/statistik.js?v=20261113u"></script>
+<script src="js/store.js?v=20261113w"></script>
+<script src="js/auth.js?v=20261113w"></script>
+<script src="js/app.js?v=20261113w"></script>
+<script src="js/statistik.js?v=20261113w"></script>
 </body>
 </html>

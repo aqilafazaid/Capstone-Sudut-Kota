@@ -672,18 +672,33 @@ Titik penyesuaian utama:
 - **CCTV Live** — dua kolom (pemutar + daftar node 340 px) baru aktif di ≥1280 px; di bawahnya
   panel ditumpuk dan daftar node memakai lebar penuh. Pada 1024–1279 px sebelumnya sidebar hanya
   ~230 px sehingga judul dan nama node terlipat.
-- **Baris ikon layanan beranda** — `md:justify-center`, jadi ikon tidak menumpuk di kiri pada
-  layar lebar.
+- **Baris ikon layanan beranda** — grid 5 kolom (bukan baris yang bisa digeser), ikon 50–76 px
+  mengikuti lebar, jadi kelima layanan utuh sejak 320 px dan tidak ada yang terpotong.
+- **Statistik** — di <640 px filter periode menjadi satu baris yang bisa digeser (tidak lagi
+  pecah 4+3 dengan lubang di kanan); pada ≥640 px kontainer selebar isinya (`w-fit`) dan tombol
+  PDF/CSV berdampingan selebar konten. Tombol ekspor memakai kelas warna yang benar
+  (`sk-btn-soft-danger`/`sk-btn-soft-success`).
+- **Label field** — form login, registrasi, dan lupa sandi memakai `<label class="sk-label">`
+  permanen di atas field, jadi konteks tidak hilang saat placeholder terisi.
+- **Target sentuh** — `.tap-link`, `.period-tab`, `.sk-btn` minimal 40 px; tautan menu/footer
+  40–44 px; field 16 px di ponsel (mencegah auto-zoom iOS).
+- **Streaming** — `maxBufferLength` 8 dtk, `liveSyncDurationCount` 2, `liveMaxLatencyDurationCount` 4:
+  jeda terhadap siaran langsung turun dari ~6 dtk menjadi ~4 dtk tanpa stall (uji 20 dtk: 18,4–20 dtk
+  maju, 0 stall).
 - **Dashboard** — di bawah 768 px tabel 5 kolom diganti kartu per node: nama, id/channel, status,
   zona/jalan, badge AI, dan tombol Edit/Hapus berlabel. Tabel tetap dipakai pada layar lebar.
-- **Statistik** — tombol interval menjadi grid 4 kolom di ponsel; kolom kontrol judul menumpuk
-  dengan tepi kiri sejajar.
+- **Statistik** — kolom kontrol judul menumpuk dengan tepi kiri sejajar di bawah 1280 px.
 - **Layar pendek** (<520 px tinggi, mis. ponsel landscape) — padding atas `main` dan `glass-card`
   dirapatkan agar konten tidak terdorong keluar layar.
 - **Media** — `img, canvas, video, svg` dibatasi `max-width: 100%`.
 
-Pengukuran ulang: `backend/.venv/Scripts/python.exe test/audit_responsive.py` — memeriksa luapan
-horizontal, jarak antar-bagian >80 px, padding section ≥96 px, dan footer tertutup bar tetap.
+Pengukuran ulang — tiga skrip di `test/` (lokal, tidak ikut deploy):
+
+- `audit_responsive.py` — luapan horizontal, jarak antar-bagian >80 px, padding section ≥96 px,
+  footer tertutup bar tetap. 9 halaman × 17 viewport (320×568 … 3440×1440).
+- `audit_ux.py` — target sentuh <40 px, field tanpa label, ukuran field <16 px, teks <10 px,
+  jumlah permintaan/berat halaman. 9 halaman × 2 viewport ponsel.
+- `measure_hls_start.py` — waktu sampai frame pertama HLS (browser baru tiap run supaya cold).
 
 ## Kelola akun
 

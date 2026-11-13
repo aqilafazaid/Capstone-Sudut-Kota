@@ -416,6 +416,17 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
     .player-header { padding: 12px 14px; }
 }
 
+/* Label permanen di atas field: tetap terbaca setelah pengguna mengetik,
+   karena placeholder hilang saat field terisi. */
+.sk-label {
+    display: block;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--sk-text-muted);
+}
+
 /* --- Target sentuh & field di layar kecil ----------------------------- */
 /* iOS Safari memperbesar seluruh halaman saat field <16px difokuskan, lalu
    pengguna harus mencubit untuk kembali. Semua field jadi 16px di ponsel. */

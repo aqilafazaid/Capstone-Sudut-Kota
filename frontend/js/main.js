@@ -266,10 +266,12 @@
                 enableWorker: true,
                 lowLatencyMode: false,
                 backBufferLength: 12,
-                maxBufferLength: 12,
-                maxMaxBufferLength: 24,
-                liveSyncDurationCount: 3,
-                liveMaxLatencyDurationCount: 6,
+                /* Buffer 8 detik (dari 12) supaya cepat menyusul live edge;
+                   sinkronisasi 2 segmen (dari 3) memangkas ~2 detik jeda live. */
+                maxBufferLength: 8,
+                maxMaxBufferLength: 16,
+                liveSyncDurationCount: 2,
+                liveMaxLatencyDurationCount: 4,
                 maxLiveSyncPlaybackRate: 1.5,
                 manifestLoadingTimeOut: 8000,
                 manifestLoadingMaxRetry: 4,
