@@ -1090,25 +1090,3 @@ Catatan konfigurasi Firebase (bukan kode): provider **Email/Password sudah aktif
 (`test/check_auth_cfg.py` → `email.password: true`). Authorized domains saat ini
 `localhost`, `adminsudutkota.firebaseapp.com`, dan `adminsudutkota.web.app`; tambahkan domain
 Vercel di Firebase Console bila memakai tautan reset kata sandi atau OAuth dari domain itu.
-
-### Yang sudah ditutup
-
-| Kendala lama | Penyelesaian | Cara memeriksa |
-|---|---|---|
-| Hapus node meninggalkan data | `DELETE /api/nodes/<id>` (soft) menghentikan engine dan membersihkan HLS, log `_logs/<id>.log`, serta telemetri `cam_<channel>`; `DELETE /api/nodes/<id>/permanent` menghapus baris SQLite + agregat `statistik`/`statistik_harian`; sisa lama dibereskan `scripts/purge_orphan_data.py` | `test_node_delete_cleanup.py` 20/20 · `test_purge_node.py` 18/18 · scan ulang: "tidak ada sisa data" |
-| Hapus tidak bisa dibatalkan | **Soft delete dua tahap** untuk node (`nodes.deleted_at`) dan akun (`deleted_at` + Firebase `disabled`), dengan `restore` dan `hapus permanen` di Dashboard/Akun | `test_soft_delete_accounts.py` 20/20 · `test_soft_delete_api.py` 24/24 · `test_node_delete_cleanup.py` 20/20 |
-| Channel node bisa bertabrakan | Channel dinormalkan ke digit tanpa nol depan dan dijaga unik (termasuk node di tempat sampah) + indeks unik parsial `idx_nodes_channel` | `test_channel_unique.py` 13/13 · E2E: create channel ganda → `409` |
-| CRUD belum diuji end-to-end | Uji E2E dengan akun admin sementara: node create/read/update/delete/restore/permanent dan akun create/read/update/delete/restore/permanent lewat nginx → backend → Firebase asli | 30/30 cek API + klik UI (panel tempat sampah, Pulihkan, Hapus permanen); diulang setelah fitur pilihan massal: 24/24 |
-| Tombol **Kosongkan direktori** membingungkan | Fitur dihapus total: route `POST /api/nodes/reset`, `nodes.reset_nodes()`, `Store.resetDemo()`, dan tombolnya. Penghapusan hanya lewat per node / pilihan massal | `POST /api/nodes/reset` → `405`; `test_hls_crud.py` memeriksa itu |
-| Daftar node/akun tanpa pencarian atau pilihan massal | Dashboard: pencarian (nama/ID/channel/jalan/zona) + filter bertingkat + centang per baris/semua + **Hapus terpilih**. Kelola Akun: pencarian + filter peran + centang (akun sendiri dikecualikan) + **Hapus terpilih** | Uji UI: cari "Gamma" → 1 baris; zona SELATAN → 2 baris; select-all → 2 terpilih → terhapus; akun select-all melewati akun sendiri |
-| Label "Stream"/"CCTV Live" tidak konsisten | Semua label yang menuju `cctv.html` diseragamkan jadi **Live CCTV**: menu navbar, menu ponsel, footer, kartu beranda, tombol Dashboard, teks login, dan label fitur di `auth.js` | Uji UI: `#nav-links` → Beranda · **Live CCTV** · Statistik · Dashboard · Akun; `grep "CCTV Live"` di `frontend/` kosong |
-| Selector YOLO tidak bisa dibuka | `select-yolo` tidak lagi dipaksa `disabled`; hanya dikunci untuk akun tanpa izin `ai`, dengan pesan informatif saat diganti (satu bobot per engine) | Uji UI: `disabled=false`, 1 opsi `yolov8n.pt`, event `change` menulis log panel |
-| Chevron select menempel ke tepi card | Kedua select memakai `appearance-none` + chevron sendiri berjarak 12 px dari tepi field (`pr-9`) | Uji UI: `padding-right=36px`, jarak ikon ke tepi field 12 px, sejajar vertikal |
-| URL RTSP tersimpan teks biasa di SQLite | CRUD menulis ciphertext **AES-256-GCM** (`enc:v2:`) dan mendekripsi saat dibaca; kunci 32 byte dari `NODE_SECRET` di `backend/.env` (atau `data/node_secret.key`); migrasi baris lama + `VACUUM` lewat `scripts/encrypt_rtsp.py` | `test_rtsp_crypto.py` 16/16 · `test_rtsp_crud_api.py` 21/21 · `grep -c "rtsp://" backend/data/sudutkota.db` = 0 |
-| Pencarian navbar bertabrakan dengan menu saat akun melihat kelima item | Input dipindah ke header panel *Daftar Node* (`#search-input`), `searchMarkup`/`bindMobileSearch` dihapus dari `app.js` | Tidak ada `#search-input` di dalam `nav`; baris navbar tidak meluap pada 1024–1920 px |
-| `requirements.txt` memuat 4 paket tak terpakai | `Flask-Mail`, `google-generativeai`, `feedparser`, `pytz` dihapus | `python -c "import flask, firebase_admin, playwright, requests, dotenv"` |
-| URL RTSP tampil di daftar proses | Engine AI menerima RTSP lewat `RTSP_URL` di environment, bukan `--input` | cmdline `main_ai.py` tidak lagi memuat `rtsp://` |
-| `/hls` sesekali 500 saat ffmpeg mengganti playlist | Route membaca isi berkas lalu menutup handle, dengan retry 4× dan 503 + `Retry-After` | `grep -c "failed to rename" backend/media/hls/<node>/engine.log` = 0 |
-| Belum ada CSP | Empat direktif aman di nginx + `vercel.json` | `curl -sI http://127.0.0.1:8080/cctv.html` → header `content-security-policy` |
-| Provider Email/Password "harus diaktifkan" | Ternyata sudah aktif | `python test/check_auth_cfg.py` → `email.password: true` |
-| Ingress publik dan direktori node kosong | Bukan cacat: Funnel diatur `funnel_serve.py`, dan tidak ada seed memang disengaja | README → *Menjalankan Project*, *Data node (tanpa seed)* |
