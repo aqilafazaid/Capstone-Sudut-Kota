@@ -12,7 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261114u">
+    <link rel="stylesheet" href="css/style.css?v=20261114v">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
 
     <script>
@@ -261,9 +261,12 @@
                             </div>
                             <div class="mt-4 flex items-center gap-2">
                                 <label for="select-lowlight" class="text-[10px] font-bold sk-muted uppercase tracking-widest">Model</label>
-                                <select id="select-lowlight" class="glass-input flex-1 text-xs font-bold px-3 py-2">
-                                    <option value="">Memuat model…</option>
-                                </select>
+                                <div class="relative flex-1 min-w-0">
+                                    <select id="select-lowlight" class="glass-input w-full appearance-none text-xs font-bold pl-3 pr-9 py-2">
+                                        <option value="">Memuat model…</option>
+                                    </select>
+                                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] sk-muted pointer-events-none"></i>
+                                </div>
                             </div>
                         </div>
 
@@ -283,9 +286,12 @@
                             </div>
                             <div class="mt-4 flex items-center gap-2">
                                 <label for="select-yolo" class="text-[10px] font-bold sk-muted uppercase tracking-widest">Model</label>
-                                <select id="select-yolo" class="glass-input flex-1 text-xs font-bold px-3 py-2">
-                                    <option value="">Memuat bobot…</option>
-                                </select>
+                                <div class="relative flex-1 min-w-0">
+                                    <select id="select-yolo" class="glass-input w-full appearance-none text-xs font-bold pl-3 pr-9 py-2">
+                                        <option value="">Memuat bobot…</option>
+                                    </select>
+                                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] sk-muted pointer-events-none"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -340,15 +346,15 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261114u"></script>
-<script src="js/firebase-config.js?v=20261114u"></script>
-<script src="js/firebase-client.js?v=20261114u"></script>
-<script src="js/config.js?v=20261114u"></script>
+<script src="js/public-config.js?v=20261114v"></script>
+<script src="js/firebase-config.js?v=20261114v"></script>
+<script src="js/firebase-client.js?v=20261114v"></script>
+<script src="js/config.js?v=20261114v"></script>
 
-<script src="js/store.js?v=20261114u"></script>
-<script src="js/auth.js?v=20261114u"></script>
-<script src="js/app.js?v=20261114u"></script>
-<script src="js/main.js?v=20261114u"></script>
+<script src="js/store.js?v=20261114v"></script>
+<script src="js/auth.js?v=20261114v"></script>
+<script src="js/app.js?v=20261114v"></script>
+<script src="js/main.js?v=20261114v"></script>
 <script>
     App.init({ active: 'cctv' });
     CctvPlayer.init();

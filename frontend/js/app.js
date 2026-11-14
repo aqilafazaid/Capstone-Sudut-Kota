@@ -31,7 +31,7 @@
        `feature` dihubungkan ke izin per akun (lihat Auth.can). */
     const NAV_LINKS = [
         { key: 'home', href: 'index.html', label: 'Beranda', icon: 'fa-house', short: 'Home', mobile: 1, feature: null },
-        { key: 'cctv', href: 'cctv.html', label: 'CCTV Live', icon: 'fa-video', short: 'CCTV', mobile: 3, center: true, feature: 'cctv' },
+        { key: 'cctv', href: 'cctv.html', label: 'Live CCTV', icon: 'fa-video', short: 'CCTV', mobile: 3, center: true, feature: 'cctv' },
         { key: 'statistik', href: 'statistik.html', label: 'Statistik', icon: 'fa-chart-column', short: 'Statistik', mobile: 2, feature: 'statistik' },
         { key: 'dashboard', href: 'dashboard.html', label: 'Dashboard', icon: 'fa-chart-pie', short: 'Dashboard', mobile: 4, feature: 'dashboard' },
         { key: 'akun', href: 'akun.html', label: 'Akun', icon: 'fa-user-shield', short: 'Akun', mobile: 5, feature: 'akun' }
@@ -250,7 +250,7 @@
                         <h3 class="font-display font-bold text-[#0a143c] dark:text-white text-sm uppercase tracking-widest mb-5">Navigasi</h3>
                         <ul class="space-y-3 text-sm text-slate-500 dark:text-slate-400">
                             <li><a href="index.html" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Beranda</a></li>
-                            <li><a href="cctv.html" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">CCTV Live</a></li>
+                            <li><a href="cctv.html" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Live CCTV</a></li>
                             <li><a href="statistik.html" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Statistik</a></li>
                             <li><a href="index.html#pusat-pengaduan" class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Lapor &amp; Aduan</a></li>
                         </ul>

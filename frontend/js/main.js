@@ -239,8 +239,9 @@
             el['select-yolo'].innerHTML = yolo.length
                 ? yolo.map(item => `<option value="${item.name}">${item.label || item.name}</option>`).join('')
                 : '<option value="">Tidak ada bobot</option>';
-            /* Satu bobot per engine: pilihan hanya informasi, bukan kontrol. */
-            el['select-yolo'].disabled = true;
+            /* Tetap bisa dibuka walau hanya satu bobot tersedia; engine memakai
+               berkas .pt di Yolo/Model, jadi pilihan ini informatif. */
+            el['select-yolo'].title = 'Bobot YOLO aktif. Ganti berkas .pt di Yolo/Model untuk model lain.';
         }
     }
 
@@ -319,17 +320,18 @@
             badge.className = 'text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border sk-soft';
         }
 
-        ['toggle-lowlight', 'toggle-yolo', 'select-lowlight'].forEach(id => {
+        ['toggle-lowlight', 'toggle-yolo', 'select-lowlight', 'select-yolo'].forEach(id => {
             const node = el[id];
             if (!node) return;
             node.disabled = !canControl;
-            node.title = canControl ? '' : 'Kontrol AI hanya untuk Teknisi atau Administrator.';
+            if (!canControl) {
+                node.title = 'Kontrol AI hanya untuk Teknisi atau Administrator.';
+            } else if (id === 'select-yolo') {
+                node.title = 'Bobot YOLO aktif. Ganti berkas .pt di Yolo/Model untuk model lain.';
+            } else {
+                node.title = '';
+            }
         });
-        /* Bobot YOLO bukan pilihan: engine memakai file .pt di Yolo/Model. */
-        if (el['select-yolo']) {
-            el['select-yolo'].disabled = true;
-            el['select-yolo'].title = 'Satu bobot YOLO per engine (file .pt di Yolo/Model).';
-        }
     }
 
     /* Permintaan operator dianggap selesai saat keadaan engine (dari RTDB)
@@ -702,9 +704,12 @@
         }
 
         if (el['select-yolo']) {
-            el['select-yolo'].addEventListener('change', () => {
-                /* Satu bobot YOLO per engine: pilihan hanya informasi. */
-                log('Bobot YOLO mengikuti file di Yolo/Model; ganti berkasnya untuk berganti model.');
+            el['select-yolo'].addEventListener('change', (event) => {
+                const pilihan = event.target.options[event.target.selectedIndex];
+                const nama = pilihan ? pilihan.textContent : event.target.value;
+                /* Satu bobot per engine: pilihan bersifat informasi, bukan
+                   perintah ganti model. */
+                log(`Bobot YOLO aktif: ${nama}. Ganti berkas .pt di Yolo/Model untuk model lain.`);
             });
         }
 

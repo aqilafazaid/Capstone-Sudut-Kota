@@ -25,7 +25,7 @@
        `akses` adalah sumber kebenaran; UI dan backend sama-sama membacanya. */
     const FEATURES = ['cctv', 'statistik', 'dashboard', 'ai', 'akun'];
     const FEATURE_LABEL = {
-        cctv: 'CCTV Live',
+        cctv: 'Live CCTV',
         statistik: 'Statistik',
         dashboard: 'Dashboard',
         ai: 'Kontrol Modul AI',

@@ -18,11 +18,11 @@ Halaman berjalan tanpa build step dan tanpa server Python: cukup HTML, CSS, dan 
 
 ## Navigasi
 
-Menu: **Beranda · CCTV Live · Statistik · Dashboard · Akun**, seluruhnya disuntikkan `js/app.js`
+Menu: **Beranda · Live CCTV · Statistik · Dashboard · Akun**, seluruhnya disuntikkan `js/app.js`
 sehingga bar-nya identik di semua halaman. Logo bundar + tulisan SUDUT KOTA di kiri navbar juga
 menjadi tautan ke `index.html` (dan diberi cincin biru saat halaman aktif).
 
-- **Menu mengikuti field `akses` akun**, bukan peran mentah: Dashboard, CCTV Live, Statistik,
+- **Menu mengikuti field `akses` akun**, bukan peran mentah: Dashboard, Live CCTV, Statistik,
   Akun, dan panel Modul AI muncul/hilang seketika saat login, logout, atau saat Administrator
   mengubah sakelar di Kelola Akun. Membuka halaman yang tidak diizinkan menampilkan panel
   “Akses Fitur Dinonaktifkan” di halaman itu sendiri (bukan redirect yang bisa memantul);
@@ -47,7 +47,7 @@ menjadi tautan ke `index.html` (dan diberi cincin biru saat halaman aktif).
 ## Tema
 
 **Bawaan gelap.** Tombol tema di navbar menyimpan pilihan di `localStorage` (`color-theme`) dan
-berlaku di semua halaman, termasuk CCTV Live, Dashboard, dan Statistik — halaman console memakai
+berlaku di semua halaman, termasuk Live CCTV, Dashboard, dan Statistik — halaman console memakai
 variabel CSS `--sk-*` sehingga tidak ada lagi panel gelap yang tertinggal saat mode terang.
 
 ## Struktur
@@ -561,7 +561,7 @@ dengan profil di RTDB `/akun/<uid>`:
 |---|---|---|
 | Administrator | `admin` | semua halaman, termasuk Kelola Akun |
 | Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, dan AI |
-| Visitor | `visitor` | hanya CCTV Live dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
+| Visitor | `visitor` | hanya Live CCTV dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
 
 **Akses fitur per akun.** Selain peran, setiap profil punya field
 `akses: { cctv, statistik, dashboard, ai, akun }`. Administrator mengaturnya lewat sakelar
@@ -570,11 +570,14 @@ Peran hanya mengisi **nilai bawaan** (Administrator semua, Teknisi tanpa Kelola 
 Visitor hanya CCTV + Statistik); kelima sakelar tetap bisa diubah untuk akun mana pun,
 jadi Administrator bisa memberi fitur di luar kebiasaan perannya maupun mencabutnya.
 Fitur `ai` mengatur panel **Kontrol Modul AI** di halaman CCTV: sakelar low-light dan
-YOLO, serta pilihan varian low-light dari katalog engine (`GET /api/ai`). Perubahan
-dikirim ke `POST /api/nodes/<id>/ai`, backend menulis `cam_<channel>/ai_status`, dan
-engine menerapkannya dalam ~2 detik tanpa restart — panel baru berubah setelah
-telemetri menunjukkan engine benar-benar sudah berganti. Bila fitur dicabut, panelnya
-disembunyikan dan tayangan tetap berjalan.
+YOLO, serta pilihan varian low-light dari katalog engine (`GET /api/ai`). Selector YOLO
+tetap bisa dibuka walau katalog hanya berisi satu bobot (`yolov8n.pt`); pilihan itu
+informatif karena engine memakai berkas `.pt` di `Yolo/Model`, bukan parameter RTDB.
+Kedua select memakai chevron kustom (12 px dari tepi field, `pr-9`) supaya tidak menempel
+ke tepi card. Perubahan low-light dikirim ke `POST /api/nodes/<id>/ai`, backend menulis
+`cam_<channel>/ai_status`, dan engine menerapkannya dalam ~2 detik tanpa restart — panel
+baru berubah setelah telemetri menunjukkan engine benar-benar sudah berganti. Bila fitur
+dicabut, panelnya disembunyikan dan tayangan tetap berjalan.
 Nilai yang tidak ada memakai bawaan peran, sehingga akun lama (tanpa field `akses`)
 berperilaku seperti sebelumnya. `PUT /api/akun/<uid>` menggabungkan kiriman parsial
 (`{"akses":{"cctv":false}}` hanya mengubah satu fitur), dan mengubah `peran` tanpa
@@ -769,7 +772,7 @@ Auth.featureLabel(feature)       Auth.roleFeatures()    Auth.homeFor(role)
 ```
 
 Akun sudah sepenuhnya di Firebase Authentication + RTDB, dan statistik dibaca dari
-agregat RTDB lewat `Store.loadStats()`. Kartu kendaraan di halaman CCTV Live memakai
+agregat RTDB lewat `Store.loadStats()`. Kartu kendaraan di halaman Live CCTV memakai
 `GET /api/stats/live` (snapshot `cam_<channel>` di RTDB) lewat
 `Store.subscribeTelemetry()`. Tidak ada angka simulasi di peramban; yang masih lokal
 hanya status toggle AI (`localStorage['sudutkota.ai.v1']`).
@@ -972,7 +975,7 @@ Titik penyesuaian utama:
   bagian), `main` atas `84/100 px` mengikuti tinggi navbar, dan padding bawah halaman `pb-24`
   agar bar bawah tidak menutup baris terakhir. Sebelumnya `py-10 md:py-16` menghasilkan 128 px
   ruang kosong antar bagian.
-- **CCTV Live** — dua kolom (pemutar + daftar node 340 px) baru aktif di ≥1280 px; di bawahnya
+- **Live CCTV** — dua kolom (pemutar + daftar node 340 px) baru aktif di ≥1280 px; di bawahnya
   panel ditumpuk dan daftar node memakai lebar penuh. Pada 1024–1279 px sebelumnya sidebar hanya
   ~230 px sehingga judul dan nama node terlipat.
 - **Baris ikon layanan beranda** — grid 5 kolom (bukan baris yang bisa digeser), ikon 50–76 px
@@ -1045,7 +1048,7 @@ mengembalikan `{ ok, user?, error? }` untuk operasi tulis.
 
 ## Sumber stream: satu RTSP
 
-Setiap node menyimpan satu URL: `rtsp` (kolom `rtsp` di SQLite). Halaman CCTV Live
+Setiap node menyimpan satu URL: `rtsp` (kolom `rtsp` di SQLite). Halaman Live CCTV
 memutar `hls_url` yang diturunkan backend (`/hls/<id>/index.m3u8`). Tidak ada lagi
 `url_m3u8`, `url_ai`, atau `url_non_ai`.
 
@@ -1098,7 +1101,9 @@ Vercel di Firebase Console bila memakai tautan reset kata sandi atau OAuth dari 
 | CRUD belum diuji end-to-end | Uji E2E dengan akun admin sementara: node create/read/update/delete/restore/permanent dan akun create/read/update/delete/restore/permanent lewat nginx → backend → Firebase asli | 30/30 cek API + klik UI (panel tempat sampah, Pulihkan, Hapus permanen); diulang setelah fitur pilihan massal: 24/24 |
 | Tombol **Kosongkan direktori** membingungkan | Fitur dihapus total: route `POST /api/nodes/reset`, `nodes.reset_nodes()`, `Store.resetDemo()`, dan tombolnya. Penghapusan hanya lewat per node / pilihan massal | `POST /api/nodes/reset` → `405`; `test_hls_crud.py` memeriksa itu |
 | Daftar node/akun tanpa pencarian atau pilihan massal | Dashboard: pencarian (nama/ID/channel/jalan/zona) + filter bertingkat + centang per baris/semua + **Hapus terpilih**. Kelola Akun: pencarian + filter peran + centang (akun sendiri dikecualikan) + **Hapus terpilih** | Uji UI: cari "Gamma" → 1 baris; zona SELATAN → 2 baris; select-all → 2 terpilih → terhapus; akun select-all melewati akun sendiri |
-| Layout melebar di ponsel 320 px | Label navigasi bawah `truncate` + 9 px di bawah 640 px; bilah aksi massal membungkus vertikal di layar sempit | 9 halaman × 8 viewport (280–1920 px): `scrollWidth == innerWidth` |
+| Label "Stream"/"CCTV Live" tidak konsisten | Semua label yang menuju `cctv.html` diseragamkan jadi **Live CCTV**: menu navbar, menu ponsel, footer, kartu beranda, tombol Dashboard, teks login, dan label fitur di `auth.js` | Uji UI: `#nav-links` → Beranda · **Live CCTV** · Statistik · Dashboard · Akun; `grep "CCTV Live"` di `frontend/` kosong |
+| Selector YOLO tidak bisa dibuka | `select-yolo` tidak lagi dipaksa `disabled`; hanya dikunci untuk akun tanpa izin `ai`, dengan pesan informatif saat diganti (satu bobot per engine) | Uji UI: `disabled=false`, 1 opsi `yolov8n.pt`, event `change` menulis log panel |
+| Chevron select menempel ke tepi card | Kedua select memakai `appearance-none` + chevron sendiri berjarak 12 px dari tepi field (`pr-9`) | Uji UI: `padding-right=36px`, jarak ikon ke tepi field 12 px, sejajar vertikal |
 | URL RTSP tersimpan teks biasa di SQLite | CRUD menulis ciphertext **AES-256-GCM** (`enc:v2:`) dan mendekripsi saat dibaca; kunci 32 byte dari `NODE_SECRET` di `backend/.env` (atau `data/node_secret.key`); migrasi baris lama + `VACUUM` lewat `scripts/encrypt_rtsp.py` | `test_rtsp_crypto.py` 16/16 · `test_rtsp_crud_api.py` 21/21 · `grep -c "rtsp://" backend/data/sudutkota.db` = 0 |
 | Pencarian navbar bertabrakan dengan menu saat akun melihat kelima item | Input dipindah ke header panel *Daftar Node* (`#search-input`), `searchMarkup`/`bindMobileSearch` dihapus dari `app.js` | Tidak ada `#search-input` di dalam `nav`; baris navbar tidak meluap pada 1024–1920 px |
 | `requirements.txt` memuat 4 paket tak terpakai | `Flask-Mail`, `google-generativeai`, `feedparser`, `pytz` dihapus | `python -c "import flask, firebase_admin, playwright, requests, dotenv"` |
