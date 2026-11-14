@@ -106,6 +106,13 @@ def _int(value: Any) -> int:
         return 0
 
 
+def _float(value: Any) -> float:
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _empty_bucket() -> dict[str, int]:
     return {"mobil": 0, "motor": 0, "truk": 0, "bus": 0, "total": 0}
 
@@ -265,6 +272,17 @@ def _empty_live(reason: str) -> dict[str, Any]:
         "total_kendaraan": 0,
         "server_fps": 0.0,
         "night_vision_status": False,
+        "lowlight_variant": "",
+        "lowlight_model": "",
+        "deteksi_aktif": False,
+        "yolo_weights": "",
+        "latency_ms": 0.0,
+        "fps_in": 0.0,
+        "enhance_ms": 0.0,
+        "yolo_ms": 0.0,
+        "detect_fps": 0.0,
+        "encoder": "",
+        "device": "",
         "engine": "",
         "reason": reason,
     }
@@ -340,10 +358,40 @@ def live_snapshots(nodes: list[dict[str, Any]] | None = None) -> dict[str, Any]:
             "total_kendaraan": counts["total"],
             "server_fps": fps,
             "night_vision_status": bool(raw.get("night_vision_status")),
+            # Panel Kontrol Modul AI membaca keadaan engine dari sini, bukan
+            # dari localStorage: yang tampil harus yang benar-benar berjalan.
+            "lowlight_variant": str(raw.get("lowlight_variant") or ""),
+            "lowlight_model": str(raw.get("lowlight_model") or ""),
+            "deteksi_aktif": bool(raw.get("deteksi_aktif")),
+            "yolo_weights": str(raw.get("yolo_weights") or ""),
+            "latency_ms": _float(raw.get("latency_ms")),
+            # Beban kerja engine: terlihat apakah AI jalan di GPU atau CPU
+            # dan seberapa cepat deteksi diperbarui.
+            "fps_in": _float(raw.get("fps_in")),
+            "enhance_ms": _float(raw.get("enhance_ms")),
+            "yolo_ms": _float(raw.get("yolo_ms")),
+            "detect_fps": _float(raw.get("detect_fps")),
+            "encoder": str(raw.get("encoder") or ""),
+            "device": str(raw.get("device") or ""),
             "engine": str(raw.get("engine") or ""),
         }
 
     return result
+
+
+def write_ai_status(channel: str, status: dict[str, Any]) -> dict[str, Any]:
+    """Titipkan permintaan modul AI ke ``<RTDB_ROOT>/cam_<channel>/ai_status``.
+
+    Engine AI membacanya tiap 2 detik, jadi perubahan berlaku tanpa restart.
+    Backend tidak menulis state "seolah sudah jalan": engine yang melaporkan
+    keadaan sebenarnya lewat ``cam_<channel>``.
+    """
+    channel = str(channel or "").strip()
+    if not channel:
+        raise ValueError("channel kosong")
+    ref = _ref("cam_" + channel, "ai_status")
+    ref.update(status)
+    return dict(status)
 
 
 def read_telemetry(days: int | None = None) -> dict[str, Any]:

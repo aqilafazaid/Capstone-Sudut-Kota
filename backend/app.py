@@ -40,11 +40,14 @@ from flask_cors import CORS
 
 import accounts
 import auth
+import firebase_init
 import nodes as node_store
 from social import instagram as social_instagram
 import stats as stats_store
 from streamer import MEDIA_ROOT as HLS_ROOT
 from streamer import manager as hls_manager
+from ai_engine import engine_manager as ai_engine
+from ai_engine.model_ai.LowLightEnhancement import catalog as lowlight_catalog
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
@@ -53,10 +56,15 @@ APP_VERSION = "0.4.0"
 STARTED_AT = time.time()
 HOST = os.environ.get("API_HOST", "127.0.0.1")
 PORT = int(os.environ.get("API_PORT", "5000"))
-FFMPEG_OK = hls_manager.ffmpeg_tersedia()
+
+# Engine AI (low-light + YOLO -> HLS) dipakai bila tersedia; ffmpeg polos
+# tetap menjadi fallback supaya backend tidak mati saat model belum ada.
+AI_ENGINE = ai_engine.enabled()
+STREAM = ai_engine.manager if AI_ENGINE else hls_manager
+FFMPEG_OK = STREAM.ffmpeg_tersedia()
 
 MODELS_DIR = BASE_DIR / "ai_engine" / "model_ai"
-LOWLIGHT_DIR = MODELS_DIR / "LowLight"
+LOWLIGHT_DIR = MODELS_DIR / "LowLightEnhancement"
 YOLO_DIR = MODELS_DIR / "Yolo"
 
 
@@ -97,10 +105,16 @@ REQUIRED_ENV = [
 
 
 def _with_stream(node: dict) -> dict:
-    """Tambahkan status ffmpeg yang sebenarnya ke data node publik."""
+    """Tambahkan status stream yang sebenarnya ke data node publik."""
     data = dict(node)
-    stream = hls_manager.get(node["id"]).status()
+    stream = STREAM.get(node["id"]).status()
     data["stream"] = stream
+    data["engine"] = stream.get("engine", "ffmpeg")
+    ai = stream.get("ai") or {}
+    if ai:
+        data["ai"] = ai
+        # Frontend membaca server_fps di level node (bukan di dalam ai).
+        data["server_fps"] = ai.get("server_fps", 0)
     if not data.get("aktif"):
         data["status"] = "OFFLINE"
     elif stream.get("running"):
@@ -118,7 +132,7 @@ def _without_rtsp(node: dict) -> dict:
 def _start_node(node: dict) -> None:
     if not FFMPEG_OK:
         return
-    hls_manager.start_async(node["id"], node["rtsp"])
+    STREAM.start_async(node["id"], node["rtsp"])
 
 
 def _stop_node(node_id: str, purge: bool = False) -> None:
@@ -128,9 +142,9 @@ def _stop_node(node_id: str, purge: bool = False) -> None:
     sehingga peramban memutar konfigurasi lama setelah node diubah/dihapus.
     """
     if purge:
-        hls_manager.purge(node_id)
+        STREAM.purge(node_id)
     else:
-        hls_manager.stop(node_id)
+        STREAM.stop(node_id)
 
 
 def create_app() -> Flask:
@@ -179,6 +193,32 @@ def create_app() -> Flask:
             auth_configured=auth.configured(),
             allow_test_sources=node_store.allow_test_sources(),
             stream_autostart=_truthy(os.environ.get("STREAM_AUTOSTART", "true")),
+            ai_engine=AI_ENGINE,
+        )
+
+    # --- Katalog modul AI (dipakai panel Kontrol Modul AI) ---------------
+    @app.get("/api/ai")
+    def ai_catalog():
+        """Publik: varian low-light yang bisa dipilih + default dari .env.
+
+        Isinya hanya nama model, bukan bobot atau kredensial. Bila engine
+        tidak aktif, frontend menampilkan panel dalam keadaan nonaktif.
+        """
+        yolo = sorted(p.name for p in (YOLO_DIR / "Model").glob("*.pt")) or sorted(
+            p.name for p in YOLO_DIR.glob("*.pt")
+        )
+        return jsonify(
+            engine=AI_ENGINE,
+            lowlight=[
+                {"name": name, "label": lowlight_catalog.LABELS.get(name, name)}
+                for name in lowlight_catalog.ORDER
+            ],
+            yolo=[{"name": name, "label": name} for name in yolo],
+            defaults={
+                "lowlight_variant": (os.environ.get("AI_LOWLIGHT_MODEL") or "mobile_mirnet").replace("-", "_"),
+                "lowlight_enabled": _truthy(os.environ.get("AI_LOWLIGHT", "true")),
+                "yolo_enabled": _truthy(os.environ.get("AI_YOLO", "true")),
+            },
         )
 
     @app.get("/api/status")
@@ -186,10 +226,13 @@ def create_app() -> Flask:
     def status():
         """Ringkasan kesiapan backend. Operator saja: memuat path & daftar model."""
         lowlight = sorted(
-            p.name for p in LOWLIGHT_DIR.glob("*")
+            p.relative_to(LOWLIGHT_DIR).as_posix()
+            for p in LOWLIGHT_DIR.rglob("*")
             if p.is_file() and p.suffix in {".pt", ".pth"}
         )
-        yolo = sorted(p.name for p in YOLO_DIR.glob("*.pt"))
+        yolo = sorted(p.name for p in (YOLO_DIR / "Model").glob("*.pt")) or sorted(
+            p.name for p in YOLO_DIR.glob("*.pt")
+        )
         return jsonify(
             service="sudut-kota-backend",
             version=APP_VERSION,
@@ -197,6 +240,7 @@ def create_app() -> Flask:
             env_file=(BASE_DIR / ".env").exists(),
             configured={key: bool(os.environ.get(key)) for key in REQUIRED_ENV},
             auth_configured=auth.configured(),
+            ai_engine=AI_ENGINE,
             node_db=str(node_store.db_path()),
             nodes=node_store.count_nodes(),
             models={"lowlight": lowlight, "yolo": yolo},
@@ -232,7 +276,7 @@ def create_app() -> Flask:
         elif (
             before["rtsp"] != node["rtsp"]
             or not before["aktif"]
-            or not hls_manager.get(node_id).running
+            or not STREAM.get(node_id).running
         ):
             # Folder dibersihkan dulu: segmen & playlist sumber lama tidak boleh
             # tercampur dengan hasil ffmpeg untuk URL RTSP yang baru.
@@ -240,6 +284,54 @@ def create_app() -> Flask:
             _start_node(node)
 
         return jsonify(_with_stream(_without_rtsp(node)))
+
+    @app.post("/api/nodes/<node_id>/ai")
+    @auth.require_feature("dashboard")
+    def node_ai(node_id):
+        """Kirim permintaan modul AI ke engine lewat RTDB (tanpa restart).
+
+        Backend hanya menulis ``cam_<channel>/ai_status``; engine yang
+        mengeksekusi dan melaporkan keadaan sebenarnya lewat ``cam_<channel>``.
+        """
+        node = node_store.get_node(node_id)
+        if not AI_ENGINE:
+            return jsonify(error="Engine AI tidak aktif di server ini."), 503
+        channel = str(node.get("channel") or "").strip()
+        if not channel:
+            raise node_store.NodeError(
+                "Node belum punya nomor channel; engine AI tidak bisa menerima kontrol."
+            )
+
+        payload = request.get_json(silent=True) or {}
+        status: dict[str, object] = {}
+        if "yolo_enabled" in payload:
+            status["yolo_enabled"] = bool(payload["yolo_enabled"])
+        if "lowlight_enabled" in payload:
+            status["lowlight_enabled"] = bool(payload["lowlight_enabled"])
+        if "lowlight_model" in payload:
+            variant = str(payload.get("lowlight_model") or "").strip()
+            if variant not in lowlight_catalog.ORDER:
+                raise node_store.NodeError(f"Model low-light tidak dikenal: {variant!r}")
+            status["lowlight_model"] = variant
+            # Memilih model berarti menyalakan enhancement, kecuali 'none'.
+            status.setdefault("lowlight_enabled", variant != "none")
+        if not status:
+            raise node_store.NodeError("Tidak ada field AI yang diubah.")
+
+        if firebase_init.missing_keys():
+            return jsonify(error="Firebase belum dikonfigurasi di backend."), 503
+        try:
+            stats_store.write_ai_status(channel, status)
+        except Exception as exc:  # noqa: BLE001 - RTDB bisa tidak terjangkau
+            return jsonify(error=f"RTDB tidak terjangkau: {exc}"), 503
+
+        return jsonify(
+            ok=True,
+            node=node_id,
+            channel=channel,
+            ai_status=status,
+            running=bool(STREAM.get(node_id).status().get("running")),
+        )
 
     @app.delete("/api/nodes/<node_id>")
     @auth.require_feature("dashboard")
@@ -254,10 +346,10 @@ def create_app() -> Flask:
     @app.post("/api/nodes/reset")
     @auth.require_feature("dashboard")
     def node_reset():
-        hls_manager.stop_all()
+        STREAM.stop_all()
         node_store.reset_nodes()
         # Node lama (ID berbeda) tidak boleh meninggalkan folder HLS-nya.
-        hls_manager.prune([node["id"] for node in node_store.list_nodes()])
+        STREAM.prune([node["id"] for node in node_store.list_nodes()])
         started = []
         for node in node_store.list_nodes():
             if node["aktif"]:
@@ -379,15 +471,25 @@ def create_app() -> Flask:
     # --- HLS: dipakai saat dev tanpa nginx (python -m http.server 8787) --
     @app.get("/hls/<path:filename>")
     def hls_file(filename):
-        """Sajikan playlist dan segmen HLS hasil ffmpeg."""
+        """Sajikan playlist dan segmen HLS hasil engine.
+
+        ffmpeg polos menulis ``seg_*.ts``; engine AI menulis fMP4
+        (``init.mp4`` + ``seg_*.m4s``). Keduanya harus dilayani, kalau tidak
+        peramban hanya mendapat playlist tanpa segmen yang bisa diputar.
+        """
         safe = (HLS_ROOT / filename).resolve()
         if HLS_ROOT.resolve() not in safe.parents or not safe.is_file():
             return jsonify(error="Berkas HLS tidak ditemukan."), 404
-        if safe.suffix not in {".m3u8", ".ts"}:
+        mime = {
+            ".m3u8": "application/vnd.apple.mpegurl",
+            ".ts": "video/mp2t",
+            ".m4s": "video/mp4",
+            ".mp4": "video/mp4",
+        }.get(safe.suffix)
+        if mime is None:
             return jsonify(error="Berkas HLS tidak ditemukan."), 404
 
-        content_type = "application/vnd.apple.mpegurl" if safe.suffix == ".m3u8" else "video/mp2t"
-        response = send_file(safe, mimetype=content_type, conditional=True)
+        response = send_file(safe, mimetype=mime, conditional=True)
         # Playlist berubah tiap beberapa detik: jangan pernah di-cache.
         response.headers["Cache-Control"] = "no-store" if safe.suffix == ".m3u8" else "max-age=30"
         return response
@@ -397,7 +499,7 @@ def create_app() -> Flask:
         return jsonify(
             ffmpeg=FFMPEG_OK,
             alur="RTSP -> backend lokal (ffmpeg) -> HLS -> peramban",
-            streams=hls_manager.list(),
+            streams=STREAM.list(),
         )
 
     @app.post("/api/streams/<name>")
@@ -413,14 +515,14 @@ def create_app() -> Flask:
             return jsonify(error="ffmpeg tidak ditemukan di PATH."), 503
 
         copy = bool(payload.get("copy", True))
-        result = hls_manager.start(name, rtsp_url, copy=copy)
+        result = STREAM.start(name, rtsp_url, copy=copy)
         return jsonify(result), (200 if result.get("ok") else 502)
 
     @app.delete("/api/streams/<name>")
     @auth.require_feature("dashboard")
     def stream_stop(name):
         # Playlist lama ikut dibuang supaya pemutar tidak memutar stream beku.
-        return jsonify(hls_manager.purge(name))
+        return jsonify(STREAM.purge(name))
 
     @app.errorhandler(404)
     def not_found(_error):
@@ -430,7 +532,7 @@ def create_app() -> Flask:
 
 
 app = create_app()
-atexit.register(hls_manager.stop_all)
+atexit.register(STREAM.stop_all)
 
 
 def start_active_streams() -> list[str]:
@@ -439,7 +541,7 @@ def start_active_streams() -> list[str]:
         return []
     nodes = node_store.list_nodes()
     # Sisa folder dari sesi sebelumnya (node dihapus/ID berubah) dibuang dulu.
-    hls_manager.prune([node["id"] for node in nodes])
+    STREAM.prune([node["id"] for node in nodes])
     started = []
     for node in nodes:
         if not node["aktif"]:
@@ -482,7 +584,7 @@ def start_stream_watchdog():
                     backoff.pop(node_id, None)
                     continue
 
-                if hls_manager.get(node_id).running:
+                if STREAM.get(node_id).running:
                     backoff.pop(node_id, None)
                     continue
 
@@ -498,7 +600,7 @@ def start_stream_watchdog():
                 except node_store.NodeError:
                     continue
 
-            hls_manager.prune([node["id"] for node in nodes if node["aktif"]])
+            STREAM.prune([node["id"] for node in nodes if node["aktif"]])
 
     thread = threading.Thread(target=loop, daemon=True, name="hls-watchdog")
     thread.start()

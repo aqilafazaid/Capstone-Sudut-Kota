@@ -86,3 +86,12 @@ test_*.py
 .pytest_cache/
 .coverage
 htmlcov/
+
+# ==========================================
+# 11. BOBOT MODEL AI
+# ==========================================
+# mirnetv1.pth 169 MB melewati batas 100 MB GitHub, dan total bobot ~228 MB.
+# Bobot tidak ikut repo; salin manual ke backend/ai_engine/model_ai/**/Model/
+# saat menyiapkan mesin (lihat README bagian Engine AI).
+backend/ai_engine/model_ai/**/Model/*.pth
+backend/ai_engine/model_ai/**/Model/*.pt
