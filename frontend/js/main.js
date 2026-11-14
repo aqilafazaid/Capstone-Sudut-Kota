@@ -23,7 +23,11 @@
         unsubscribeTelemetry: null,
         retries: 0,
         mode: null,
-        log: []
+        log: [],
+        telemetry: null,
+        aiPending: null,
+        aiCatalog: null,
+        fpsSamples: null
     };
 
     const el = {};
@@ -31,13 +35,14 @@
     function cacheDom() {
         const ids = [
             'video-element', 'overlay-loading', 'overlay-error', 'overlay-play', 'error-detail',
-            'active-cam-city', 'active-cam-name', 'ai-status-indicator', 'desktop-traffic-status',
-            'desktop-traffic-text', 'default-status-text', 'resolution-display', 'signal-meter',
+            'active-cam-city', 'active-cam-name', 'ai-status-indicator', 'latency-value',
+            'default-status-text', 'resolution-display', 'signal-meter',
             'camera-list-container', 'total-cams', 'search-input', 'ai-log-text',
             'toggle-lowlight', 'toggle-yolo', 'select-lowlight', 'select-yolo',
             'stat-mobil', 'stat-motor', 'stat-truk', 'stat-bus', 'stat-total', 'stat-fps',
             'stream-mode-badge', 'loading-text',
-            'btn-volume', 'btn-reload', 'btn-fullscreen', 'btn-retry-overlay', 'operator-badge'
+            'btn-volume', 'btn-reload', 'btn-fullscreen', 'btn-retry-overlay', 'operator-badge',
+            'ai-engine-device', 'ai-engine-detect', 'ai-engine-encoder', 'ai-engine-enhance'
         ];
         ids.forEach(id => { el[id] = document.getElementById(id); });
     }
@@ -69,10 +74,56 @@
         return location.protocol === 'https:' && /^http:\/\//i.test(url || '');
     }
 
-    function trafficLevel(total) {
-        if (total >= 80) return { text: 'KEPADATAN TINGGI', cls: 'text-red-400' };
-        if (total >= 40) return { text: 'ARUS PADAT', cls: 'text-yellow-400' };
-        return { text: 'ARUS LANCAR', cls: 'text-emerald-400' };
+    /* FPS yang tampil: jumlah frame yang benar-benar didekode per detik
+       nyata (totalVideoFrames / waktu), bukan angka kiriman server. Dengan
+       definisi yang sama di engine, keduanya bisa dibandingkan langsung. */
+    function paintFps() {
+        const target = el['stat-fps'];
+        const video = el['video-element'];
+        if (!target || !video) return;
+
+        const quality = typeof video.getVideoPlaybackQuality === 'function'
+            ? video.getVideoPlaybackQuality() : null;
+        const frames = quality
+            ? Number(quality.totalVideoFrames || 0)
+            : Number(video.webkitDecodedFrameCount || 0);
+
+        /* Rata-rata sampai 2,5 dtk: cukup panjang agar jeda buffer tidak
+           langsung memunculkan 0,0, tetapi tetap frame nyata / waktu nyata. */
+        const now = performance.now();
+        state.fpsSamples = (state.fpsSamples || []).concat([{ frames, at: now }])
+            .filter(sample => now - sample.at <= 2500);
+        const first = state.fpsSamples[0];
+        if (!first) return;
+        if (now - first.at < 1000) {
+            if (state.fpsSamples.length === 1) target.textContent = '—';
+            return;
+        }
+        if (video.readyState < 2 || video.paused) {
+            target.textContent = '—';
+            return;
+        }
+        target.textContent = ((frames - first.frames) / ((now - first.at) / 1000)).toFixed(1);
+    }
+
+    /* Latensi yang tampil: selisih waktu sekarang dengan waktu rekam frame
+       yang sedang diputar. EXT-X-PROGRAM-DATE-TIME (ffmpeg) membuat hls.js
+       tahu `playingDate`, jadi angkanya mengukur hasil akhir di peramban —
+       termasuk buffer pemutar, bukan hanya waktu proses engine. */
+    function paintLatency() {
+        const target = el['latency-value'];
+        if (!target) return;
+
+        let ms = null;
+        if (state.hls && state.hls.playingDate) {
+            ms = Date.now() - state.hls.playingDate.getTime();
+        }
+        if (ms !== null && ms >= 0 && ms < 180000) {
+            target.textContent = `Latensi ${(ms / 1000).toFixed(1)} dtk`;
+            return;
+        }
+        const engineMs = state.telemetry && state.telemetry.latency_ms;
+        target.textContent = engineMs ? `Latensi AI ${(engineMs / 1000).toFixed(2)} dtk` : 'Latensi —';
     }
 
     function setSignalBars(active) {
@@ -158,23 +209,82 @@
     }
 
     /* --- Panel AI -------------------------------------------------------- */
+    function canControl() {
+        return !!(global.Auth && global.Auth.isOperator && global.Auth.isOperator());
+    }
+
+    /* Isi dropdown model dari katalog backend (`GET /api/ai`), bukan dari
+       daftar hardcoded: nama harus sama dengan yang dikenal registry engine. */
+    function paintAiCatalog(catalog) {
+        if (!catalog) return;
+        const lowlight = (catalog.lowlight || []).filter(item => item.name !== 'none');
+        if (el['select-lowlight']) {
+            el['select-lowlight'].innerHTML = lowlight
+                .map(item => `<option value="${item.name}">${item.label || item.name}</option>`)
+                .join('');
+        }
+        const yolo = catalog.yolo || [];
+        if (el['select-yolo']) {
+            el['select-yolo'].innerHTML = yolo.length
+                ? yolo.map(item => `<option value="${item.name}">${item.label || item.name}</option>`).join('')
+                : '<option value="">Tidak ada bobot</option>';
+            /* Satu bobot per engine: pilihan hanya informasi, bukan kontrol. */
+            el['select-yolo'].disabled = true;
+        }
+    }
+
     function paintAiPanel(ai) {
         if (!ai) return;
+        const pending = state.aiPending;
 
         const lowlightBtn = el['toggle-lowlight'];
         const yoloBtn = el['toggle-yolo'];
         if (lowlightBtn) {
-            lowlightBtn.textContent = ai.lowlight ? 'ON' : 'OFF';
+            lowlightBtn.textContent = pending && 'lowlight_enabled' in pending
+                ? '…' : (ai.lowlight ? 'ON' : 'OFF');
             lowlightBtn.setAttribute('aria-checked', String(ai.lowlight));
             lowlightBtn.classList.toggle('active-mirnet', ai.lowlight);
         }
         if (yoloBtn) {
-            yoloBtn.textContent = ai.yolo ? 'ON' : 'OFF';
+            yoloBtn.textContent = pending && 'yolo_enabled' in pending
+                ? '…' : (ai.yolo ? 'ON' : 'OFF');
             yoloBtn.setAttribute('aria-checked', String(ai.yolo));
             yoloBtn.classList.toggle('active-yolo', ai.yolo);
         }
-        if (el['select-lowlight']) el['select-lowlight'].value = ai.lowlight_model;
-        if (el['select-yolo']) el['select-yolo'].value = ai.yolo_model;
+        if (el['select-lowlight']) {
+            const variant = ai.lowlight_variant || '';
+            const known = Array.from(el['select-lowlight'].options).some(o => o.value === variant);
+            if (known) el['select-lowlight'].value = variant;
+        }
+
+        /* Beban kerja engine: bukti visual bahwa AI benar-benar berjalan di
+           GPU atau CPU, dan seberapa cepat deteksi diperbarui. */
+        const deviceText = (() => {
+            let raw = String(ai.device || '').trim();
+            if (!raw) return '—';
+            if (/^cuda/i.test(raw)) {
+                let name = raw.slice(4).trim();
+                if (name.startsWith('(')) name = name.slice(1);
+                if (name.endsWith(')')) name = name.slice(0, -1);
+                name = name.trim();
+                return 'GPU · ' + name;
+            }
+            return raw.toUpperCase();
+        })();
+        if (el['ai-engine-device']) el['ai-engine-device'].textContent = deviceText;
+        if (el['ai-engine-detect']) {
+            el['ai-engine-detect'].textContent = ai.detect_fps
+                ? `${Number(ai.detect_fps).toLocaleString('id-ID', { maximumFractionDigits: 1 })}/dtk`
+                : '—';
+        }
+        if (el['ai-engine-encoder']) {
+            const encoder = String(ai.encoder || '');
+            el['ai-engine-encoder'].textContent = encoder === 'h264_nvenc' ? 'NVENC'
+                : encoder ? encoder.replace('lib', '').toUpperCase() : '—';
+        }
+        if (el['ai-engine-enhance']) {
+            el['ai-engine-enhance'].textContent = ai.enhance_ms ? `${Math.round(ai.enhance_ms)} ms` : '—';
+        }
 
         const active = ai.yolo || ai.lowlight;
         if (el['ai-status-indicator']) {
@@ -198,26 +308,57 @@
             badge.className = 'text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border sk-soft';
         }
 
-        ['toggle-lowlight', 'toggle-yolo', 'select-lowlight', 'select-yolo'].forEach(id => {
+        ['toggle-lowlight', 'toggle-yolo', 'select-lowlight'].forEach(id => {
             const node = el[id];
             if (!node) return;
             node.disabled = !canControl;
             node.title = canControl ? '' : 'Kontrol AI hanya untuk Teknisi atau Administrator.';
         });
+        /* Bobot YOLO bukan pilihan: engine memakai file .pt di Yolo/Model. */
+        if (el['select-yolo']) {
+            el['select-yolo'].disabled = true;
+            el['select-yolo'].title = 'Satu bobot YOLO per engine (file .pt di Yolo/Model).';
+        }
+    }
+
+    /* Permintaan operator dianggap selesai saat keadaan engine (dari RTDB)
+       sudah sama dengan yang diminta — bukan saat tombol diklik. */
+    function pendingMatches(ai) {
+        const p = state.aiPending;
+        if (!p) return true;
+        if ('lowlight_model' in p && ai.lowlight_variant !== p.lowlight_model) return false;
+        if ('lowlight_enabled' in p && ai.lowlight !== p.lowlight_enabled) return false;
+        if ('yolo_enabled' in p && ai.yolo !== p.yolo_enabled) return false;
+        return true;
     }
 
     function commitAi(patch, description) {
         if (!state.activeId) return;
-        if (!global.Auth || !global.Auth.isOperator()) {
+        if (!canControl()) {
             App.toast('Kontrol AI hanya untuk Teknisi atau Administrator.', 'error');
             return;
         }
 
-        const ai = Store.setAi(state.activeId, patch);
-        paintAiPanel(ai);
-        log(description);
-        App.toast(description, 'success', 2400);
-        applyStream();
+        const id = state.activeId;
+        state.aiPending = Object.assign({}, state.aiPending, patch);
+        paintAiPanel(Store.getAi(id));
+        log(description + ' — dikirim ke engine.');
+
+        Store.setAiRemote(id, patch)
+            .then(result => {
+                Store.setAi(id, patch);
+                App.toast(description, 'success', 2600);
+                if (result && result.running === false) {
+                    log('Engine node belum berjalan; permintaan dipakai saat engine mulai.');
+                }
+            })
+            .catch(err => {
+                state.aiPending = null;
+                paintAiPanel(Store.getAi(id));
+                const message = (err && err.message) || 'gagal';
+                log('Kontrol AI ditolak: ' + message);
+                App.toast('Kontrol AI gagal: ' + message, 'error', 4200);
+            });
     }
 
     /* --- Pemutar --------------------------------------------------------- */
@@ -266,12 +407,15 @@
                 enableWorker: true,
                 lowLatencyMode: false,
                 backBufferLength: 12,
-                /* Buffer 8 detik (dari 12) supaya cepat menyusul live edge;
-                   sinkronisasi 2 segmen (dari 3) memangkas ~2 detik jeda live. */
+                /* Buffer 8 detik supaya cepat menyusul live edge. Sinkronisasi
+                   memakai detik (bukan jumlah segmen): segmen HLS kita ~2-3 dtk,
+                   jadi 2 target duration = 6 dtk jeda yang tidak perlu. */
                 maxBufferLength: 8,
                 maxMaxBufferLength: 16,
-                liveSyncDurationCount: 2,
-                liveMaxLatencyDurationCount: 4,
+                liveSyncDuration: 2.5,
+                liveMaxLatencyDuration: 12,
+                /* 1,5: mempercepat sebentar setelah tautan goyah supaya jeda
+                   tidak menumpuk; hanya aktif saat tertinggal dari live edge. */
                 maxLiveSyncPlaybackRate: 1.5,
                 manifestLoadingTimeOut: 8000,
                 manifestLoadingMaxRetry: 4,
@@ -401,24 +545,31 @@
     }
 
     function updateStats(data) {
+        state.telemetry = data;
         if (el['stat-mobil']) el['stat-mobil'].textContent = data.jumlah_mobil ?? 0;
         if (el['stat-motor']) el['stat-motor'].textContent = data.jumlah_motor ?? 0;
         if (el['stat-truk']) el['stat-truk'].textContent = data.jumlah_truk ?? 0;
         if (el['stat-bus']) el['stat-bus'].textContent = data.jumlah_bus ?? 0;
         if (el['stat-total']) el['stat-total'].textContent = data.total_kendaraan ?? 0;
-        if (el['stat-fps']) el['stat-fps'].textContent = data.status === 'OFFLINE' ? '—' : (data.server_fps ?? 0);
+        /* Kartu FPS diisi paintFps() dari frame yang benar-benar didekode,
+           bukan dari server_fps — definisinya sama, sumber ukurnya di sini. */
 
-        const level = trafficLevel(data.total_kendaraan || 0);
-        if (el['desktop-traffic-status'] && data.status !== 'OFFLINE') {
-            el['desktop-traffic-status'].classList.remove('hidden');
-            el['desktop-traffic-status'].classList.add('flex');
-            if (el['desktop-traffic-text']) {
-                el['desktop-traffic-text'].innerHTML =
-                    `${level.text} &middot; <span class="text-white">${data.total_kendaraan}</span> kendaraan`;
-            }
-        } else if (el['desktop-traffic-status']) {
-            el['desktop-traffic-status'].classList.add('hidden');
-            el['desktop-traffic-status'].classList.remove('flex');
+        /* Panel AI mengikuti keadaan engine, bukan pilihan terakhir di
+           peramban: setelah toggle, label berubah ketika engine benar-benar
+           sudah berganti (polling 2 detik). */
+        const ai = Store.getAi(state.activeId);
+        if (state.aiPending && pendingMatches(ai)) {
+            state.aiPending = null;
+            log('Engine sudah menerapkan perubahan modul AI.');
+        }
+        paintAiPanel(ai);
+
+        /* URL HLS sama untuk AI on/off, jadi badge mode cukup diperbarui dari
+           telemetri — tanpa memuat ulang pemutar. */
+        const mode = (ai.yolo || ai.lowlight) ? 'ai' : 'hls';
+        if (mode !== state.mode) {
+            state.mode = mode;
+            setModeBadge(mode);
         }
 
         if (el['default-status-text']) {
@@ -512,7 +663,7 @@
                 const ai = Store.getAi(state.activeId);
                 const next = !ai.lowlight;
                 commitAi(
-                    { lowlight: next },
+                    { lowlight_enabled: next },
                     `LowLight ${next ? 'diaktifkan' : 'dimatikan'} (${ai.lowlight_model}) pada ${state.activeId}.`
                 );
             });
@@ -523,7 +674,7 @@
                 const ai = Store.getAi(state.activeId);
                 const next = !ai.yolo;
                 commitAi(
-                    { yolo: next },
+                    { yolo_enabled: next },
                     `Deteksi YOLO ${next ? 'diaktifkan' : 'dimatikan'} (${ai.yolo_model}) pada ${state.activeId}.`
                 );
             });
@@ -536,8 +687,9 @@
         }
 
         if (el['select-yolo']) {
-            el['select-yolo'].addEventListener('change', (event) => {
-                commitAi({ yolo_model: event.target.value }, `Model YOLO diset ke ${event.target.value}.`);
+            el['select-yolo'].addEventListener('change', () => {
+                /* Satu bobot YOLO per engine: pilihan hanya informasi. */
+                log('Bobot YOLO mengikuti file di Yolo/Model; ganti berkasnya untuk berganti model.');
             });
         }
 
@@ -574,6 +726,12 @@
 
         syncOperatorBadge();
         bindEvents();
+
+        /* Katalog model (nama + label) berasal dari registry engine. */
+        Store.aiCatalog()
+            .then(catalog => { state.aiCatalog = catalog; paintAiCatalog(catalog); })
+            .catch(err => log('Katalog model AI gagal dimuat: ' + ((err && err.message) || err)));
+        setInterval(() => { paintLatency(); paintFps(); }, 1000);
 
         const start = Store.firstPlayable();
         if (!start) {

@@ -611,3 +611,23 @@ html.dark .glass-pill {
 @media (prefers-reduced-motion: reduce) {
     .radar-scanner { animation-duration: 6s; }
 }
+
+/* ---------------------------------------------------------------------------
+   Panel AI publik (cctv.html & statistik.html)
+   Di tablet 768-1023px, tiga kartu penjelasan terlalu sempit (~210px teks),
+   jadi dipakai dua kolom; tiga kolom baru mulai 1024px.
+   --------------------------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+    #public-ai-info-panel .md\:grid-cols-3,
+    #ai-insight-panel .md\:grid-cols-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Tombol salin di header panel: turun ke baris sendiri saat ruang sempit. */
+@media (max-width: 419px) {
+    #public-ai-info-panel .px-5.py-3\.5,
+    #ai-insight-panel .p-5.md\:p-7 {
+        padding-inline: 0.875rem;
+    }
+}

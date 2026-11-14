@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Statistik Lalu Lintas — Sudut Kota</title>
+    <title>Statistik Lalin | Sudut Kota</title>
     <link rel="icon" type="image/png" sizes="32x32" href="asset/favicon-32.png">
     <link rel="icon" type="image/png" sizes="64x64" href="asset/favicon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="asset/apple-touch-icon.png">
@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261113x">
+    <link rel="stylesheet" href="css/style.css?v=20261114k">
 
     <!-- Pustaka ekspor & grafik, dimuat hanya di halaman ini -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -37,6 +37,11 @@
         }
         .period-tab { transition: all .2s ease; }
         .period-tab.is-active { background: #2563eb; color: #fff; border-color: #3b82f6; box-shadow: 0 0 15px rgba(37,99,235,.4); }
+        .ai-glow-border {
+            position: relative;
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            box-shadow: 0 10px 30px -12px rgba(14, 165, 233, 0.18);
+        }
     </style>
 </head>
 <body class="sk-root font-sans antialiased">
@@ -48,8 +53,8 @@
 
         <!-- JUDUL & AKSI -->
         <div class="glass-card p-5 md:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 animate-fade-in-up">
-            <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-2xl sk-soft border flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+            <div class="flex items-start sm:items-center gap-4">
+                <div class="w-14 h-14 shrink-0 rounded-2xl sk-soft border flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)]">
                     <i class="fa-solid fa-chart-column"></i>
                 </div>
                 <div>
@@ -58,6 +63,9 @@
                         <span id="range-label">Memuat rentang...</span>
                         <span class="mx-1 sk-muted">|</span>
                         <span id="stats-source" class="text-amber-700 dark:text-amber-400/80">memuat sumber...</span>
+                    </p>
+                    <p class="text-xs sk-muted mt-1.5 leading-relaxed max-w-xl">
+                        Pantauan jumlah dan jenis kendaraan yang melintas di persimpangan kota secara otomatis menggunakan kamera CCTV berbasis kecerdasan buatan (AI), disajikan agar mudah dibaca masyarakat.
                     </p>
                 </div>
             </div>
@@ -88,70 +96,198 @@
 
         <!-- KPI -->
         <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4 animate-fade-in-up" style="animation-delay:.05s">
-            <div class="glass-card p-5">
-                <div class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Total</div>
-                <div id="kpi-total" class="text-2xl font-black text-slate-900 dark:text-white mt-2">0</div>
+            <div class="glass-card p-5 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Total</div>
+                    <div id="kpi-total" class="text-2xl font-black text-slate-900 dark:text-white mt-2">0</div>
+                </div>
+                <p class="text-[11px] sk-muted mt-2 leading-snug">Semua kendaraan terdeteksi</p>
             </div>
-            <div class="glass-card p-5">
-                <div class="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Mobil</div>
-                <div id="kpi-mobil" class="text-2xl font-black text-sky-600 dark:text-sky-300 mt-2">0</div>
+            <div class="glass-card p-5 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Mobil</div>
+                    <div id="kpi-mobil" class="text-2xl font-black text-sky-600 dark:text-sky-300 mt-2">0</div>
+                </div>
+                <p class="text-[11px] sk-muted mt-2 leading-snug">Kendaraan roda 4 penumpang</p>
             </div>
-            <div class="glass-card p-5">
-                <div class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Motor</div>
-                <div id="kpi-motor" class="text-2xl font-black text-cyan-600 dark:text-cyan-300 mt-2">0</div>
+            <div class="glass-card p-5 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Motor</div>
+                    <div id="kpi-motor" class="text-2xl font-black text-cyan-600 dark:text-cyan-300 mt-2">0</div>
+                </div>
+                <p class="text-[11px] sk-muted mt-2 leading-snug">Sepeda motor roda 2</p>
             </div>
-            <div class="glass-card p-5">
-                <div class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Truk</div>
-                <div id="kpi-truk" class="text-2xl font-black text-amber-600 dark:text-amber-300 mt-2">0</div>
+            <div class="glass-card p-5 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Truk</div>
+                    <div id="kpi-truk" class="text-2xl font-black text-amber-600 dark:text-amber-300 mt-2">0</div>
+                </div>
+                <p class="text-[11px] sk-muted mt-2 leading-snug">Angkutan barang & logistik</p>
             </div>
-            <div class="glass-card p-5">
-                <div class="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Bus</div>
-                <div id="kpi-bus" class="text-2xl font-black text-orange-600 dark:text-orange-300 mt-2">0</div>
+            <div class="glass-card p-5 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Bus</div>
+                    <div id="kpi-bus" class="text-2xl font-black text-orange-600 dark:text-orange-300 mt-2">0</div>
+                </div>
+                <p class="text-[11px] sk-muted mt-2 leading-snug">Angkutan penumpang besar</p>
             </div>
-            <div class="glass-card p-5">
-                <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" id="kpi-avg-label">Rata-rata / Jam</div>
-                <div id="kpi-avg" class="text-2xl font-black text-emerald-600 dark:text-emerald-300 mt-2">0</div>
+            <div class="glass-card p-5 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" id="kpi-avg-label">Rata-rata / Jam</div>
+                    <div id="kpi-avg" class="text-2xl font-black text-emerald-600 dark:text-emerald-300 mt-2">0</div>
+                </div>
+                <p class="text-[11px] sk-muted mt-2 leading-snug">Arus normal tiap satuan waktu</p>
             </div>
-            <div class="glass-card p-5">
-                <div class="text-[10px] font-bold text-purple-400 uppercase tracking-widest" id="kpi-peak-label">Jam Tersibuk</div>
-                <div id="kpi-peak" class="text-2xl font-black text-purple-600 dark:text-purple-300 mt-2">—</div>
+            <div class="glass-card p-5 col-span-2 md:col-span-1 flex flex-col justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-purple-400 uppercase tracking-widest" id="kpi-peak-label">Jam Tersibuk</div>
+                    <div id="kpi-peak" class="text-2xl font-black text-purple-600 dark:text-purple-300 mt-2">—</div>
+                </div>
+                <p class="text-[11px] sk-muted mt-2 leading-snug">Waktu paling padat melintas</p>
             </div>
         </div>
 
-        <!-- GRAFIK -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div class="glass-card p-6 lg:col-span-2">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-sm font-black sk-ink uppercase tracking-widest">Volume Kendaraan</h2>
-                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold sk-muted">
-                        <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-sky-400 inline-block"></i> Mobil</span>
-                        <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-cyan-400 inline-block"></i> Motor</span>
-                        <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-amber-400 inline-block"></i> Truk</span>
-                        <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-orange-400 inline-block"></i> Bus</span>
+        <!-- RINGKASAN CERDAS AI UNTUK MASYARAKAT -->
+        <section id="ai-insight-panel" aria-labelledby="ai-insight-title" class="glass-card ai-glow-border p-5 md:p-7 animate-fade-in-up" style="animation-delay:.08s">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b sk-line pb-4 mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500/20 to-blue-600/20 border border-sky-400/30 flex items-center justify-center text-sky-500 dark:text-sky-300 shrink-0">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 id="ai-insight-title" class="text-sm font-black sk-ink uppercase tracking-widest">Ringkasan AI untuk Masyarakat</h2>
+                            <span id="ai-status-badge" class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/25">
+                                Analisis Otomatis
+                            </span>
+                        </div>
+                        <p class="text-[11px] sk-muted mt-0.5">Penjelasan singkat hasil pantauan kamera agar mudah dipahami tanpa perlu membaca angka teknis.</p>
                     </div>
                 </div>
-                <div class="relative h-[280px]">
-                    <canvas id="chart-volume"></canvas>
+                <button id="btn-copy-ai-summary" type="button"
+                        class="self-start sm:self-center shrink-0 px-3 py-2 rounded-xl sk-panel-2 border sk-line text-[11px] font-bold sk-ink hover:border-sky-400/50 transition flex items-center gap-2">
+                    <i class="fa-regular fa-copy text-sky-400"></i>
+                    <span id="btn-copy-ai-label">Salin Ringkasan</span>
+                </button>
+            </div>
+
+            <!-- Narasi Utama -->
+            <div class="space-y-4">
+                <div class="rounded-2xl sk-panel-2 border sk-line p-4 md:p-5">
+                    <p id="ai-summary-headline" class="text-sm md:text-base font-bold sk-ink leading-relaxed">
+                        Sedang membaca data lalu lintas dari sistem Sudut Kota...
+                    </p>
+                    <p id="ai-summary-narrative" class="text-xs md:text-sm sk-muted leading-relaxed mt-2">
+                        AI sedang merangkum jumlah kendaraan, komposisi lalu lintas, serta titik persimpangan paling ramai pada periode yang dipilih.
+                    </p>
+                </div>
+
+                <!-- 3 Poin Sorotan Mudah Dipahami -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    <div class="rounded-2xl sk-panel-2 border sk-line p-4">
+                        <div class="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-sky-500 dark:text-sky-300 mb-1.5">
+                            <i class="fa-solid fa-car-side"></i>
+                            <span>Dominasi Jalanan</span>
+                        </div>
+                        <p id="ai-insight-vehicle" class="text-xs sk-ink leading-relaxed">
+                            Menunggu komposisi jenis kendaraan...
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl sk-panel-2 border sk-line p-4">
+                        <div class="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-purple-500 dark:text-purple-300 mb-1.5">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span>Titik & Waktu Terpadat</span>
+                        </div>
+                        <p id="ai-insight-hotspot" class="text-xs sk-ink leading-relaxed">
+                            Menunggu identifikasi persimpangan dan jam sibuk...
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl sk-panel-2 border sk-line p-4">
+                        <div class="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-emerald-500 dark:text-emerald-300 mb-1.5">
+                            <i class="fa-solid fa-route"></i>
+                            <span>Saran untuk Warga</span>
+                        </div>
+                        <p id="ai-insight-advice" class="text-xs sk-ink leading-relaxed">
+                            Saran perjalanan akan muncul otomatis setelah data terisi.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GRAFIK -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="glass-card p-6 lg:col-span-2 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                        <h2 class="text-sm font-black sk-ink uppercase tracking-widest">Volume Kendaraan</h2>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold sk-muted">
+                            <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-sky-400 inline-block"></i> Mobil</span>
+                            <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-cyan-400 inline-block"></i> Motor</span>
+                            <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-amber-400 inline-block"></i> Truk</span>
+                            <span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-orange-400 inline-block"></i> Bus</span>
+                        </div>
+                    </div>
+                    <p class="text-xs sk-muted mb-4 leading-relaxed">
+                        Menunjukkan naik-turunnya kepadatan jalan dari waktu ke waktu. Semakin tinggi garis/batang grafik, semakin ramai kendaraan yang melintas.
+                    </p>
+                    <div class="relative h-[280px]">
+                        <canvas id="chart-volume"></canvas>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t sk-line flex items-start gap-2.5 text-xs sk-muted">
+                    <i class="fa-solid fa-circle-info text-sky-400 mt-0.5 shrink-0"></i>
+                    <p id="chart-volume-narrative" class="leading-relaxed">
+                        Pola kepadatan jalan akan dijelaskan otomatis saat data grafik tersedia.
+                    </p>
                 </div>
             </div>
 
-            <div class="glass-card p-6">
-                <h2 class="text-sm font-black sk-ink uppercase tracking-widest mb-4">Komposisi</h2>
-                <div class="relative h-[280px]">
-                    <canvas id="chart-composition"></canvas>
+            <div class="glass-card p-6 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-black sk-ink uppercase tracking-widest mb-1.5">Komposisi</h2>
+                    <p class="text-xs sk-muted mb-4 leading-relaxed">
+                        Perbandingan porsi tiap jenis kendaraan yang lewat—apakah jalanan lebih banyak diisi motor/mobil pribadi atau angkutan besar.
+                    </p>
+                    <div class="relative h-[280px]">
+                        <canvas id="chart-composition"></canvas>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t sk-line flex items-start gap-2.5 text-xs sk-muted">
+                    <i class="fa-solid fa-chart-pie text-cyan-400 mt-0.5 shrink-0"></i>
+                    <p id="chart-composition-narrative" class="leading-relaxed">
+                        Persentase pembagian kendaraan akan dirangkum di sini.
+                    </p>
                 </div>
             </div>
         </div>
 
         <!-- TABEL -->
         <div class="glass-card p-6 md:p-8">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b sk-line pb-5 mb-5">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b sk-line pb-5 mb-4">
                 <div>
-                    <h2 class="text-sm font-black sk-ink uppercase tracking-widest">Rekap Per Node</h2>
-                    <p class="text-[11px] sk-muted font-medium mt-1">Diurutkan dari volume tertinggi.</p>
+                    <h2 class="text-sm font-black sk-ink uppercase tracking-widest">Rekap Per Node (Titik Kamera CCTV)</h2>
+                    <p class="text-xs sk-muted font-medium mt-1 leading-relaxed">
+                        Daftar lokasi persimpangan yang dipantau kamera AI, diurutkan dari titik paling ramai hingga paling lengang.
+                    </p>
                 </div>
-                <span id="table-count" class="text-[10px] font-black uppercase tracking-widest sk-soft border px-3 py-1.5 rounded-lg">0 node</span>
+                <span id="table-count" class="text-[10px] font-black uppercase tracking-widest sk-soft border px-3 py-1.5 rounded-lg self-start md:self-center">0 node</span>
             </div>
+
+            <!-- Penjelasan Kolom Tabel untuk Masyarakat -->
+            <div class="rounded-xl sk-panel-2 border sk-line px-4 py-3 mb-4 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[11px] sk-muted">
+                <span><strong class="sk-ink">Node:</strong> Nama titik persimpangan/kamera.</span>
+                <span><strong class="sk-ink">Zona:</strong> Wilayah atau koridor jalan.</span>
+                <span><strong class="sk-ink">Total:</strong> Gabungan seluruh kendaraan terhitung.</span>
+                <span><strong class="sk-ink">Status:</strong> Kondisi aktif kamera pemantau.</span>
+            </div>
+
+            <!-- Sorotan Otomatis Node Terpadat -->
+            <p id="table-narrative" class="text-xs sk-ink bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 mb-4 leading-relaxed">
+                Memuat ringkasan perbandingan antar titik persimpangan...
+            </p>
 
             <div class="overflow-x-auto rounded-2xl border sk-line">
                 <table class="w-full text-left text-sm">
@@ -172,14 +308,19 @@
                 </table>
             </div>
 
-            <p class="mt-4 text-[10px] sk-muted leading-relaxed">
-                Angka dibaca dari Firebase RTDB: <code class="sk-accent">statistik_harian/&lt;tanggal&gt;/&lt;node&gt;</code>
-                untuk periode harian dan <code class="sk-accent">statistik/&lt;tanggal&gt;/&lt;jam&gt;/&lt;node&gt;</code> untuk 1 Hari.
-                Isinya hanya sampel inferensi YOLO yang ditulis kolektor backend setiap
-                <code class="sk-accent">STATS_SAMPLE_SECONDS</code> detik — tidak ada data contoh.
-                Selama engine AI belum pernah mengirim telemetri, halaman menampilkan nol dan
-                label <strong>belum ada data di Firebase</strong>.
-            </p>
+            <div class="mt-5 pt-4 border-t sk-line space-y-2 text-[11px] sk-muted leading-relaxed">
+                <p>
+                    <strong class="sk-ink">Bagaimana angka ini dihitung?</strong> Kamera CCTV jalan raya dianalisis otomatis oleh model kecerdasan buatan (<strong class="sk-ink">YOLOv8</strong> &amp; peningkatan cahaya malam <strong class="sk-ink">MirNet/Zero-DCE</strong>) untuk mengenali dan menghitung kendaraan tanpa menyimpan identitas pribadi pengendara.
+                </p>
+                <p class="text-[10px]">
+                    Sumber data teknis Firebase RTDB: <code class="sk-accent">statistik_harian/&lt;tanggal&gt;/&lt;node&gt;</code>
+                    untuk periode harian dan <code class="sk-accent">statistik/&lt;tanggal&gt;/&lt;jam&gt;/&lt;node&gt;</code> untuk 1 Hari.
+                    Isinya hanya sampel inferensi YOLO yang ditulis kolektor backend setiap
+                    <code class="sk-accent">STATS_SAMPLE_SECONDS</code> detik — tidak ada data contoh.
+                    Selama engine AI belum pernah mengirim telemetri, halaman menampilkan nol dan
+                    label <strong>belum ada data di Firebase</strong>.
+                </p>
+            </div>
         </div>
     </div>
 </main>
@@ -189,14 +330,203 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261113x"></script>
-<script src="js/firebase-config.js?v=20261113x"></script>
-<script src="js/firebase-client.js?v=20261113x"></script>
-<script src="js/config.js?v=20261113x"></script>
+<script src="js/public-config.js?v=20261114k"></script>
+<script src="js/firebase-config.js?v=20261114k"></script>
+<script src="js/firebase-client.js?v=20261114k"></script>
+<script src="js/config.js?v=20261114k"></script>
 
-<script src="js/store.js?v=20261113x"></script>
-<script src="js/auth.js?v=20261113x"></script>
-<script src="js/app.js?v=20261113x"></script>
-<script src="js/statistik.js?v=20261113x"></script>
+<script src="js/store.js?v=20261114k"></script>
+<script src="js/auth.js?v=20261114k"></script>
+<script src="js/app.js?v=20261114k"></script>
+<script src="js/statistik.js?v=20261114k"></script>
+
+<!-- Penghubung AI Penjelasan Bahasa Masyarakat (non-intrusif terhadap statistik.js) -->
+<script>
+(function () {
+    const parseIntID = (el) => {
+        if (!el) return 0;
+        const digits = (el.textContent || '').replace(/[^\d]/g, '');
+        return digits ? parseInt(digits, 10) : 0;
+    };
+
+    const fmt = (n) => Number(n || 0).toLocaleString('id-ID');
+
+    const getTopNodes = () => {
+        const tbody = document.getElementById('stats-table-body');
+        if (!tbody) return [];
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const nodes = [];
+        for (const tr of rows) {
+            const cells = tr.querySelectorAll('td');
+            if (cells.length >= 7) {
+                const name = (cells[0].textContent || '').trim();
+                const zone = (cells[1].textContent || '').trim();
+                const total = parseIntID(cells[6]);
+                if (name && !/belum ada|memuat|tidak ada/i.test(name)) {
+                    nodes.push({ name, zone, total });
+                }
+            }
+        }
+        return nodes;
+    };
+
+    const generatePublicInsights = () => {
+        const total = parseIntID(document.getElementById('kpi-total'));
+        const mobil = parseIntID(document.getElementById('kpi-mobil'));
+        const motor = parseIntID(document.getElementById('kpi-motor'));
+        const truk = parseIntID(document.getElementById('kpi-truk'));
+        const bus = parseIntID(document.getElementById('kpi-bus'));
+        const avg = parseIntID(document.getElementById('kpi-avg'));
+
+        const rangeText = (document.getElementById('range-label')?.textContent || 'periode terpilih').trim();
+        const sourceText = (document.getElementById('stats-source')?.textContent || '').trim();
+        const peakText = (document.getElementById('kpi-peak')?.textContent || '—').trim();
+        const peakLabel = (document.getElementById('kpi-peak-label')?.textContent || 'Jam Tersibuk').trim().toLowerCase();
+        const avgLabel = (document.getElementById('kpi-avg-label')?.textContent || 'Rata-rata / Jam').trim().toLowerCase();
+
+        const elBadge = document.getElementById('ai-status-badge');
+        const elHeadline = document.getElementById('ai-summary-headline');
+        const elNarrative = document.getElementById('ai-summary-narrative');
+        const elVehicle = document.getElementById('ai-insight-vehicle');
+        const elHotspot = document.getElementById('ai-insight-hotspot');
+        const elAdvice = document.getElementById('ai-insight-advice');
+        const elVolNarr = document.getElementById('chart-volume-narrative');
+        const elCompNarr = document.getElementById('chart-composition-narrative');
+        const elTableNarr = document.getElementById('table-narrative');
+
+        if (!elHeadline) return;
+
+        // Jika belum ada data dari Firebase
+        if (total === 0) {
+            if (elBadge) elBadge.textContent = 'Menunggu Data Kamera';
+            elHeadline.textContent = `Belum ada kendaraan tercatat pada ${rangeText}.`;
+            elNarrative.textContent = `Saat ini sistem pemantau AI (${sourceText || 'Firebase RTDB'}) belum menerima rekaman arus kendaraan untuk rentang waktu ini, atau kamera sedang dalam mode siaga.`;
+            elVehicle.textContent = 'Komposisi motor, mobil, truk, dan bus masih 0% karena belum ada sampel kendaraan yang melintas.';
+            elHotspot.textContent = 'Belum ada titik persimpangan maupun jam sibuk yang tercatat pada periode ini.';
+            elAdvice.textContent = 'Silakan coba pilih tab periode lain (seperti 1 Minggu, 1 Bulan, atau Seluruhnya) untuk melihat riwayat lalu lintas sebelumnya.';
+            if (elVolNarr) elVolNarr.textContent = 'Grafik masih kosong karena belum ada sampel deteksi kendaraan pada periode ini.';
+            if (elCompNarr) elCompNarr.textContent = 'Diagram pembagian jenis kendaraan akan muncul otomatis begitu kamera mulai menghitung arus lalu lintas.';
+            if (elTableNarr) elTableNarr.textContent = 'Belum ada volume kendaraan yang tercatat di tiap titik kamera CCTV untuk rentang waktu ini.';
+            return;
+        }
+
+        // Hitung persentase tiap kelas
+        const pct = (val) => Math.round((val / total) * 100);
+        const pctMobil = pct(mobil);
+        const pctMotor = pct(motor);
+        const pctTruk = pct(truk);
+        const pctBus = pct(bus);
+        const pctBerat = pct(truk + bus);
+
+        const classes = [
+            { name: 'sepeda motor', count: motor, pct: pctMotor },
+            { name: 'mobil penumpang', count: mobil, pct: pctMobil },
+            { name: 'truk logistik', count: truk, pct: pctTruk },
+            { name: 'bus angkutan', count: bus, pct: pctBus }
+        ].sort((a, b) => b.count - a.count);
+
+        const topClass = classes[0];
+        const secondClass = classes[1];
+        const nodes = getTopNodes();
+        const busiestNode = nodes[0] || null;
+        const quietestNode = nodes.length > 1 ? nodes[nodes.length - 1] : null;
+
+        if (elBadge) elBadge.textContent = 'Ringkasan AI Aktif';
+
+        // 1. Headline & Narasi Utama
+        elHeadline.textContent = `Tercatat ${fmt(total)} kendaraan melintas pada ${rangeText}, didominasi oleh ${topClass.name} (${topClass.pct}%).`;
+        elNarrative.textContent = `Secara keseluruhan, arus lalu lintas memiliki ${avgLabel} sekitar ${fmt(avg)} kendaraan. Aktivitas kendaraan paling padat terjadi pada ${peakLabel} ${peakText !== '—' ? peakText : 'tertentu'}${busiestNode ? `, dengan titik paling ramai berada di ${busiestNode.name}` : ''}.`;
+
+        // 2. Dominasi Kendaraan
+        elVehicle.textContent = `Jalanan paling banyak diisi ${topClass.name} sebanyak ${fmt(topClass.count)} unit (${topClass.pct}%), diikuti ${secondClass.name} (${secondClass.pct}%). Kendaraan besar seperti truk dan bus menyumbang ${pctBerat}% dari total arus.`;
+
+        // 3. Titik & Waktu Terpadat
+        if (busiestNode) {
+            const nodeShare = Math.round((busiestNode.total / total) * 100);
+            elHotspot.textContent = `Persimpangan tersibuk adalah ${busiestNode.name}${busiestNode.zone ? ` (${busiestNode.zone})` : ''} dengan ${fmt(busiestNode.total)} kendaraan (${nodeShare}% dari total kota)${peakText !== '—' ? `, memuncak pada ${peakText}` : ''}.`;
+        } else {
+            elHotspot.textContent = `Puncak kepadatan tercatat pada ${peakLabel} ${peakText !== '—' ? peakText : 'yang tertera di kartu KPI'}.`;
+        }
+
+        // 4. Saran Praktis untuk Warga
+        let advice = '';
+        if (peakText !== '—') {
+            advice += `Bagi warga yang ingin menghindari antrean, sebaiknya atur perjalanan di luar ${peakText}`;
+            if (busiestNode) advice += ` atau gunakan jalur alternatif di sekitar ${busiestNode.name}`;
+            advice += '. ';
+        }
+        if (pctMotor >= 60) {
+            advice += 'Tingginya proporsi sepeda motor menuntut kewaspadaan ekstra di persimpangan dan lajur kiri.';
+        } else if (pctBerat >= 15) {
+            advice += 'Cukup banyak truk dan bus melintas—jaga jarak aman pengereman di area persimpangan.';
+        } else {
+            advice += 'Arus kendaraan terpantau relatif seimbang; tetap patuhi lampu lalu lintas dan marka jalan.';
+        }
+        elAdvice.textContent = advice.trim();
+
+        // 5. Narasi Bawah Grafik & Tabel
+        if (elVolNarr) {
+            elVolNarr.textContent = `Arus rata-rata mencapai ${fmt(avg)} kendaraan per satuan waktu${peakText !== '—' ? `, dengan lonjakan tertinggi terdeteksi pada ${peakText}` : ''}.`;
+        }
+        if (elCompNarr) {
+            elCompNarr.textContent = `Rincian: Motor ${pctMotor}% (${fmt(motor)}), Mobil ${pctMobil}% (${fmt(mobil)}), Truk ${pctTruk}% (${fmt(truk)}), dan Bus ${pctBus}% (${fmt(bus)}).`;
+        }
+        if (elTableNarr) {
+            if (busiestNode && quietestNode && busiestNode.name !== quietestNode.name) {
+                elTableNarr.innerHTML = `<strong>Perbandingan Lokasi:</strong> Titik paling ramai adalah <strong>${busiestNode.name}</strong> (${fmt(busiestNode.total)} kendaraan), sedangkan titik paling lengang adalah <strong>${quietestNode.name}</strong> (${fmt(quietestNode.total)} kendaraan).`;
+            } else if (busiestNode) {
+                elTableNarr.innerHTML = `<strong>Sorotan Lokasi:</strong> Kamera <strong>${busiestNode.name}</strong> mencatat arus tertinggi sebesar <strong>${fmt(busiestNode.total)} kendaraan</strong>.`;
+            }
+        }
+    };
+
+    // Debounce pembaruan agar tidak berat saat Firebase mengisi banyak elemen sekaligus
+    let timer = null;
+    const scheduleUpdate = () => {
+        clearTimeout(timer);
+        timer = setTimeout(generatePublicInsights, 120);
+    };
+
+    // Amati perubahan DOM dari statistik.js tanpa mengubah struktur aslinya
+    const watchedIds = [
+        'kpi-total', 'kpi-mobil', 'kpi-motor', 'kpi-truk', 'kpi-bus',
+        'kpi-avg', 'kpi-peak', 'range-label', 'stats-source', 'stats-table-body'
+    ];
+    const observer = new MutationObserver(scheduleUpdate);
+    watchedIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { childList: true, characterData: true, subtree: true });
+    });
+
+    // Tombol salin ringkasan untuk dibagikan warga/laporan
+    const copyBtn = document.getElementById('btn-copy-ai-summary');
+    const copyLabel = document.getElementById('btn-copy-ai-label');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            const parts = [
+                document.getElementById('ai-summary-headline')?.textContent,
+                document.getElementById('ai-summary-narrative')?.textContent,
+                '• ' + (document.getElementById('ai-insight-vehicle')?.textContent || ''),
+                '• ' + (document.getElementById('ai-insight-hotspot')?.textContent || ''),
+                '• ' + (document.getElementById('ai-insight-advice')?.textContent || '')
+            ].filter(Boolean).join('\n');
+
+            try {
+                await navigator.clipboard.writeText(parts);
+                if (copyLabel) copyLabel.textContent = 'Tersalin!';
+                setTimeout(() => { if (copyLabel) copyLabel.textContent = 'Salin Ringkasan'; }, 2000);
+            } catch (_) {
+                if (copyLabel) copyLabel.textContent = 'Gagal Menyalin';
+                setTimeout(() => { if (copyLabel) copyLabel.textContent = 'Salin Ringkasan'; }, 2000);
+            }
+        });
+    }
+
+    // Ekspos hook opsional bila ingin dipanggil langsung dari statistik.js
+    window.SudutKotaAIInsight = { refresh: generatePublicInsights };
+    document.addEventListener('DOMContentLoaded', scheduleUpdate);
+    scheduleUpdate();
+})();
+</script>
 </body>
 </html>

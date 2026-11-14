@@ -67,8 +67,11 @@ Capstone-Sudut-Kota/
 │   ├── nodes.py               penyimpanan SQLite + validasi RTSP
 │   ├── social/instagram.py    scrape Instagram asli (Playwright) + cache
 │   ├── firebase_init.py       Admin SDK dari backend/.env
-│   ├── streamer/hls.py        RTSP → HLS (ffmpeg)
+│   ├── streamer/hls.py        fallback: RTSP → HLS (ffmpeg polos)
 │   ├── ai_engine/
+│   │   ├── main_ai.py         engine per kamera: low-light + YOLO → HLS
+│   │   ├── engine_manager.py  pengelola proses engine (dipakai app.py)
+│   │   └── model_ai/          bobot + kode inference tiap model
 │   ├── gateway/               SATU-SATUNYA konfigurasi edge
 │   │   ├── nginx.conf         serve frontend/ + proxy /api + /hls dari disk
 │   │   ├── start/stop-nginx.*
@@ -76,7 +79,7 @@ Capstone-Sudut-Kota/
 │   │   ├── logs/              (gitignored)
 │   │   └── temp/              (gitignored)
 │   ├── data/sudutkota.db      konfigurasi kamera (gitignored)
-│   ├── media/hls/             keluaran ffmpeg (gitignored)
+│   ├── media/hls/             keluaran stream per node (gitignored)
 │   ├── scripts/               sync_public_config.py, seed_accounts.py, apply_rtdb_rules.py,
 │   │                          prune_stats.py (bersihkan agregat RTDB yatim)
 │   ├── .env / .env.example
@@ -225,8 +228,10 @@ python -m http.server --bind 127.0.0.1 8787
 ```
 
 nginx menyajikan `frontend/` sekaligus `/api` dan `/hls` dari satu origin; pada jalur ini
-segmen `.ts` dilayani langsung dari disk, tidak melewati Python. Flask tetap punya route
-`/hls/<path>` (allowlist `.m3u8`/`.ts`) hanya untuk mode dev tanpa nginx.
+segmen HLS dilayani langsung dari disk, tidak melewati Python. Pola yang diizinkan:
+`index.m3u8`, `init.mp4`, `seg_*.m4s` (engine AI, fMP4) dan `seg_*.ts` (ffmpeg polos).
+Flask tetap punya route `/hls/<path>` (allowlist yang sama) hanya untuk mode dev tanpa
+nginx.
 
 Bila `backend/.venv` belum ada:
 
@@ -294,29 +299,168 @@ python scripts/apply_rtdb_rules.py --show     # lihat aturan aktif
 
 ### Engine AI — satu folder per cara inferensi
 
-`ai_engine/main_ai.py` mengalirkan tiap frame lewat **satu** enhancer low-light dan
-**satu** model YOLO. Model low-light tidak disamakan karena arsitekturnya berbeda:
+`ai_engine/main_ai.py` adalah jembatan tiga keluarga model. Satu proses per kamera,
+dengan **dua laju** yang terpisah:
 
-| Model | Keluaran jaringan | Perlakuan khas |
+```text
+RTSP → jalur tampilan: frame asli 1920x1080 + LUT pencerahan + kotak + HUD → ffmpeg → HLS
+     ↘ jalur AI (thread sendiri): frame kecil 960x540 → low-light → YOLO → kotak + LUT
+```
+
+HUD di dalam video ditulis **dua baris di sudut kiri-bawah** — model low-light,
+bobot YOLO, dan perangkat pemroses (`GPU · <nama>` / `CPU`). Kiri-bawah dipilih
+karena kamera Pekalongan ini sudah membakar OSD-nya sendiri di kiri-atas (nama
+dinas), kanan-atas (jam), dan kanan-bawah (lokasi); versi sebelumnya di kiri-atas
+menimpa OSD kamera. Teksnya putih dengan tepi hitam tebal + bayangan 2 px, tanpa
+kotak latar. Tanggal/jam dan hitungan kendaraan tidak dicetak ke video — angkanya
+ada di kartu halaman CCTV dan RTDB.
+
+Model butuh 100–250 ms/frame; menulis 1080p ke HLS hanya ~40 ms. Kalau keduanya
+dijalankan berurutan, video jadi 3–5 fps. Karena itu AI berjalan di **tiga
+thread** yang tidak pernah ditunggu jalur tampilan:
+
+| Thread | Kerja | Laju |
 |---|---|---|
-| MirNet | gambar (B, 3, H, W) | padding ke kelipatan 8, dipotong lagi setelah inferensi |
-| Zero-DCE | 24 peta kurva (B, 24, H, W) | gambar akhir = iterasi `x + A(x²−x)` 8 kali pada gambar masukan |
-| classical | – | CLAHE + gamma, dipakai otomatis bila bobot model belum ada |
-| none | – | frame diteruskan apa adanya |
+| `ai-prep` | perkecil frame asli → `AI_AI_SIDE` | tiap frame |
+| `ai-enhance` | model low-light → LUT kecerahan | `AI_ENHANCE_HZ` (default 6x/dtk) |
+| `ai-detect` | YOLO pada frame kecil + LUT | secepat perangkat (±laju sumber) |
 
-Model dipilih dari RTDB (`ai_status.lowlight_model`) dan boleh berganti saat engine
-berjalan. YOLO hanya satu: file `.pt` pertama di `model_ai/Yolo/`.
+Kuncinya: LUT kecerahan berubah lambat, jadi model termahal tidak perlu
+dijalankan tiap frame — yang perlu tiap frame hanya YOLO (18 ms). Dengan
+pemisahan ini deteksi ikut laju sumber (terukur **24,9 deteksi/dtk** pada
+sumber 25 fps), bukan 9/dtk seperti saat enhance + YOLO berurutan.
+
+Yang tampil tetap frame asli yang tajam, bukan hasil upscale 960 → 1080; efek
+low-light-nya mendekati model (kurva gamma per kanal yang menyamakan rata-rata
+tiap kanal dengan keluaran model), bukan identik.
+
+**Pemakaian perangkat** (RTX 3050 Laptop, kanvas 1920x1080, kerja AI 960x540):
+
+| | sebelum | sesudah |
+|---|---|---|
+| deteksi | 9/dtk (serial) | **24,9/dtk** |
+| enhance Mobile-MIRNet | 89 ms (FP32) | **68 ms (FP16)** |
+| encoder | libx264 (CPU) | **NVENC (GPU)**, CPU 37% → 31% |
+| fps tampil (sumber stabil) | 24,4 | 24,5 |
+
+FP16 memotong waktu model ~1,4x (`AI_FP16=0` untuk mematikan). NVENC
+memindahkan encoding dari CPU ke GPU; `AI_ENCODER=libx264` memaksa software.
+
+Satu file kode per arsitektur, seperti isi notebook pelatihannya:
+
+| Folder | Bobot | Kode inference |
+|---|---|---|
+| `LowLightEnhancement/Mirnet/Model` | `mirnetv1.pth`, `mirnetv2-kaggle.pth`, `mirnetv2-paper.pth`, `mobile-mirnet.pth` | `Inference/mirnetv1.py`, `mirnetv2_kaggle.py`, `mirnetv2_paper.py`, `mobile_mirnet.py` |
+| `LowLightEnhancement/ZeroDCE/Model` | `zerodce.pth`, `cbam-unet-dce.pth` | `Inference/zerodce.py`, `cbam_unet_dce.py` |
+| `Yolo/Model` | `yolov8n.pt` (file `.pt` pertama) | `Inference/yolo_inference.py` (satu untuk semua `.pt`) |
+
+`LowLightEnhancement/registry.py` menyatukan nama model yang dipakai CLI dan RTDB:
+`none`, `mirnetv1`, `mirnetv2_kaggle`, `mirnetv2_paper`, `mobile_mirnet`,
+`zerodce`, `cbam_unet_dce`. Varian MirNet memakai inferensi image-to-image (resolusi
+kerja dibatasi `DEFAULT_WORK_SIDE`); Zero-DCE family memprediksi kurva di 256² lalu
+menerapkannya pada resolusi penuh, jadi detail tidak hilang.
+
+Kapasitas jalur tampilan terukur di RTX 3050, kanvas **1920x1080** (resolusi
+asli), kerja AI **960x540**, YOLOv8n @ imgsz 640. Angka ini FPS video yang
+tampil — tidak lagi dipotong waktu model, karena AI berjalan di thread sendiri:
+
+| Varian | fps tampil | enhance (ms, di worker) |
+|---|---|---|
+| `zerodce` | 24,1 | ~50 |
+| `cbam_unet_dce` | 24 | ~105 |
+| `mobile_mirnet` | 24,3 | ~166 |
+| tanpa low-light | 24,3 | – |
+
+Pembanding: sebelum dipisah, `mobile_mirnet` hanya 4,3 fps pada kanvas yang
+sama. `AI_MAX_SIDE=960` masih bisa dipakai kalau CPU/GPU sangat terbatas, tapi
+tayangan jadi lebih lunak. Menurunkan `AI_AI_SIDE` (mis. 640) mempercepat worker
+(lebih banyak frame AI per detik), bukan fps tampilan.
+
+Encoder memakai `-crf 20` (sebelumnya 23) supaya teks HUD dan tepi objek tidak
+"meleleh" di bitrate rendah; selisih ukuran segmen masih kecil untuk kanal ini.
+
+Catatan teknis worker: `torch.backends.cudnn.benchmark` dimatikan di dalam
+`AiWorker` karena autotune cudnn bisa **macet** kalau dipanggil dari thread
+non-utama saat pertama melihat ukuran input baru (terbukti hang pada
+Mobile-MIRNet 960x540).
+
+FPS yang tampil tidak bisa melebihi laju sumber RTSP. Pada tautan uji Tailscale
+laju kamera berayun 2,7–26 fps (p99 jeda antar-frame 0,6–7 dtk), jadi
+`server_fps` ikut turun walaupun kapasitas pipeline masih tersisa. Kamera yang
+mengirim beberapa frame sekaligus lalu diam juga membuat antrean 1-frame
+membuang burst; `AI_SOURCE_BUFFER=3` (default) menahan tiga frame sehingga
+output mengikuti `fps_in` selama tautan sehat (terukur 20,4 fps tampil pada
+`fps_in` 21,5), dengan tambahan latensi ~0,12 dtk. Isi 1 kalau tautannya stabil
+dan latensi paling penting. Default produksi `AI_LOWLIGHT_MODEL=mobile_mirnet`;
+pakai `zerodce`/`cbam_unet_dce` bila tautan sanggup mengirim di atas 5 fps.
+
+### Mesin tanpa GPU (CPU + RAM saja)
+
+`AI_DEVICE=auto` (default) memakai GPU NVIDIA bila ada; kalau tidak, seluruh
+model berjalan di CPU tanpa perubahan kode. Mode CPU menyesuaikan diri:
+
+- frame kerja AI otomatis **640 px** (bukan 960) dan `AI_ENHANCE_HZ` turun ke
+  1,5x/dtk, karena Mobile-MIRNet di CPU ±1 dtk/frame;
+- `torch.set_num_threads()` dan `cv2.setNumThreads()` diisi jumlah core
+  (`AI_CPU_THREADS` untuk membatasi);
+- video tetap **~real-time**: terukur 24,1 fps tampil dengan deteksi 6,9/dtk
+  pada sumber 25 fps — jalur tampilan tidak menunggu model.
+
+`AI_DEVICE=cpu` memaksa CPU meski GPU ada (untuk menguji/membandingkan).
+Encoder tetap memilih NVENC bila GPU ada, karena encoding tidak memakai
+device AI; `AI_ENCODER=libx264` memaksa software total.
+
+Statistik:
+
+- **FPS** punya satu definisi di server dan di peramban: **jumlah frame dibagi
+  waktu nyata pada titik decode**. Engine menghitung `server_fps` = frame yang
+  ditulis ke encoder ÷ detik nyata (jendela 2,5 dtk, `FpsMeter`); halaman CCTV
+  menghitung angka yang sama dari `video.getVideoPlaybackQuality().totalVideoFrames`
+  dan menampilkannya di kartu **FPS**. `fps_in`, `enhance_ms`, `yolo_ms`,
+  `latency_ms` tetap dikirim terpisah ke RTDB `cam_<channel>` dan
+  `media/hls/<node>/ai_stats.json`. Sejak jalur AI dipisah, `enhance_ms`/`yolo_ms`
+  adalah waktu per frame **AI** (worker), bukan per frame tampilan.
+- Kedua angka bisa berbeda sesaat: pemutar berada beberapa detik di belakang dan
+  membuang frame saat menyusul live edge (terukur 1–2 frame/dtk saat tautan
+  goyah). Pada jendela panjang keduanya bertemu — terukur 7,63 fps (server) vs
+  7,86 fps (peramban) pada jendela 26 dtk.
+- Semua I/O Firebase berjalan di thread `RtdbBridge`: loop frame hanya menitipkan
+  payload terbaru, jadi satu panggilan jaringan yang lambat tidak lagi menahan
+  video (dulu terbaca 6,6 fps tanpa RTDB vs 2,6 fps dengan RTDB).
+- Hitungan YOLO (`mobil`, `motor`, `truk`, `bus`) mengikuti kelas COCO 2/3/7/5;
+  `jumlah_*`, `total_kendaraan`, `timestamp`, `status` ditulis tiap 2 detik dan
+  dibaca kolektor `backend/stats.py` untuk halaman Statistik.
+- Kontrol tanpa restart lewat RTDB `cam_<channel>/ai_status`:
+  `lowlight_enabled`, `lowlight_model`, `yolo_enabled`. Panel **Kontrol Modul AI**
+  di halaman CCTV menulisnya lewat `POST /api/nodes/<id>/ai`.
+- Playlist membawa `EXT-X-PROGRAM-DATE-TIME`, sehingga hls.js tahu waktu rekam
+  frame yang sedang diputar (`playingDate`). Badge "Latensi" di halaman CCTV
+  menampilkan `Date.now() - playingDate` — latensi hasil akhir di peramban,
+  termasuk buffer pemutar, bukan hanya waktu proses. Tanpa nilai itu (mis.
+  pemutar native), badge jatuh ke `latency_ms` engine.
+- Latensi itu ditentukan dua hal: panjang segmen dan seberapa jauh pemutar
+  duduk di belakang live edge. `AI_HLS_GOP` (default 12) memotong keyframe tiap
+  12 frame — pada output belasan fps berarti segmen ~1–3 dtk, bukan 6–10 dtk
+  seperti saat GOP 30. hls.js menyinkronkan `liveSyncDuration: 2.5` dtk.
+  Terukur di peramban: **3,5 dtk** dengan tautan kamera sedang goyah; pada
+  tautan yang lebih buruk angkanya naik mengikuti panjang segmen.
+
+`app.py` memakai engine ini saat `AI_ENGINE` aktif (default: otomatis bila
+`main_ai.py` + bobot YOLO ada). Bila tidak, ia jatuh ke `streamer/hls.py` (ffmpeg
+polos) supaya backend tetap hidup. Hentikan proses lewat `stop.flag` sehingga engine
+menutup ffmpeg dan menulis status OFFLINE, bukan dibunuh paksa.
 
 ```bash
 cd backend
-python -m ai_engine.main_ai --channel 29                              # RTSP -> HLS
-python -m ai_engine.main_ai --channel 29 --no-stream --lowlight zerodce
+.venv/Scripts/python.exe ai_engine/main_ai.py --benchmark          # semua varian
+.venv/Scripts/python.exe ai_engine/main_ai.py --channel 48 --lowlight zerodce
+.venv/Scripts/python.exe ai_engine/main_ai.py --channel 48 --no-rtdb --duration 10
 ```
 
 ## Alur stream
 
 ```text
-CCTV → RTSP (Tailscale) → backend lokal (ffmpeg) → HLS di disk
+CCTV → RTSP (Tailscale) → engine AI (low-light + YOLO) → HLS di disk
                                    ↓
 Peramban (Vercel, HTTPS) → Tailscale Funnel → nginx:8080 → /hls (file) + /api (Flask)
 ```
@@ -328,12 +472,14 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 |---|---|---|---|
 | GET | `/api/health`, `/api/config` | publik | status runtime & konfigurasi publik |
 | GET | `/api/nodes` | publik | daftar node (tanpa RTSP) |
-| GET | `/hls/<cam>/index.m3u8`, `/hls/<cam>/seg_*.ts` | publik | playlist & segmen |
+| GET | `/hls/<cam>/index.m3u8`, `init.mp4`, `seg_*.m4s` | publik | playlist & segmen fMP4 |
 | GET | `/api/streams` | publik | status proses ffmpeg |
 | GET | `/api/stats/telemetry` | publik | agregat statistik per jam/hari dari RTDB (`?days=N`) |
 | GET | `/api/stats/live` | publik | snapshot terakhir tiap node dari RTDB (`cam_<channel>`) |
+| GET | `/api/ai` | publik | katalog varian low-light + bobot YOLO untuk panel kontrol |
 | GET | `/api/nodes/<id>` | teknisi, admin | detail + RTSP untuk form edit |
 | POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node |
+| POST | `/api/nodes/<id>/ai` | teknisi, admin | tulis `cam_<channel>/ai_status` (low-light on/off, model, YOLO) |
 | POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
 | GET | `/api/status` | teknisi, admin | path database, daftar model |
 | POST | `/api/nodes/reset` | teknisi, admin | kosongkan direktori node + folder HLS |
@@ -381,9 +527,12 @@ di `akun.html` (kolom *Akses Fitur* dan bagian yang sama di modal Tambah/Ubah Ak
 Peran hanya mengisi **nilai bawaan** (Administrator semua, Teknisi tanpa Kelola Akun,
 Visitor hanya CCTV + Statistik); kelima sakelar tetap bisa diubah untuk akun mana pun,
 jadi Administrator bisa memberi fitur di luar kebiasaan perannya maupun mencabutnya.
-Fitur `ai` mengatur panel **Kontrol Modul AI** di halaman CCTV (toggle YOLOv8,
-MirNet/Zero-DCE, dan pilihan model); bila dicabut, panelnya disembunyikan dan tayangan
-tetap berjalan.
+Fitur `ai` mengatur panel **Kontrol Modul AI** di halaman CCTV: sakelar low-light dan
+YOLO, serta pilihan varian low-light dari katalog engine (`GET /api/ai`). Perubahan
+dikirim ke `POST /api/nodes/<id>/ai`, backend menulis `cam_<channel>/ai_status`, dan
+engine menerapkannya dalam ~2 detik tanpa restart — panel baru berubah setelah
+telemetri menunjukkan engine benar-benar sudah berganti. Bila fitur dicabut, panelnya
+disembunyikan dan tayangan tetap berjalan.
 Nilai yang tidak ada memakai bawaan peran, sehingga akun lama (tanpa field `akses`)
 berperilaku seperti sebelumnya. `PUT /api/akun/<uid>` menggabungkan kiriman parsial
 (`{"akses":{"cctv":false}}` hanya mengubah satu fitur), dan mengubah `peran` tanpa
@@ -547,6 +696,14 @@ dengan hari itu di dalam 1 Minggu, dan seterusnya. Isi halaman: KPI (total, mobi
 rata-rata per bucket, bucket tersibuk), grafik batang bertumpuk, donat komposisi, dan tabel rekap
 per node yang diurutkan dari volume tertinggi.
 
+**Ringkasan AI untuk Masyarakat** (`#ai-insight-panel`) ada di atas grafik: satu paragraf narasi
+plus tiga kartu sorotan (komposisi, titik/jam terpadat, saran perjalanan) dan tombol *Salin
+Ringkasan*. Panel ini **tidak** memanggil model — ia membaca angka yang sudah dirender
+`statistik.js` (KPI, label rentang, baris tabel) lewat `MutationObserver`, lalu menyusun kalimat.
+Karena itu ia otomatis ikut berubah saat periode diganti dan tidak menambah permintaan jaringan.
+Halaman CCTV punya padanan `#public-ai-info-panel` yang membaca kartu statistik live dengan pola
+yang sama.
+
 Ekspor mengikuti **interval yang sedang dipilih**. Unduhan berisi satu interval saja (mis. `1 Hari`),
 kecuali bila yang dipilih **Seluruhnya** — berkasnya tetap memuat ketujuh interval plus tabel
 perbandingan, seperti sebelumnya. Nama berkas memakai kunci periode (`statistik-sudut-kota-1d-…`,
@@ -616,7 +773,10 @@ backend/.venv/Scripts/python.exe test/test_akses_backend.py    # matriks peran x
 backend/.venv/Scripts/python.exe test/test_akses_routes.py     # dekorator fitur di route
 backend/.venv/Scripts/python.exe test/test_hls_stream.py       # argumen ffmpeg + purge/prune
 backend/.venv/Scripts/python.exe test/test_hls_crud.py         # CRUD node membersihkan media/
-backend/.venv/Scripts/python.exe test/test_hls_ffmpeg_e2e.py   # HLS nyata: segmen ~2 dtk
+backend/.venv/Scripts/python.exe test/test_hls_ffmpeg_e2e.py   # HLS ffmpeg polos: segmen ~2 dtk
+backend/.venv/Scripts/python.exe test/test_ai_models.py        # 6 enhancer + YOLO: strict load, FPS
+backend/.venv/Scripts/python.exe test/test_ai_engine_e2e.py    # file gelap -> HLS AI + ai_stats
+backend/.venv/Scripts/python.exe test/test_ai_control.py       # katalog AI + POST ai_status (mock RTDB)
 
 # diagnosa read-only (butuh backend/.env berisi kredensial)
 backend/.venv/Scripts/python.exe test/check_auth_cfg.py        # authorized domains + provider
@@ -738,8 +898,8 @@ memutar `hls_url` yang diturunkan backend (`/hls/<id>/index.m3u8`). Tidak ada la
   untuk stream uji lokal seperti berkas HLS publik.
 - `GET /api/nodes` tidak memuat `rtsp`; `GET /api/nodes/<id>` mengembalikannya untuk
   form edit dan membutuhkan ID token Firebase (`Authorization: Bearer`) plus fitur `dashboard`.
-- Peramban tidak pernah membuka RTSP. Label AI hanya menandai apakah modul AI aktif;
-  URL HLS-nya sama.
+- Peramban tidak pernah membuka RTSP. URL HLS satu: `/hls/<id>/index.m3u8`; engine AI
+  menulis ke folder node yang sama, jadi tidak ada dua URL yang harus dipilih
 
 Alasannya: URL RTSP biasanya memuat `user:password`. Menyimpannya di Firebase RTDB
 (yang dibaca klien) akan membocorkan kredensial kamera ke siapa pun yang membuka
@@ -758,8 +918,8 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
    tidak pernah dikirim ke peramban. Kata sandi lama yang pernah tertulis di kode masih
    ada di riwayat git — ganti kata sandi perangkat bila repo pernah dibagikan. Enkripsi
    kolom adalah pengerasan opsional.
-5. **Process list.** ffmpeg menerima URL RTSP sebagai argumen, jadi URL itu terlihat di
-   daftar proses mesin. Jangan jalankan backend di mesin multi-user.
+5. **Process list.** ffmpeg dan engine AI menerima URL RTSP sebagai argumen, jadi URL itu
+   terlihat di daftar proses mesin. Jangan jalankan backend di mesin multi-user.
 6. **Dependensi `requirements.txt`.** `Flask-Mail`, `google-generativeai`, `feedparser`,
    dan `pytz` tidak dipakai kode saat ini; `firebase-admin` sudah dipakai. Merapikannya
    belum termasuk pekerjaan ini.

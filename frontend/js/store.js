@@ -12,8 +12,9 @@
    Field `rtsp` SENGAJA tidak ada di daftar; hanya GET /api/nodes/<id>
    (header X-SK-Token) yang mengembalikannya untuk form edit.
 
-   AI status per node masih memakai localStorage sampai engine AI
-   tersambung ke backend.
+   AI status per node dibaca dari telemetri engine (RTDB `cam_<channel>`);
+   perubahan dikirim ke backend (`POST /api/nodes/<id>/ai`) yang menuliskannya
+   ke `cam_<channel>/ai_status`. localStorage hanya cache tampilan.
    ========================================================================== */
 
 (function (global) {
@@ -26,9 +27,10 @@
 
     const DEFAULT_AI = {
         lowlight: false,
-        lowlight_model: 'MirNet',
+        lowlight_variant: 'mobile_mirnet',
+        lowlight_model: 'Mobile-MIRNet',
         yolo: true,
-        yolo_model: 'YOLOv8n'
+        yolo_model: 'yolov8n.pt'
     };
 
     /* ---------------------------------------------------------------------
@@ -127,6 +129,7 @@
 
     let aiState = readJson(AI_KEY, {});
     if (typeof aiState !== 'object' || aiState === null) aiState = {};
+    let aiCatalogCache = null;
 
     /* ---------------------------------------------------------------------
        Event bus sederhana
@@ -366,7 +369,29 @@
         },
 
         getAi(id) {
-            return { ...DEFAULT_AI, ...(aiState[id] || {}) };
+            const saved = { ...DEFAULT_AI, ...(aiState[id] || {}) };
+            /* Keadaan yang benar-benar berjalan datang dari engine lewat
+               telemetri RTDB (cam_<channel>). localStorage hanya cadangan
+               sebelum engine mengirim snapshot pertama. */
+            const snap = liveSnapshots[id];
+            if (!snap || (!snap.lowlight_variant && !snap.status)) return saved;
+            return {
+                ...saved,
+                lowlight: !!snap.lowlight_variant && snap.lowlight_variant !== 'none',
+                lowlight_variant: snap.lowlight_variant || saved.lowlight_variant,
+                lowlight_model: snap.lowlight_model || saved.lowlight_model,
+                yolo: !!snap.deteksi_aktif,
+                yolo_model: snap.yolo_weights || saved.yolo_model,
+                online: (snap.status || 'OFFLINE') !== 'OFFLINE',
+                /* Telemetri beban kerja: perangkat yang benar-benar dipakai
+                   engine, laju deteksi, encoder, dan waktu model. */
+                device: snap.device || '',
+                encoder: snap.encoder || '',
+                detect_fps: snap.detect_fps || 0,
+                enhance_ms: snap.enhance_ms || 0,
+                yolo_ms: snap.yolo_ms || 0,
+                fps_in: snap.fps_in || 0
+            };
         },
 
         setAi(id, patch) {
@@ -374,6 +399,25 @@
             writeJson(AI_KEY, aiState);
             emit('ai:change', { id, ai: { ...aiState[id] } });
             return { ...aiState[id] };
+        },
+
+        /* --- Katalog & kontrol modul AI ---------------------------------
+           Sumber kebenaran tetap engine: peramban hanya mengirim permintaan
+           ke backend, backend menulis RTDB cam_<channel>/ai_status, engine
+           membaca dan melaporkan keadaan sebenarnya lewat cam_<channel>. */
+        async aiCatalog() {
+            if (aiCatalogCache) return aiCatalogCache;
+            aiCatalogCache = await apiRead('ai');
+            return aiCatalogCache;
+        },
+
+        async setAiRemote(id, patch) {
+            const result = await apiRequest('nodes/' + encodeURIComponent(id) + '/ai', {
+                method: 'POST',
+                body: JSON.stringify(patch)
+            });
+            emit('ai:change', { id, request: patch, result });
+            return result;
         },
 
         /* --- Telemetri (snapshot RTDB) --- */
