@@ -349,7 +349,7 @@
         },
 
         async remove(id) {
-            await apiRequest('nodes/' + encodeURIComponent(id), { method: 'DELETE' });
+            const res = await apiRequest('nodes/' + encodeURIComponent(id), { method: 'DELETE' });
 
             const before = nodes.length;
             nodes = nodes.filter(n => n.id !== id);
@@ -359,7 +359,47 @@
             writeJson(NODES_CACHE_KEY, nodes);
             writeJson(AI_KEY, aiState);
             emit('store:change', { type: 'delete', id });
-            return true;
+            /* Payload dikembalikan supaya pemanggil bisa memeriksa
+               `cleanup.errors` (sisa data Firebase yang gagal dihapus). */
+            return res || true;
+        },
+
+        /* --- Tempat sampah (soft delete node) ------------------------- */
+        /** Daftar node yang di tempat sampah (butuh fitur Command Center). */
+        async trash() {
+            const data = await apiRequest('nodes/trash');
+            return Array.isArray(data) ? data : [];
+        },
+
+        /** Pulihkan node; node aktif dinyalakan lagi oleh backend. */
+        async restore(id) {
+            const res = await apiRequest('nodes/' + encodeURIComponent(id) + '/restore', {
+                method: 'POST'
+            });
+            const node = res && res.node ? res.node : null;
+            if (node) {
+                const index = nodes.findIndex(n => n.id === node.id);
+                if (index >= 0) nodes[index] = node;
+                else nodes.push(node);
+                writeJson(NODES_CACHE_KEY, nodes);
+                emit('store:change', { type: 'restore', id });
+            }
+            return res || true;
+        },
+
+        /** Hapus permanen: baris, telemetri, dan statistik historis node. */
+        async purge(id) {
+            const res = await apiRequest('nodes/' + encodeURIComponent(id) + '/permanent', {
+                method: 'DELETE'
+            });
+            const before = nodes.length;
+            nodes = nodes.filter(n => n.id !== id);
+            delete aiState[id];
+            statsCache.clear();
+            if (nodes.length !== before) writeJson(NODES_CACHE_KEY, nodes);
+            writeJson(AI_KEY, aiState);
+            emit('store:change', { type: 'purge', id });
+            return res || true;
         },
 
 
@@ -627,7 +667,7 @@
             writeJson(NODES_CACHE_KEY, nodes);
             writeJson(AI_KEY, aiState);
             emit('store:change', { type: 'reset' });
-            return nodes;
+            return data || { nodes, cleanup: [] };
         }
     };
 

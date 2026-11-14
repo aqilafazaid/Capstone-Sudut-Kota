@@ -18,11 +18,11 @@ Halaman berjalan tanpa build step dan tanpa server Python: cukup HTML, CSS, dan 
 
 ## Navigasi
 
-Menu: **Dashboard · Stream · Statistik · Akun**, seluruhnya disuntikkan `js/app.js` sehingga bar-nya
-identik di semua halaman. **Beranda tidak lagi jadi item menu** — logo bundar + tulisan SUDUT KOTA di
-kiri navbar yang menjadi tautan ke `index.html` (dan diberi cincin biru saat halaman aktif).
+Menu: **Beranda · CCTV Live · Statistik · Dashboard · Akun**, seluruhnya disuntikkan `js/app.js`
+sehingga bar-nya identik di semua halaman. Logo bundar + tulisan SUDUT KOTA di kiri navbar juga
+menjadi tautan ke `index.html` (dan diberi cincin biru saat halaman aktif).
 
-- **Menu mengikuti field `akses` akun**, bukan peran mentah: Dashboard, Stream, Statistik,
+- **Menu mengikuti field `akses` akun**, bukan peran mentah: Dashboard, CCTV Live, Statistik,
   Akun, dan panel Modul AI muncul/hilang seketika saat login, logout, atau saat Administrator
   mengubah sakelar di Kelola Akun. Membuka halaman yang tidak diizinkan menampilkan panel
   “Akses Fitur Dinonaktifkan” di halaman itu sendiri (bukan redirect yang bisa memantul);
@@ -32,9 +32,11 @@ kiri navbar yang menjadi tautan ke `index.html` (dan diberi cincin biru saat hal
   Kecepatannya tetap ~55 px/detik berapa pun panjang teksnya dan berhenti saat kursor berada di atas
   bar. Bila sistem pengguna mengaktifkan `prefers-reduced-motion`, teks **tetap berjalan** dengan
   kecepatan diturunkan (40 px/detik).
-- **Kolom pencarian ada di dalam navbar** dan hanya dirender di halaman Stream, bukan di badan
-  halaman. Pada layar < 768 px kolom itu turun menjadi baris kedua di dalam kartu navbar yang sama,
-  lalu tautan menu dilipat ke hamburger.
+- **Pencarian ada di panel *Daftar Node***, bukan di navbar. Fungsinya menyaring daftar titik
+  kamera, jadi input itu duduk tepat di atas data yang disaring (`id="search-input"`, dibaca
+  `main.js`). Dulu ia berada di navbar; di sana kolom itu kehabisan ruang saat akun melihat kelima
+  menu (0 px pada 1024–1280 px, ~97 px pada 1440–1680 px) sehingga ikonnya menimpa tautan
+  "Beranda". Tidak ada lagi kolom pencarian di navbar maupun di panel menu ponsel.
 - **Judul tab seragam** — kesembilan halaman memakai pola `… | Sudut Kota Dishub Kota Pekalongan`,
   dengan awalan sesuai isi: `Beranda`, `LIVE CCTV`, `Statistik Lalin`, `Command Center`,
   `Kelola Akun`, `Otorisasi Petugas`, `Registrasi Petugas`, `Registrasi Node`, dan
@@ -45,7 +47,7 @@ kiri navbar yang menjadi tautan ke `index.html` (dan diberi cincin biru saat hal
 ## Tema
 
 **Bawaan gelap.** Tombol tema di navbar menyimpan pilihan di `localStorage` (`color-theme`) dan
-berlaku di semua halaman, termasuk Stream, Dashboard, dan Statistik — halaman console memakai
+berlaku di semua halaman, termasuk CCTV Live, Dashboard, dan Statistik — halaman console memakai
 variabel CSS `--sk-*` sehingga tidak ada lagi panel gelap yang tertinggal saat mode terang.
 
 ## Struktur
@@ -53,7 +55,7 @@ variabel CSS `--sk-*` sehingga tidak ada lagi panel gelap yang tertinggal saat m
 ```text
 Capstone-Sudut-Kota/
 ├── frontend/                  ← satu-satunya yang dideploy ke Vercel
-│   ├── *.html                 beranda, stream, statistik, dashboard, akun, auth
+│   ├── *.html                 beranda, cctv, statistik, dashboard, akun, auth
 │   ├── css/style.css
 │   ├── js/
 │   │   ├── config.js          alamat API/HLS (same-origin atau public-config)
@@ -64,13 +66,13 @@ Capstone-Sudut-Kota/
 │   │   ├── store.js           klien /api/nodes + /api/stats/* (tanpa simulasi)
 │   │   ├── app.js             navbar, tema, jam, toast
 │   │   └── …                  main.js, dashboard.js, add-data.js, akun.js, statistik.js, sosmed.js
-│   ├── data/instagram.json    ringkasan kiriman Instagram resmi (bukan data contoh)
-│   ├── asset/
+│   └── asset/                 logo, favicon, lambang Pemkot &amp; Dishub
 ├── backend/                   ← jalan di PC operator, tidak pernah di-deploy
 │   ├── app.py                 Flask API (127.0.0.1:5000)
 │   ├── auth.py                verifikasi Firebase ID token + peran
 │   ├── accounts.py            CRUD akun lewat Admin SDK + RTDB
 │   ├── nodes.py               penyimpanan SQLite + validasi RTSP
+│   ├── stats.py               kolektor sampel AI → agregat RTDB
 │   ├── social/instagram.py    scrape Instagram asli (Playwright) + cache
 │   ├── firebase_init.py       Admin SDK dari backend/.env
 │   ├── streamer/hls.py        fallback: RTSP → HLS (ffmpeg polos)
@@ -86,8 +88,12 @@ Capstone-Sudut-Kota/
 │   │   └── temp/              (gitignored)
 │   ├── data/sudutkota.db      konfigurasi kamera (gitignored)
 │   ├── media/hls/             keluaran stream per node (gitignored)
-│   ├── scripts/               sync_public_config.py, seed_accounts.py, apply_rtdb_rules.py,
-│   │                          prune_stats.py (bersihkan agregat RTDB yatim)
+│   ├── logs/                  backend.log (gitignored)
+│   ├── scripts/               funnel_serve.py (Funnel + sinkron konfigurasi),
+│   │                          sync_public_config.py, seed_accounts.py,
+│   │                          apply_rtdb_rules.py, prune_stats.py, audit_accounts.py,
+│   │                          encrypt_rtsp.py (enkripsi kolom rtsp, dry-run default),
+│   │                          purge_orphan_data.py (sisa node yatim: HLS/log/RTDB)
 │   ├── .env / .env.example
 │   └── requirements.txt
 ├── test/                       ← kode uji (gitignored + vercelignored, lokal saja)
@@ -253,7 +259,7 @@ Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 
 | Data | Lokasi | Catatan |
 |---|---|---|
-| Konfigurasi kamera (RTSP) | `backend/data/sudutkota.db` (SQLite) | sumber kebenaran; RTSP tidak pernah dikirim ke peramban |
+| Konfigurasi kamera (RTSP) | `backend/data/sudutkota.db` (SQLite) | sumber kebenaran; RTSP tidak pernah dikirim ke peramban. Kolom `rtsp` selalu terenkripsi AES-256-GCM (`enc:v2:…`) — lihat *Kunci enkripsi RTSP* |
 | Identitas operator | Firebase Authentication | email + kata sandi |
 | Profil & peran operator | RTDB `<RTDB_ROOT>/akun/<uid>` | ditulis backend lewat Admin SDK, bukan klien |
 | Statistik | RTDB `<RTDB_ROOT>/statistik/<tanggal>/<jam>/<node>` dan `<RTDB_ROOT>/statistik_harian/<tanggal>/<node>` | agregat sampel telemetri AI + agregat harian, ditulis kolektor backend. **Satu-satunya sumber angka**; tidak ada simulasi di peramban |
@@ -261,14 +267,33 @@ Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 | Alamat backend untuk Vercel | `vercel.json` → `rewrites` `/api` + `/hls`; `frontend/js/public-config.js` (`backendBase: ""`, `funnelBase`) | Halaman Vercel memakai origin sendiri; proxy Vercel yang meneruskan ke Funnel |
 
 Tidak ada node bawaan: tabel `nodes` mulai kosong dan backend tidak pernah menanam node
-sendiri. `POST /api/nodes/reset` mengosongkan direktori beserta folder HLS-nya.
+sendiri. `POST /api/nodes/reset` mengosongkan direktori beserta folder HLS-nya (permanen).
+
+Penghapusan per node memakai **dua tahap**. `DELETE /api/nodes/<id>` memindahkan node ke
+*tempat sampah*: kolom `nodes.deleted_at` diisi, baris SQLite dan URL RTSP tetap disimpan,
+node hilang dari `GET /api/nodes`, CCTV, dan statistik. `DELETE /api/nodes/<id>/permanent`
+menghapus baris itu beserta seluruh jejaknya. `POST /api/nodes/<id>/restore` mengembalikan
+node (dan riwayat statistiknya) dari tempat sampah. Akun operator mengikuti pola yang sama:
+`deleted_at` di profil RTDB + user Firebase `disabled=true`, sehingga akun di tempat sampah
+tidak bisa login walau token lamanya belum kedaluwarsa.
+
+**Kunci enkripsi RTSP.** Kolom `rtsp` dienkripsi **AES-256-GCM** dengan kunci 32 byte. Sumber
+kunci, berurutan: `NODE_SECRET` di `backend/.env` (base64 atau hex 32 byte) → berkas
+`backend/data/node_secret.key` yang dibuat otomatis bila variabel itu kosong. Ciphertext disimpan
+sebagai `enc:v2:` + base64(nonce 12 byte + tag/ciphertext), dan GCM menolak ciphertext yang
+diubah. **Mesin operator proyek ini memakai `NODE_SECRET` di `backend/.env`**, jadi berkas
+`node_secret.key` tidak dibuat. Kunci itu **wajib dicadangkan** bersama database: tanpa kunci
+yang sama, URL RTSP tidak bisa dibuka dan stream berhenti sampai URL diisi ulang lewat Dashboard.
+Baris lama yang masih teks biasa tetap terbaca; ubah semuanya dengan
+`backend/scripts/encrypt_rtsp.py --apply` (dry-run tanpa `--apply`), yang juga menjalankan
+`VACUUM` supaya sisa teks lama tidak tertinggal di free page.
 
 ### Sinkronisasi data
 
 | Data | Pemilik (satu-satunya) | Dibaca lewat |
 |---|---|---|
-| Node CCTV | `backend/data/sudutkota.db` (SQLite) | `GET /api/nodes`, cache `sudutkota.nodes.cache.v3` |
-| Akun | Firebase Auth (identitas) + RTDB `<RTDB_ROOT>/akun/<uid>` (profil, peran, `akses`) | `GET /api/akun/me`, `GET /api/akun` |
+| Node CCTV | `backend/data/sudutkota.db` (SQLite) | `GET /api/nodes`, cache `sudutkota.nodes.cache.v3`; yang di tempat sampah lewat `GET /api/nodes/trash` |
+| Akun | Firebase Auth (identitas) + RTDB `<RTDB_ROOT>/akun/<uid>` (profil, peran, `akses`, `deleted_at`) | `GET /api/akun/me`, `GET /api/akun`, `GET /api/akun?deleted=1` |
 | Statistik | RTDB `<RTDB_ROOT>/statistik*` | `GET /api/stats/telemetry` (agregat), `GET /api/stats/live` (snapshot) |
 
 Periksa ketiganya sekaligus (read-only):
@@ -422,7 +447,11 @@ Statistik:
   waktu nyata pada titik decode**. Engine menghitung `server_fps` = frame yang
   ditulis ke encoder ÷ detik nyata (jendela 2,5 dtk, `FpsMeter`); halaman CCTV
   menghitung angka yang sama dari `video.getVideoPlaybackQuality().totalVideoFrames`
-  dan menampilkannya di kartu **FPS**. `fps_in`, `enhance_ms`, `yolo_ms`,
+  dan menampilkannya di kartu **FPS** berlabel *Frame/detik di peramban* — bukan
+  laju rekam kamera. Panel narasi warga membaca angka yang sama lewat
+  `CctvPlayer.getFps()` (satu sumber, satu desimal); teksnya tidak lagi mengurai
+  isi kartu, karena `parseInt` pada teks `"23.5"` pernah menghasilkan `235`.
+  `fps_in`, `enhance_ms`, `yolo_ms`,
   `latency_ms` tetap dikirim terpisah ke RTDB `cam_<channel>` dan
   `media/hls/<node>/ai_stats.json`. Sejak jalur AI dipisah, `enhance_ms`/`yolo_ms`
   adalah waktu per frame **AI** (worker), bukan per frame tampilan.
@@ -484,15 +513,22 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 | GET | `/api/stats/live` | publik | snapshot terakhir tiap node dari RTDB (`cam_<channel>`) |
 | GET | `/api/ai` | publik | katalog varian low-light + bobot YOLO untuk panel kontrol |
 | GET | `/api/nodes/<id>` | teknisi, admin | detail + RTSP untuk form edit |
-| POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node |
+| POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node; `channel` wajib unik (digit, tanpa nol depan); DELETE = **soft delete** (masuk tempat sampah) + bersihkan HLS, log engine, telemetri live |
+| GET | `/api/nodes/trash` | teknisi, admin | daftar node di tempat sampah |
+| POST | `/api/nodes/<id>/restore` | teknisi, admin | pulihkan node dari tempat sampah (engine dinyalakan bila `aktif`) |
+| DELETE | `/api/nodes/<id>/permanent` | teknisi, admin | hapus permanen: baris, log, telemetri, dan seluruh agregat statistik |
 | POST | `/api/nodes/<id>/ai` | teknisi, admin | tulis `cam_<channel>/ai_status` (low-light on/off, model, YOLO) |
 | POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
 | GET | `/api/status` | teknisi, admin | path database, daftar model |
 | POST | `/api/nodes/reset` | teknisi, admin | kosongkan direktori node + folder HLS |
 | GET | `/api/sosmed/instagram?page=N&per_page=6` | publik | kiriman Instagram asli (scrape + cache), berhalaman |
 | GET | `/api/sosmed/instagram/image/<code>.jpg` | publik | gambar kiriman yang disimpan backend |
+| GET | `/api/sosmed/instagram/avatar/<handle>.jpg` | publik | foto profil akun hasil scrape |
 | POST | `/api/stats/collect` | teknisi, admin | paksa satu sampel statistik |
-| GET/PUT/DELETE | `/api/akun[/<uid>]` | admin | kelola akun petugas |
+| GET/PUT/DELETE | `/api/akun[/<uid>]` | admin | kelola akun; DELETE = **soft delete** (user Firebase `disabled`) |
+| GET | `/api/akun?deleted=1` | admin | akun di tempat sampah |
+| POST | `/api/akun/<uid>/restore` | admin | aktifkan kembali akun dari tempat sampah |
+| DELETE | `/api/akun/<uid>/permanent` | admin | hapus identitas Firebase + profil (harus sudah soft delete) |
 | GET | `/api/akun/me` | login | profil sendiri |
 | POST | `/api/akun/self` | login | buat profil saat pendaftaran (peran visitor) |
 
@@ -525,7 +561,7 @@ dengan profil di RTDB `/akun/<uid>`:
 |---|---|---|
 | Administrator | `admin` | semua halaman, termasuk Kelola Akun |
 | Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, AI, dan reset |
-| Visitor | `visitor` | hanya Stream dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
+| Visitor | `visitor` | hanya CCTV Live dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
 
 **Akses fitur per akun.** Selain peran, setiap profil punya field
 `akses: { cctv, statistik, dashboard, ai, akun }`. Administrator mengaturnya lewat sakelar
@@ -590,6 +626,9 @@ Kata sandi diminta lewat prompt, tidak masuk riwayat shell.
    hanya dipakai mode lintas-origin (halaman 8787 dan `*.vercel.app` saat proxy dimatikan);
    jalur produksi memakai proxy same-origin.
 5. `cleanUrls` aktif, jadi `/cctv` dan `/cctv.html` sama-sama bekerja.
+6. `headers` di `vercel.json` memasang `X-Content-Type-Options`, `X-Frame-Options`,
+   `Referrer-Policy`, dan CSP minimum (`object-src`, `base-uri`, `frame-ancestors`,
+   `form-action`) — lihat *Kendala* poin 3. `/js/` dipaksa `must-revalidate`.
 
 Setelah deploy, uji dari luar mesin operator:
 
@@ -607,6 +646,43 @@ sendiri saat start. Direktori kamera diisi operator lewat **Dashboard → Tambah
 
 Tombol **Kosongkan direktori** (`POST /api/nodes/reset`, fitur `dashboard`) menghapus seluruh
 node beserta folder HLS-nya. Akun Firebase **tidak** ikut terhapus.
+
+### Hapus dua tahap (tempat sampah)
+
+`DELETE /api/nodes/<id>` **tidak** langsung menghapus baris. Node ditandai `nodes.deleted_at`,
+engine dihentikan, dan artefak sementara dibersihkan:
+
+- folder `backend/media/hls/<id>/`,
+- log engine `backend/media/hls/_logs/<id>.log`,
+- telemetri live RTDB `cam_<channel>` (termasuk `ai_status`).
+
+Baris SQLite (beserta URL RTSP terenkripsi) dan agregat statistik **disimpan**. Node hilang
+dari daftar aktif, CCTV, dan `/api/stats/telemetry` karena `stats.read_telemetry()` menyaring
+id yang tidak ada di direktori aktif. `POST /api/nodes/<id>/restore` mengembalikan node
+beserta riwayatnya dan menyalakan engine lagi bila `aktif`.
+
+`DELETE /api/nodes/<id>/permanent` — hanya untuk node yang sudah di tempat sampah —
+menghapus sisanya: baris SQLite, folder HLS, log engine, `cam_<channel>`, dan agregat
+`statistik/<tanggal>/<jam>/<node>` + `statistik_harian/<tanggal>/<node>`.
+
+Satu-satunya jejak yang sengaja **tidak** disentuh adalah baris historis di
+`backend/logs/backend.log`: itu log aplikasi bersama yang append-only, dipakai untuk audit.
+Log per-node (`_logs/<id>.log`) selalu ikut terhapus.
+
+### Channel unik
+
+`channel` adalah nomor kanal kamera dan menjadi kunci RTDB `cam_<channel>`. Backend
+menormalkannya ke digit saja tanpa nol di depan (`048` → `48`) dan menolak nilai non-angka
+(`400`). Satu channel hanya boleh dipakai satu node — **termasuk** node yang sedang di tempat
+sampah, karena channel itu akan bertabrakan begitu node dipulihkan. Pelanggaran dibalas `409`
+dengan menyebut ID node pemakainya. Indeks unik parsial `idx_nodes_channel` dipasang di SQLite
+sebagai pengaman terakhir (database lama yang sudah punya duplikat hanya diberi peringatan saat
+start; validasi API tetap menolak duplikat baru).
+
+Pembersihan RTDB bersifat best-effort: kalau koneksi Firebase gagal, node tetap terhapus dan
+path yang gagal dilaporkan di `cleanup.errors` (Dashboard menampilkan toast peringatan). Sisa
+dari versi lama atau penghapusan manual bisa dibersihkan dengan
+`backend/scripts/purge_orphan_data.py` (dry-run default, `--apply` untuk menghapus).
 
 - `localStorage['sudutkota.nodes.cache.v3']` — cache baca, bukan sumber kebenaran.
 - `localStorage['sudutkota.ai.v1']` — status AI lokal (belum tersinkron ke RTDB).
@@ -678,7 +754,7 @@ Auth.featureLabel(feature)       Auth.roleFeatures()    Auth.homeFor(role)
 ```
 
 Akun sudah sepenuhnya di Firebase Authentication + RTDB, dan statistik dibaca dari
-agregat RTDB lewat `Store.loadStats()`. Kartu kendaraan di halaman Stream memakai
+agregat RTDB lewat `Store.loadStats()`. Kartu kendaraan di halaman CCTV Live memakai
 `GET /api/stats/live` (snapshot `cam_<channel>` di RTDB) lewat
 `Store.subscribeTelemetry()`. Tidak ada angka simulasi di peramban; yang masih lokal
 hanya status toggle AI (`localStorage['sudutkota.ai.v1']`).
@@ -708,7 +784,7 @@ Ringkasan*. Panel ini **tidak** memanggil model — ia membaca angka yang sudah 
 `statistik.js` (KPI, label rentang, baris tabel) lewat `MutationObserver`, lalu menyusun kalimat.
 Karena itu ia otomatis ikut berubah saat periode diganti dan tidak menambah permintaan jaringan.
 Halaman CCTV punya padanan `#public-ai-info-panel` yang membaca kartu statistik live dengan pola
-yang sama.
+yang sama, tetapi memakai model kepadatan 30 detik — lihat *Arti angka lalu lintas*.
 
 Ekspor mengikuti **interval yang sedang dipilih**. Unduhan berisi satu interval saja (mis. `1 Hari`),
 kecuali bila yang dipilih **Seluruhnya** — berkasnya tetap memuat ketujuh interval plus tabel
@@ -765,6 +841,35 @@ AI sungguhan. Bila butuh mengosongkan arsip, pakai `backend/scripts/prune_stats.
 Rentang baca dibatasi `STATS_MAX_DAYS` hari (default 4000, cukup untuk periode
 "Seluruhnya").
 
+## Arti angka lalu lintas (kepadatan, bukan volume)
+
+Kamera hanya melihat satu bingkai: yang benar-benar terukur adalah **berapa kendaraan yang
+terlihat saat itu**, bukan berapa kendaraan yang melintas per jam. Engine belum melacak lintasan
+kendaraan (tracking ID), jadi tidak ada halaman yang boleh menyajikan angka arus kendaraan/jam.
+
+**Panel warga di CCTV** (`#public-ai-info-panel`) memakai model kepadatan:
+
+- kartu statistik disampel tiap **2 detik** (`SAMPLE_MS`), termasuk saat angkanya tidak berubah;
+- tiap sampel dikonversi ke **SMP**: motor 0,25 · mobil 1 · truk 1,3 · bus 1,3;
+- dirata-ratakan pada jendela **30 detik** terakhir (`WINDOW_MS`);
+- level baru dipakai setelah kandidat bertahan **10 detik** (`HOLD_MS`) dan hanya bergerak satu
+  tingkat per perubahan, supaya label tidak berkedip saat satu kendaraan masuk lalu keluar;
+- ambang SMP: `<2` Lengang · `2–5` Lancar · `5–9` Ramai Lancar · `9–14` Cukup Padat · `≥14` Padat.
+  Semua ambang ada di `LEVELS` dalam `cctv.html` — ubah di satu tempat itu bila sudut pandang
+  kamera berbeda;
+- saat modul AI tidak aktif, panel menyatakan "mode pantauan visual" dan tidak mengklaim AI
+  sedang menghitung (dulu teks itu muncul walau toggle AI dimatikan).
+
+Sebelumnya label dihitung dari satu bingkai dengan ambang 8/20/35 kendaraan: pada lalu lintas
+sepi terukur **8 perubahan label dalam 60 detik**, karena satu mobil yang lewat sudah membalik
+"Lengang" ↔ "Lancar", dan truk dihitung sama dengan sepeda motor.
+
+**Ringkasan AI di Statistik** memakai angka agregat yang berbeda sifat: `total` adalah
+**penjumlahan pembacaan tiap sampel** (`STATS_SAMPLE_SECONDS`, default 60 detik), sehingga satu
+kendaraan yang berhenti di layar ikut terhitung di setiap sampel. Karena itu panel menulis
+"kendaraan terdeteksi", bukan "kendaraan melintas", dan tidak mengklaim jumlah kendaraan unik.
+Untuk volume kendaraan/jam dibutuhkan pelacakan lintasan yang belum ada di engine.
+
 ## Pengujian
 
 Seluruh kode uji, audit, dan diagnosa berada di `test/` di root repo. Direktori itu
@@ -783,6 +888,20 @@ backend/.venv/Scripts/python.exe test/test_hls_ffmpeg_e2e.py   # HLS ffmpeg polo
 backend/.venv/Scripts/python.exe test/test_ai_models.py        # 6 enhancer + YOLO: strict load, FPS
 backend/.venv/Scripts/python.exe test/test_ai_engine_e2e.py    # file gelap -> HLS AI + ai_stats
 backend/.venv/Scripts/python.exe test/test_ai_control.py       # katalog AI + POST ai_status (mock RTDB)
+backend/.venv/Scripts/python.exe test/test_sosmed_feed.py      # pagination + cache + sanitasi feed Instagram
+backend/.venv/Scripts/python.exe test/test_hls_sink_rate.py    # server_fps == laju frame yang tampil
+backend/.venv/Scripts/python.exe test/test_rtsp_crypto.py      # AES-256-GCM: enkripsi, dekripsi, tamper, kunci
+backend/.venv/Scripts/python.exe test/test_rtsp_crud_api.py    # CRUD /api/nodes: disk terenkripsi, GET terdekripsi
+backend/.venv/Scripts/python.exe test/test_purge_node.py       # purge_node: cam_<ch> + agregat jam/harian
+backend/.venv/Scripts/python.exe test/test_node_delete_cleanup.py # siklus soft delete -> restore -> permanen
+backend/.venv/Scripts/python.exe test/test_soft_delete_accounts.py # akun: soft delete, guard, restore, permanen
+backend/.venv/Scripts/python.exe test/test_soft_delete_api.py      # endpoint /api/akun tempat sampah
+backend/.venv/Scripts/python.exe test/test_channel_unique.py      # channel kanonik + unik (termasuk tempat sampah)
+backend/.venv/Scripts/python.exe test/test_stats_trash_filter.py   # statistik node di tempat sampah disembunyikan
+
+# profiling (bukan uji lulus/gagal, mencetak angka)
+backend/.venv/Scripts/python.exe test/probe_hls_rate.py        # CFR -r vs wallclock pada HlsSink
+backend/.venv/Scripts/python.exe test/profile_ai_pipeline.py   # waktu per tahap pipeline AI
 
 # diagnosa read-only (butuh backend/.env berisi kredensial)
 backend/.venv/Scripts/python.exe test/check_auth_cfg.py        # authorized domains + provider
@@ -804,8 +923,8 @@ Aturan yang dipakai:
 
 ## Cache aset lokal
 
-Semua referensi aset lokal di HTML memakai query versi, misalnya `css/style.css?v=20261113f` dan
-`js/app.js?v=20261113f`. Tujuannya: server statis (nginx maupun `python -m http.server`) tidak
+Semua referensi aset lokal di HTML memakai query versi, misalnya `css/style.css?v=20261114s` dan
+`js/app.js?v=20261114s`. Tujuannya: server statis (nginx maupun `python -m http.server`) tidak
 mengirim `Cache-Control` untuk aset, sehingga peramban bisa menyajikan versi lama setelah berkas
 diubah. **Setiap kali `css/` atau `js/` diedit, naikkan angka versi itu di kesembilan halaman**
 (cari `?v=`); cukup satu penggantian global.
@@ -827,8 +946,9 @@ itu tertinggal satu frame (64 px saat navbar sudah 80 px) dan membuat kartu pert
 Titik penyesuaian utama:
 
 - **Navbar** — logo mengecil di ponsel (`text-base`), tombol 36 px, dan pada <640 px tombol Keluar
-  pindah ke menu ponsel supaya satu baris tetap muat; tautan desktop baru muncul di ≥1024 px dan
-  baris tidak lagi melipat di 768–1023 px (`md:flex-nowrap` + pencarian `md:min-w-0`).
+  pindah ke menu ponsel supaya satu baris tetap muat; tautan desktop baru muncul di ≥1024 px, dan
+  sapaan + nama pengguna baru tampil di ≥1280 px. Kelima tautan (akun penuh) muat di satu baris
+  karena kolom pencarian sudah pindah ke panel *Daftar Node*.
 - **Kontainer** — `.sk-shell` (`max-width: 1400px`) naik ke 1600 px pada ≥1920 px dan 1760 px pada
   ≥2400 px, jadi konten tidak mengambang kecil di tengah monitor ultrawide.
 - **Jarak antar-bagian** — section beranda `py-6 md:py-8` (24/32 px tiap sisi → 48/64 px antar
@@ -853,6 +973,8 @@ Titik penyesuaian utama:
   maju, 0 stall).
 - **Dashboard** — di bawah 768 px tabel 5 kolom diganti kartu per node: nama, id/channel, status,
   zona/jalan, badge AI, dan tombol Edit/Hapus berlabel. Tabel tetap dipakai pada layar lebar.
+  Tombol **Tempat sampah (n)** membuka panel node terhapus dengan aksi Pulihkan / Hapus permanen;
+  di layar sempit panelnya menumpuk tombol di bawah identitas node.
 - **Statistik** — kolom kontrol judul menumpuk dengan tepi kiri sejajar di bawah 1280 px.
 - **Layar pendek** (<520 px tinggi, mis. ponsel landscape) — padding atas `main` dan `glass-card`
   dirapatkan agar konten tidak terdorong keluar layar.
@@ -881,6 +1003,12 @@ Fitur:
   `true`, hanya boolean `false` yang mencabut.
 - CRUD lewat modal: tambah, ubah, hapus. Peran yang tersedia hanya **Administrator, Teknisi, dan
   Visitor** — tidak ada peran lain, dan `auth.js` menolak nilai di luar ketiganya (jatuh ke Visitor).
+- **Hapus = tempat sampah.** `DELETE /api/akun/<uid>` mengisi `deleted_at` di profil RTDB dan
+  menonaktifkan user Firebase (`disabled=true`) tanpa menghapus identitasnya. Tombol
+  **Tempat sampah (n)** menampilkan akun yang dihapus dengan aksi **Pulihkan** (`POST
+  /api/akun/<uid>/restore`, `disabled=false`) dan **Hapus permanen** (`DELETE
+  /api/akun/<uid>/permanent`, `delete_user` + hapus profil). Akun di tempat sampah ditolak
+  `auth.authenticate()` dengan 403 walau token lamanya masih berlaku.
 - Aturan yang ditegakkan di backend, bukan hanya di UI: username dan NIP harus unik, kata sandi
   minimal 6 karakter, akun yang sedang dipakai tidak bisa dihapus, minimal satu Administrator
   harus tersisa, dan Administrator tidak bisa mencabut fitur `akun` dari akunnya sendiri
@@ -895,7 +1023,7 @@ mengembalikan `{ ok, user?, error? }` untuk operasi tulis.
 
 ## Sumber stream: satu RTSP
 
-Setiap node menyimpan satu URL: `rtsp` (kolom `rtsp` di SQLite). Halaman Stream
+Setiap node menyimpan satu URL: `rtsp` (kolom `rtsp` di SQLite). Halaman CCTV Live
 memutar `hls_url` yang diturunkan backend (`/hls/<id>/index.m3u8`). Tidak ada lagi
 `url_m3u8`, `url_ai`, atau `url_non_ai`.
 
@@ -906,6 +1034,9 @@ memutar `hls_url` yang diturunkan backend (`/hls/<id>/index.m3u8`). Tidak ada la
   form edit dan membutuhkan ID token Firebase (`Authorization: Bearer`) plus fitur `dashboard`.
 - Peramban tidak pernah membuka RTSP. URL HLS satu: `/hls/<id>/index.m3u8`; engine AI
   menulis ke folder node yang sama, jadi tidak ada dua URL yang harus dipilih
+- Engine AI menerima URL lewat environment `RTSP_URL` pada proses anak, bukan `--input`,
+  supaya sandi kamera tidak ikut tercetak di daftar proses. Jalur cadangan
+  `streamer/hls.py` masih menyerahkannya sebagai argumen ffmpeg (`-i`).
 
 Alasannya: URL RTSP biasanya memuat `user:password`. Menyimpannya di Firebase RTDB
 (yang dibaca klien) akan membocorkan kredensial kamera ke siapa pun yang membuka
@@ -913,24 +1044,41 @@ devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
 
 ## Kendala yang masih terbuka
 
-1. **Provider Email/Password harus diaktifkan** di Firebase Console → Authentication →
-   Sign-in method. Tanpa itu login membalas `auth/operation-not-allowed`.
-2. **Ingress publik.** Halaman Vercel berjalan di HTTPS; backend dijangkau lewat HTTPS
-   juga. Jalur aktif: `tailscale funnel --bg 8080` → nginx:8080, dinyalakan dan dimatikan
-   oleh `start-backend.bat`. Flask tetap di loopback dan tidak pernah dipublikasikan.
-3. **Direktori node kosong.** Tidak ada seed; tambahkan kamera lewat Dashboard
-   (`Tambah Data`). `POST /api/nodes/reset` justru mengosongkan direktori.
-4. **Kredensial RTSP.** URL RTSP tersimpan plaintext di `backend/data/sudutkota.db` dan
-   tidak pernah dikirim ke peramban. Kata sandi lama yang pernah tertulis di kode masih
-   ada di riwayat git — ganti kata sandi perangkat bila repo pernah dibagikan. Enkripsi
-   kolom adalah pengerasan opsional.
-5. **Process list.** ffmpeg dan engine AI menerima URL RTSP sebagai argumen, jadi URL itu
-   terlihat di daftar proses mesin. Jangan jalankan backend di mesin multi-user.
-6. **Dependensi `requirements.txt`.** `Flask-Mail`, `google-generativeai`, `feedparser`,
-   dan `pytz` tidak dipakai kode saat ini; `firebase-admin` sudah dipakai. Merapikannya
-   belum termasuk pekerjaan ini.
-7. **CSP belum dipasang.** Situs memuat `cdn.tailwindcss.com` (JIT, butuh `unsafe-eval`)
-   dan banyak script inline; CSP yang benar menuntut build step lebih dulu.
-8. **Kredensial awal.** Halaman login tidak lagi menampilkan akun demo. Kata sandi akun
-   bootstrap harus diganti setelah serah terima, tidak boleh ditulis di repo, dan akun
-   yatim dapat diperiksa dengan `python scripts/audit_accounts.py`.
+Tiga hal ini belum bisa ditutup dari dalam repo.
+
+1. **Jalur cadangan ffmpeg masih menerima URL RTSP di argumen.** Engine AI (default
+   `AI_ENGINE=true`) kini mengirim RTSP lewat environment proses anak, jadi URL tidak lagi
+   terlihat di daftar proses. `streamer/hls.py` (dipakai hanya bila engine AI tidak tersedia)
+   tetap memakai `-i rtsp://…` karena ffmpeg tidak punya cara lain menerima input jaringan.
+   Jalankan backend di mesin single-user dan utamakan engine AI.
+2. **CSP baru sebatas direktif yang aman.** `object-src 'none'; base-uri 'self';
+   frame-ancestors 'self'; form-action 'self'` sudah dipasang di nginx dan `vercel.json`.
+   Allowlist ketat untuk `script-src`/`connect-src` belum bisa: halaman memuat Tailwind dari
+   CDN (JIT, butuh `unsafe-eval`) dan puluhan script inline, jadi perlu build step lebih
+   dulu.
+3. **Kredensial awal.** Halaman login tidak menampilkan akun demo. Kata sandi akun bootstrap
+   harus diganti setelah serah terima dan tidak ditulis di repo; akun yatim diperiksa dengan
+   `python scripts/audit_accounts.py`. Mengganti kata sandi tetap butuh akses ke akun itu
+   sendiri — tidak bisa dari repo.
+
+Catatan konfigurasi Firebase (bukan kode): provider **Email/Password sudah aktif**
+(`test/check_auth_cfg.py` → `email.password: true`). Authorized domains saat ini
+`localhost`, `adminsudutkota.firebaseapp.com`, dan `adminsudutkota.web.app`; tambahkan domain
+Vercel di Firebase Console bila memakai tautan reset kata sandi atau OAuth dari domain itu.
+
+### Yang sudah ditutup
+
+| Kendala lama | Penyelesaian | Cara memeriksa |
+|---|---|---|
+| Hapus node meninggalkan data | `DELETE /api/nodes/<id>` (soft) menghentikan engine dan membersihkan HLS, log `_logs/<id>.log`, serta telemetri `cam_<channel>`; `DELETE /api/nodes/<id>/permanent` menghapus baris SQLite + agregat `statistik`/`statistik_harian`; sisa lama dibereskan `scripts/purge_orphan_data.py` | `test_node_delete_cleanup.py` 20/20 · `test_purge_node.py` 18/18 · scan ulang: "tidak ada sisa data" |
+| Hapus tidak bisa dibatalkan | **Soft delete dua tahap** untuk node (`nodes.deleted_at`) dan akun (`deleted_at` + Firebase `disabled`), dengan `restore` dan `hapus permanen` di Dashboard/Akun | `test_soft_delete_accounts.py` 20/20 · `test_soft_delete_api.py` 24/24 · `test_node_delete_cleanup.py` 20/20 |
+| Channel node bisa bertabrakan | Channel dinormalkan ke digit tanpa nol depan dan dijaga unik (termasuk node di tempat sampah) + indeks unik parsial `idx_nodes_channel` | `test_channel_unique.py` 13/13 · E2E: create channel ganda → `409` |
+| CRUD belum diuji end-to-end | Uji E2E dengan akun admin sementara: node create/read/update/delete/restore/permanent dan akun create/read/update/delete/restore/permanent lewat nginx → backend → Firebase asli | 30/30 cek API + klik UI (panel tempat sampah, Pulihkan, Hapus permanen) |
+| URL RTSP tersimpan teks biasa di SQLite | CRUD menulis ciphertext **AES-256-GCM** (`enc:v2:`) dan mendekripsi saat dibaca; kunci 32 byte dari `NODE_SECRET` di `backend/.env` (atau `data/node_secret.key`); migrasi baris lama + `VACUUM` lewat `scripts/encrypt_rtsp.py` | `test_rtsp_crypto.py` 16/16 · `test_rtsp_crud_api.py` 21/21 · `grep -c "rtsp://" backend/data/sudutkota.db` = 0 |
+| Pencarian navbar bertabrakan dengan menu saat akun melihat kelima item | Input dipindah ke header panel *Daftar Node* (`#search-input`), `searchMarkup`/`bindMobileSearch` dihapus dari `app.js` | Tidak ada `#search-input` di dalam `nav`; baris navbar tidak meluap pada 1024–1920 px |
+| `requirements.txt` memuat 4 paket tak terpakai | `Flask-Mail`, `google-generativeai`, `feedparser`, `pytz` dihapus | `python -c "import flask, firebase_admin, playwright, requests, dotenv"` |
+| URL RTSP tampil di daftar proses | Engine AI menerima RTSP lewat `RTSP_URL` di environment, bukan `--input` | cmdline `main_ai.py` tidak lagi memuat `rtsp://` |
+| `/hls` sesekali 500 saat ffmpeg mengganti playlist | Route membaca isi berkas lalu menutup handle, dengan retry 4× dan 503 + `Retry-After` | `grep -c "failed to rename" backend/media/hls/<node>/engine.log` = 0 |
+| Belum ada CSP | Empat direktif aman di nginx + `vercel.json` | `curl -sI http://127.0.0.1:8080/cctv.html` → header `content-security-policy` |
+| Provider Email/Password "harus diaktifkan" | Ternyata sudah aktif | `python test/check_auth_cfg.py` → `email.password: true` |
+| Ingress publik dan direktori node kosong | Bukan cacat: Funnel diatur `funnel_serve.py`, dan tidak ada seed memang disengaja | README → *Menjalankan Project*, *Data node (tanpa seed)* |

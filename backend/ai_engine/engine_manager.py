@@ -40,6 +40,22 @@ def _truthy(value: str | None, default: bool = True) -> bool:
     return str(value).strip().lower() not in {"0", "false", "no", "off"}
 
 
+def purge_log(name: str) -> bool:
+    """Hapus berkas log engine milik node yang sudah dihapus.
+
+    Log ditulis oleh proses engine (``media/hls/_logs/<node>.log``). Tanpa
+    pembersihan ini, direktori node kosong tetapi berkas log-nya menumpuk.
+    """
+    path = LOG_ROOT / f"{str(name or '').strip()}.log"
+    if not path.name or path.name == ".log":
+        return False
+    try:
+        path.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
 def enabled() -> bool:
     """AI aktif kalau ``AI_ENGINE`` true/auto dan engine + bobot tersedia."""
     raw = os.environ.get("AI_ENGINE")
@@ -126,7 +142,9 @@ class AiStream:
                 str(ENGINE),
                 "--node-id", self.name,
                 "--channel", channel,
-                "--input", source_url,
+                # URL RTSP sengaja TIDAK dikirim sebagai argumen: daftar proses
+                # bisa dibaca pengguna lain dan URL itu memuat sandi kamera.
+                # main_ai.py mengambil RTSP_URL dari environment proses anak.
                 "--out", str(self.dir),
                 "--lowlight", self.variant,
                 # 0 = kanvas resolusi asli; AI bekerja di frame kecil terpisah.
@@ -146,7 +164,7 @@ class AiStream:
 
             log = open(self.log_path, "wb")
             try:
-                env = dict(os.environ, PYTHONUNBUFFERED="1")
+                env = dict(os.environ, PYTHONUNBUFFERED="1", RTSP_URL=source_url)
                 self.process = subprocess.Popen(
                     cmd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                     cwd=str(BACKEND_DIR), env=env,
@@ -170,6 +188,9 @@ class AiStream:
         with self._lock:
             if self.process is None:
                 return {"ok": True, "sudah_berhenti": True, **self.status()}
+            # Folder bisa sudah dihapus (mis. node dihapus saat engine hidup).
+            # Tanpa mkdir, penulisan flag gagal dan proses tidak pernah berhenti.
+            self.dir.mkdir(parents=True, exist_ok=True)
             (self.dir / "stop.flag").write_text("stop", encoding="utf-8")
             deadline = time.time() + 12
             while time.time() < deadline and self.running:

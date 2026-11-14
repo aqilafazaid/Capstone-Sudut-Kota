@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261113x">
+    <link rel="stylesheet" href="css/style.css?v=20261114s">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -53,10 +53,16 @@
                 </div>
             </div>
 
-            <button id="btn-add-user" type="button"
-                    class="action-btn shrink-0 px-6 py-3 bg-blue-600 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 border border-blue-400/50 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-user-plus"></i> Tambah Akun
-            </button>
+            <div class="flex items-center gap-2 shrink-0">
+                <button id="btn-akun-trash" type="button"
+                        class="action-btn px-4 py-3 sk-btn-ghost font-black uppercase tracking-wider text-[10px] rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trash-arrow-up"></i> Tempat sampah (<span id="akun-trash-count">0</span>)
+                </button>
+                <button id="btn-add-user" type="button"
+                        class="action-btn shrink-0 px-6 py-3 bg-blue-600 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 border border-blue-400/50 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Tambah Akun
+                </button>
+            </div>
         </div>
 
         <!-- RINGKASAN -->
@@ -141,6 +147,24 @@
                     <tbody id="user-table-body" class="sk-divide"></tbody>
                 </table>
             </div>
+
+            <!-- Tempat sampah akun (soft delete) -->
+            <section id="akun-trash-panel" class="hidden mt-6 rounded-2xl border border-dashed sk-line overflow-hidden">
+                <div class="flex items-center justify-between gap-3 px-4 py-3 border-b sk-line sk-panel-2">
+                    <h3 class="text-[10px] font-black uppercase tracking-widest sk-ink">
+                        <i class="fa-solid fa-trash-arrow-up text-amber-500"></i> Tempat sampah akun
+                    </h3>
+                    <button id="btn-akun-trash-close" type="button" class="text-[10px] font-bold sk-muted hover:text-red-500 uppercase tracking-widest transition">
+                        Tutup
+                    </button>
+                </div>
+                <div id="akun-trash-list" class="sk-divide text-sm"></div>
+                <p class="px-4 py-3 text-[11px] sk-muted border-t sk-line">
+                    Akun di sini tidak bisa login dan tidak muncul di daftar. Profil serta NIP-nya
+                    disimpan untuk dipulihkan.
+                    <strong class="sk-ink">Hapus permanen menghapus identitas Firebase dan tidak dapat dibatalkan.</strong>
+                </p>
+            </section>
 
             <p class="text-[10px] sk-muted mt-4 leading-relaxed">
                 <i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i>
@@ -246,14 +270,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261113x"></script>
-<script src="js/firebase-config.js?v=20261113x"></script>
-<script src="js/firebase-client.js?v=20261113x"></script>
-<script src="js/config.js?v=20261113x"></script>
+<script src="js/public-config.js?v=20261114s"></script>
+<script src="js/firebase-config.js?v=20261114s"></script>
+<script src="js/firebase-client.js?v=20261114s"></script>
+<script src="js/config.js?v=20261114s"></script>
 
-<script src="js/store.js?v=20261113x"></script>
-<script src="js/auth.js?v=20261113x"></script>
-<script src="js/app.js?v=20261113x"></script>
-<script src="js/akun.js?v=20261113x"></script>
+<script src="js/store.js?v=20261114s"></script>
+<script src="js/auth.js?v=20261114s"></script>
+<script src="js/app.js?v=20261114s"></script>
+<script src="js/akun.js?v=20261114s"></script>
 </body>
 </html>

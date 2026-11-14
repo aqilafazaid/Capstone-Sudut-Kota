@@ -148,24 +148,33 @@ def _profile(uid: str, raw: dict[str, Any] | None) -> dict[str, Any]:
         "akses": effective_akses(peran, data.get("akses")),
         "created_at": str(data.get("created_at") or ""),
         "updated_at": str(data.get("updated_at") or ""),
+        "deleted_at": str(data.get("deleted_at") or ""),
+        "dihapus": bool(data.get("deleted_at")),
     }
 
 
-def list_accounts() -> list[dict[str, Any]]:
+def list_accounts(include_deleted: bool = False, only_deleted: bool = False) -> list[dict[str, Any]]:
     data = _ref("akun").get() or {}
     if not isinstance(data, dict):
         return []
     items = [_profile(uid, raw) for uid, raw in data.items() if isinstance(raw, dict)]
+    if only_deleted:
+        items = [item for item in items if item["dihapus"]]
+    elif not include_deleted:
+        items = [item for item in items if not item["dihapus"]]
     rank = {"admin": 0, "teknisi": 1, "visitor": 2}
     items.sort(key=lambda a: (rank.get(a["peran"], 9), a["nama"].lower()))
     return items
 
 
-def get_account(uid: str) -> dict[str, Any]:
+def get_account(uid: str, include_deleted: bool = True) -> dict[str, Any]:
     raw = _ref("akun", uid).get()
     if not isinstance(raw, dict) or not raw:
         raise AccountError("Akun tidak ditemukan.", 404)
-    return _profile(uid, raw)
+    profile = _profile(uid, raw)
+    if profile["dihapus"] and not include_deleted:
+        raise AccountError("Akun berada di tempat sampah.", 404)
+    return profile
 
 
 def _unique(accounts: list[dict[str, Any]], field: str, value: str, skip_uid: str = "") -> None:
@@ -188,13 +197,16 @@ def ensure_self_profile(uid: str, email: str, payload: Any) -> dict[str, Any]:
     """
     existing = _ref("akun", uid).get()
     if isinstance(existing, dict) and existing:
-        return _profile(uid, existing)
+        profile = _profile(uid, existing)
+        if profile["dihapus"]:
+            raise AccountError("Akun ini dinonaktifkan Administrator.", 403)
+        return profile
 
     body = payload if isinstance(payload, dict) else {}
     nama = _text(body.get("nama") or email.split("@")[0], "Nama", required=True)
     username = _text(body.get("username") or email.split("@")[0], "Username", max_len=40).lower()
 
-    accounts = list_accounts()
+    accounts = list_accounts(include_deleted=True)
     _unique(accounts, "username", username)
 
     now = _now()
@@ -224,7 +236,7 @@ def create_account(payload: Any) -> dict[str, Any]:
     password = _password(payload.get("password"), required=True)
     peran = _peran(payload.get("peran"))
 
-    accounts = list_accounts()
+    accounts = list_accounts(include_deleted=True)
     _unique(accounts, "username", username)
     _unique(accounts, "email", email)
     nip = _auto_nip(peran, accounts)
@@ -270,7 +282,9 @@ def update_account(uid: str, payload: Any, requester_uid: str = "") -> dict[str,
     from firebase_admin import auth as fb_auth
 
     current = get_account(uid)
-    accounts = list_accounts()
+    if current["dihapus"]:
+        raise AccountError("Akun ada di tempat sampah. Pulihkan dulu sebelum diubah.", 409)
+    accounts = list_accounts(include_deleted=True)
 
     nama = _text(payload.get("nama", current["nama"]), "Nama", required=True)
     username = _text(payload.get("username", current["username"]), "Username", max_len=40).lower()
@@ -284,7 +298,7 @@ def update_account(uid: str, payload: Any, requester_uid: str = "") -> dict[str,
     _unique(accounts, "username", username, skip_uid=uid)
     _unique(accounts, "nip", nip, skip_uid=uid)
 
-    admins = [a for a in accounts if a["peran"] == "admin"]
+    admins = [a for a in list_accounts() if a["peran"] == "admin"]
     if current["peran"] == "admin" and peran != "admin" and len(admins) <= 1:
         raise AccountError("Minimal harus ada satu Administrator.", 409)
 
@@ -332,9 +346,8 @@ def update_account(uid: str, payload: Any, requester_uid: str = "") -> dict[str,
     return _profile(uid, profile)
 
 
-def delete_account(uid: str, requester_uid: str) -> dict[str, Any]:
-    from firebase_admin import auth as fb_auth
-
+def _guard_delete(uid: str, requester_uid: str) -> dict[str, Any]:
+    """Aturan bersama hapus akun (soft & permanen)."""
     current = get_account(uid)
     if uid == requester_uid:
         raise AccountError("Tidak bisa menghapus akun yang sedang dipakai.", 409)
@@ -342,6 +355,67 @@ def delete_account(uid: str, requester_uid: str) -> dict[str, Any]:
     admins = [a for a in list_accounts() if a["peran"] == "admin"]
     if current["peran"] == "admin" and len(admins) <= 1:
         raise AccountError("Minimal harus ada satu Administrator.", 409)
+    return current
+
+
+def soft_delete_account(uid: str, requester_uid: str) -> dict[str, Any]:
+    """Pindahkan akun ke tempat sampah: profil tetap, login dinonaktifkan.
+
+    Identitas Firebase tidak dihapus, hanya ``disabled=True``, sehingga
+    restore tidak perlu membuat ulang akun (dan NIP/riwayatnya tetap).
+    """
+    from firebase_admin import auth as fb_auth
+
+    current = _guard_delete(uid, requester_uid)
+    if current["dihapus"]:
+        return current
+
+    try:
+        fb_auth.update_user(uid, disabled=True, app=_app())
+    except fb_auth.UserNotFoundError:
+        pass  # profil yatim tanpa identitas: tetap ditandai
+    except Exception as exc:
+        raise AccountError(
+            "Gagal menonaktifkan identitas Firebase; akun tidak diubah.", 502
+        ) from exc
+
+    now = _now()
+    _ref("akun", uid).update({"deleted_at": now, "updated_at": now})
+    auth.reset_cache()
+    return get_account(uid)
+
+
+def restore_account(uid: str) -> dict[str, Any]:
+    """Aktifkan kembali akun dari tempat sampah."""
+    from firebase_admin import auth as fb_auth
+
+    current = get_account(uid)
+    if not current["dihapus"]:
+        return current
+
+    try:
+        fb_auth.update_user(uid, disabled=False, app=_app())
+    except fb_auth.UserNotFoundError as exc:
+        raise AccountError(
+            "Identitas Firebase akun ini sudah tidak ada; pakai hapus permanen.", 409
+        ) from exc
+    except Exception as exc:
+        raise AccountError("Gagal mengaktifkan kembali identitas Firebase.", 502) from exc
+
+    _ref("akun", uid).update({"deleted_at": None, "updated_at": _now()})
+    auth.reset_cache()
+    return get_account(uid)
+
+
+def delete_account(uid: str, requester_uid: str) -> dict[str, Any]:
+    """Hapus permanen: hanya untuk akun yang sudah di tempat sampah."""
+    from firebase_admin import auth as fb_auth
+
+    current = _guard_delete(uid, requester_uid)
+    if not current["dihapus"]:
+        raise AccountError(
+            "Akun belum di tempat sampah. Hapus dulu (soft delete), baru hapus permanen.", 409
+        )
 
     # Identitas dihapus lebih dulu. Bila penghapusan profil gagal setelahnya,
     # yang tersisa hanyalah profil tanpa akses login — bukan akun Auth yatim
@@ -357,7 +431,7 @@ def delete_account(uid: str, requester_uid: str) -> dict[str, Any]:
 
     _ref("akun", uid).delete()
     auth.reset_cache()
-    return {"ok": True, "uid": uid}
+    return {"ok": True, "uid": uid, "permanent": True}
 
 
 def register_error_handlers(app) -> None:

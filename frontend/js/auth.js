@@ -143,7 +143,9 @@
             username: profile.username || '',
             email: email,
             role: peran,
-            akses: aksesOf(peran, profile.akses)
+            akses: aksesOf(peran, profile.akses),
+            deleted_at: profile.deleted_at || '',
+            dihapus: profile.dihapus === true || !!profile.deleted_at
         };
     }
 
@@ -174,8 +176,13 @@
             return 'Login berhasil, tetapi endpoint profil tidak ditemukan di ' + url +
                 ' (404). Periksa alamat backend (SK_CONFIG.backendBase) atau apakah profil akun ini ada.';
         }
-        if (err.status === 401 || err.status === 403) {
+        if (err.status === 401) {
             return 'Login berhasil, tetapi backend menolak token (' + err.status + ') di ' + url + '.';
+        }
+        if (err.status === 403) {
+            /* Mis. akun yang sudah dipindah ke tempat sampah: backend mengirim
+               pesan spesifik, tampilkan itu alih-alih "token ditolak". */
+            return err.message || ('Akun ini tidak punya akses ke ' + url + ' (403).');
         }
         return 'Login berhasil, tetapi backend ' + url + ' tidak bisa dihubungi (' + err.message + ').';
     }
@@ -451,8 +458,8 @@
 
         /* --- CRUD akun, khusus Administrator (lewat /api/akun) ----------- */
 
-        async list() {
-            const rows = await request('akun');
+        async list(termasukSampah) {
+            const rows = await request(termasukSampah ? 'akun?deleted=1' : 'akun');
             return (Array.isArray(rows) ? rows : [])
                 .map(function (row) { return normalize(row); })
                 .filter(Boolean)
@@ -497,6 +504,30 @@
             try {
                 await request('akun/' + encodeURIComponent(uid), { method: 'DELETE' });
                 return { ok: true };
+            } catch (err) {
+                return { ok: false, error: err.message };
+            }
+        },
+
+        /** Pulihkan akun dari tempat sampah (identitas Firebase aktif lagi). */
+        async restore(uid) {
+            try {
+                const profile = await request('akun/' + encodeURIComponent(uid) + '/restore', {
+                    method: 'POST'
+                });
+                return { ok: true, user: normalize(profile) };
+            } catch (err) {
+                return { ok: false, error: err.message };
+            }
+        },
+
+        /** Hapus permanen akun (Auth + profil RTDB). */
+        async purge(uid) {
+            try {
+                const res = await request('akun/' + encodeURIComponent(uid) + '/permanent', {
+                    method: 'DELETE'
+                });
+                return { ok: true, detail: res };
             } catch (err) {
                 return { ok: false, error: err.message };
             }

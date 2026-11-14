@@ -12,7 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261114k">
+    <link rel="stylesheet" href="css/style.css?v=20261114s">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
 
     <script>
@@ -142,10 +142,10 @@
                         <div id="stat-total" class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">0</div>
                         <div class="text-[10px] sk-muted mt-1">Terdeteksi saat ini</div>
                     </div>
-                    <div class="stat-card p-4" title="Jumlah frame yang benar-benar didekode per detik nyata dari stream yang sedang diputar">
+                    <div class="stat-card p-4" title="Frame yang benar-benar didekode peramban per detik saat memutar stream ini — mengukur gambar yang tampil di perangkat Anda, bukan laju rekam kamera.">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">FPS</div>
                         <div id="stat-fps" class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">0</div>
-                        <div class="text-[10px] sk-muted mt-1">Frame didekode / detik</div>
+                        <div class="text-[10px] sk-muted mt-1">Frame/detik di peramban</div>
                     </div>
                 </div>
 
@@ -309,12 +309,22 @@
 
             <!-- SIDEBAR DAFTAR NODE -->
             <aside class="col-list sk-panel sk-line border rounded-2xl shadow-xl relative z-10 overflow-hidden">
-                <div class="p-5 sk-line border-b sk-panel sticky top-0 z-20 flex justify-between items-center gap-3 shadow-lg">
-                    <div>
-                        <h3 class="sk-ink font-black text-base uppercase tracking-widest">Daftar Node</h3>
-                        <p class="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-0.5">Pilih lokasi persimpangan untuk dipantau</p>
+                <div class="p-4 sk-line border-b sk-panel sticky top-0 z-20 shadow-lg">
+                    <div class="flex justify-between items-center gap-3">
+                        <div>
+                            <h3 class="sk-ink font-black text-base uppercase tracking-widest">Daftar Node</h3>
+                            <p class="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-0.5">Pilih lokasi persimpangan untuk dipantau</p>
+                        </div>
+                        <span id="total-cams" class="text-[11px] bg-gradient-to-r from-blue-800 to-blue-600 text-white px-3 py-1.5 rounded-lg font-black tracking-widest border border-blue-400/50 shrink-0">0 NODE</span>
                     </div>
-                    <span id="total-cams" class="text-[11px] bg-gradient-to-r from-blue-800 to-blue-600 text-white px-3 py-1.5 rounded-lg font-black tracking-widest border border-blue-400/50 shrink-0">0 NODE</span>
+                    <!-- Penyaring daftar node. Dulu input ini di navbar; di sana ia
+                         kehabisan ruang saat akun melihat kelima menu. -->
+                    <div class="relative mt-3">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        <input id="search-input" type="text" autocomplete="off" aria-label="Cari lokasi node"
+                               placeholder="Cari lokasi simpang / tiang..."
+                               class="w-full bg-slate-100 dark:bg-[#050a1f] border border-slate-300 dark:border-blue-900/60 text-slate-800 dark:text-white text-sm rounded-xl py-2.5 pl-10 pr-4 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition placeholder:text-slate-500">
+                    </div>
                 </div>
                 <div id="camera-list-container" class="list-scroll-area premium-scroll p-3 sk-panel-2 shadow-inner"></div>
                 <div class="p-4 sk-panel sk-line border-t text-center text-[10px] sk-muted font-bold tracking-widest uppercase">
@@ -330,17 +340,17 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261114k"></script>
-<script src="js/firebase-config.js?v=20261114k"></script>
-<script src="js/firebase-client.js?v=20261114k"></script>
-<script src="js/config.js?v=20261114k"></script>
+<script src="js/public-config.js?v=20261114s"></script>
+<script src="js/firebase-config.js?v=20261114s"></script>
+<script src="js/firebase-client.js?v=20261114s"></script>
+<script src="js/config.js?v=20261114s"></script>
 
-<script src="js/store.js?v=20261114k"></script>
-<script src="js/auth.js?v=20261114k"></script>
-<script src="js/app.js?v=20261114k"></script>
-<script src="js/main.js?v=20261114k"></script>
+<script src="js/store.js?v=20261114s"></script>
+<script src="js/auth.js?v=20261114s"></script>
+<script src="js/app.js?v=20261114s"></script>
+<script src="js/main.js?v=20261114s"></script>
 <script>
-    App.init({ active: 'cctv', search: true });
+    App.init({ active: 'cctv' });
     CctvPlayer.init();
 </script>
 <!-- Penghubung Narasi AI Bahasa Masyarakat untuk Live CCTV (non-intrusif terhadap main.js) -->
@@ -358,18 +368,126 @@
         return window.getComputedStyle(el).display !== 'none';
     };
 
+    /* --- Model kepadatan (bukan volume/arus) -----------------------------
+       Kamera hanya melihat satu bingkai: yang bisa diukur adalah berapa
+       kendaraan yang TERLIHAT saat itu. "Berapa kendaraan melintas per jam"
+       menuntut pelacakan lintasan yang tidak dimiliki engine ini, jadi panel
+       tidak boleh menyajikan angka arus. Snapshot 2 detik juga membuat label
+       berkedip (satu mobil masuk-keluar sudah membalik Lengang <-> Lancar),
+       maka:
+         - hitungan tiap kelas dikonversi ke SMP (motor 0,25; mobil 1;
+           truk 1,3; bus 1,3),
+         - dirata-ratakan pada jendela 30 detik terakhir,
+         - level baru dipakai setelah bertahan 10 detik, dan naik/turun satu
+           tingkat per perubahan (histeresis) supaya label tidak berkedip.
+       Ambang SMP di bawah dikalibrasi untuk bingkai 1080p node CCTV ini;
+       ubah di sini bila sudut pandang kameranya berbeda. */
+    const WINDOW_MS = 30000;
+    const HOLD_MS = 10000;
+    const SAMPLE_MS = 2000;
+    const SMP_WEIGHT = { mobil: 1, motor: 0.25, truk: 1.3, bus: 1.3 };
+    const LEVELS = [
+        { max: 2, badge: 'Lalu Lintas Lengang', tone: 'terpantau lengang' },
+        { max: 5, badge: 'Lalu Lintas Lancar', tone: 'terpantau lancar' },
+        { max: 9, badge: 'Lalu Lintas Ramai Lancar', tone: 'terpantau ramai lancar' },
+        { max: 14, badge: 'Lalu Lintas Cukup Padat', tone: 'mulai cukup padat' },
+        { max: Infinity, badge: 'Lalu Lintas Padat', tone: 'terpantau padat' }
+    ];
+
+    const density = { samples: 0, smp: 0, total: 0, mobil: 0, motor: 0, truk: 0, bus: 0 };
+    const densityHistory = [];
+    let densityCam = '';
+    let currentLevel = null;
+    let pendingLevel = null;
+    let pendingSince = 0;
+
+    const densityRead = () => ({
+        mobil: parseIntID(document.getElementById('stat-mobil')),
+        motor: parseIntID(document.getElementById('stat-motor')),
+        truk: parseIntID(document.getElementById('stat-truk')),
+        bus: parseIntID(document.getElementById('stat-bus'))
+    });
+
+    const densitySample = (camKey) => {
+        if (camKey !== densityCam) {   // node berganti: jendela lama tidak relevan
+            densityHistory.length = 0;
+            currentLevel = null;
+            pendingLevel = null;
+            densityCam = camKey;
+        }
+        const counts = densityRead();
+        const at = performance.now();
+        densityHistory.push({
+            at,
+            mobil: counts.mobil,
+            motor: counts.motor,
+            truk: counts.truk,
+            bus: counts.bus,
+            smp: counts.mobil * SMP_WEIGHT.mobil + counts.motor * SMP_WEIGHT.motor +
+                 counts.truk * SMP_WEIGHT.truk + counts.bus * SMP_WEIGHT.bus
+        });
+        while (densityHistory.length > 1 && at - densityHistory[0].at > WINDOW_MS) densityHistory.shift();
+
+        const n = densityHistory.length;
+        density.samples = n;
+        ['mobil', 'motor', 'truk', 'bus', 'smp'].forEach((key) => {
+            density[key] = densityHistory.reduce((sum, item) => sum + item[key], 0) / n;
+        });
+        density.total = density.mobil + density.motor + density.truk + density.bus;
+        return density;
+    };
+
+    const densityLevel = (smp) => LEVELS.find((item) => smp < item.max) || LEVELS[LEVELS.length - 1];
+
+    /* Histeresis: kandidat harus bertahan HOLD_MS sebelum dipakai, dan level
+       hanya bergerak satu tingkat per HOLD_MS. Tanpa aturan kedua, antrean
+       yang bubar bisa melompat "Cukup Padat" -> "Lengang" tanpa melewati
+       "Ramai Lancar"/"Lancar". */
+    const stableLevel = (smp) => {
+        const next = densityLevel(smp);
+        const at = performance.now();
+        if (!currentLevel) {
+            currentLevel = next;
+            pendingLevel = null;
+            return currentLevel;
+        }
+        if (next === currentLevel) {
+            pendingLevel = null;
+            return currentLevel;
+        }
+        if (pendingLevel !== next) {
+            pendingLevel = next;
+            pendingSince = at;
+            return currentLevel;
+        }
+        if (at - pendingSince >= HOLD_MS) {
+            const from = LEVELS.indexOf(currentLevel);
+            const to = LEVELS.indexOf(next);
+            currentLevel = LEVELS[from + (to > from ? 1 : -1)];
+            pendingLevel = null;
+            pendingSince = at;
+        }
+        return currentLevel;
+    };
+
     const updateCitizenLiveInsight = () => {
         const camName = (document.getElementById('active-cam-name')?.textContent || 'Kamera Belum Dipilih').trim();
         const camCity = (document.getElementById('active-cam-city')?.textContent || '').trim();
         const aiStatusText = (document.getElementById('ai-status-indicator')?.textContent || '').trim().toUpperCase();
         const streamMode = (document.getElementById('stream-mode-badge')?.textContent || '').trim();
 
-        const mobil = parseIntID(document.getElementById('stat-mobil'));
-        const motor = parseIntID(document.getElementById('stat-motor'));
-        const truk = parseIntID(document.getElementById('stat-truk'));
-        const bus = parseIntID(document.getElementById('stat-bus'));
-        const total = parseIntID(document.getElementById('stat-total'));
-        const fps = parseIntID(document.getElementById('stat-fps'));
+        /* Narasi memakai rata-rata 60 detik (model kepadatan), bukan angka
+           satu bingkai. Kartu statistik tetap menampilkan angka saat ini
+           karena labelnya "di layar". */
+        const d = density;
+
+        /* FPS dibaca dari CctvPlayer, sumber yang sama dengan kartu FPS.
+           Mengurai teks kartu ("23.5") dengan parseIntID menghasilkan 235,
+           itulah sebabnya narasi dulu menyebut angka yang berbeda. */
+        const fps = (window.CctvPlayer && typeof window.CctvPlayer.getFps === 'function')
+            ? window.CctvPlayer.getFps()
+            : 0;
+        const fpsLabel = fps > 0 ? `${fps.toFixed(1)} frame/detik` : '';
 
         const loadingVisible = isElementVisible(document.getElementById('overlay-loading'));
         const errorVisible = isElementVisible(document.getElementById('overlay-error'));
@@ -413,75 +531,58 @@
             return;
         }
 
-        // 3. Video Aktif tetapi Hitungan 0 (AI Standby atau Jalan Lengang)
-        if (total === 0) {
-            if (!isAiActive && fps === 0) {
-                if (elBadge) elBadge.textContent = 'Video Langsung Aktif';
-                elHeadline.textContent = `Siaran langsung di ${locationLabel} aktif (mode pantauan visual).`;
-                elDesc.textContent = 'Masyarakat dapat melihat kondisi jalan raya secara langsung melalui layar video di atas. Fitur penghitung otomatis kendaraan sedang dalam posisi siaga.';
-                elSituation.textContent = 'Pantauan visual langsung berjalan normal; angka penghitungan kendaraan otomatis belum diaktifkan pada kamera ini.';
-                elTech.textContent = `Status sistem: ${streamMode || 'Streaming Live'}. Kamera menampilkan kondisi jalan secara real-time untuk pemantauan Dishub dan warga.`;
-                elAdvice.textContent = 'Amati langsung kepadatan pada layar video di atas sebelum melintasi persimpangan ini.';
-            } else {
-                if (elBadge) elBadge.textContent = 'Lancar / Lengang';
-                elHeadline.textContent = `Arus lalu lintas di ${locationLabel} terpantau sangat lengang.`;
-                elDesc.textContent = 'Kamera AI aktif memantau persimpangan dan saat ini belum mendeteksi antrean maupun kepadatan kendaraan yang melintas.';
-                elSituation.textContent = 'Tidak ada penumpukan mobil, sepeda motor, truk, maupun bus pada tangkapan layar saat ini.';
-                elTech.textContent = `Tayangan diputar ${fps > 0 ? 'pada ' + fps + ' frame/detik' : 'secara real-time'}; AI mengenali kendaraan yang lewat.`;
-                elAdvice.textContent = 'Jalur terpantau lancar untuk dilalui. Tetap patuhi batas kecepatan dan rambu lalu lintas.';
-            }
+        // 3. Modul AI tidak aktif: jangan klaim AI sedang menghitung
+        if (!isAiActive) {
+            if (elBadge) elBadge.textContent = 'Video Langsung Aktif';
+            elHeadline.textContent = `Siaran langsung di ${locationLabel} aktif (mode pantauan visual).`;
+            elDesc.textContent = 'Masyarakat dapat melihat kondisi jalan raya secara langsung melalui layar video di atas. Fitur penghitung otomatis kendaraan sedang tidak aktif pada kamera ini.';
+            elSituation.textContent = 'Pantauan visual langsung berjalan normal; angka kepadatan otomatis tidak tersedia tanpa modul AI.';
+            elTech.textContent = `Status sistem: ${streamMode || 'Streaming Live'}. Kamera menampilkan kondisi jalan secara real-time untuk pemantauan Dishub dan warga.`;
+            elAdvice.textContent = 'Amati langsung kepadatan pada layar video di atas sebelum melintasi persimpangan ini.';
             return;
         }
 
-        // 4. Video Aktif & Ada Kendaraan Terdeteksi
-        let level = 'Ramai Lancar';
-        let summaryTone = 'terpantau ramai lancar';
-        if (total <= 8) {
-            level = 'Lancar';
-            summaryTone = 'terpantau lancar';
-        } else if (total <= 20) {
-            level = 'Ramai Lancar';
-            summaryTone = 'terpantau ramai lancar';
-        } else if (total <= 35) {
-            level = 'Cukup Padat';
-            summaryTone = 'mulai cukup padat';
-        } else {
-            level = 'Padat';
-            summaryTone = 'terpantau padat kendaraan';
-        }
+        // 4. AI aktif: level dari rata-rata SMP 60 detik terakhir
+        const level = stableLevel(d.smp);
+        const fmtNum = (value) => value.toLocaleString('id-ID', { maximumFractionDigits: 1 });
+        const windowSec = Math.round(WINDOW_MS / 1000);
 
         const classes = [
-            { name: 'sepeda motor', count: motor },
-            { name: 'mobil pribadi', count: mobil },
-            { name: 'truk angkutan', count: truk },
-            { name: 'bus', count: bus }
+            { name: 'sepeda motor', count: d.motor },
+            { name: 'mobil pribadi', count: d.mobil },
+            { name: 'truk angkutan', count: d.truk },
+            { name: 'bus', count: d.bus }
         ].sort((a, b) => b.count - a.count);
 
         const dominant = classes[0];
-        const heavyCount = truk + bus;
+        const others = classes.slice(1).filter((item) => item.count >= 0.1);
+        const heavyCount = d.truk + d.bus;
 
-        if (elBadge) elBadge.textContent = `Arus ${level}`;
+        if (elBadge) elBadge.textContent = level.badge;
 
-        elHeadline.textContent = `Lalu lintas di ${locationLabel} ${summaryTone} (${total} kendaraan terdeteksi di layar).`;
-        elDesc.textContent = `Pembacaan kamera AI menunjukkan arus kendaraan didominasi oleh ${dominant.name} (${dominant.count} unit) dari total ${total} kendaraan yang sedang melintas di area pantauan.`;
+        elHeadline.textContent = d.total < 0.5
+            ? `Tidak ada kendaraan yang terlihat di ${locationLabel} selama ${windowSec} detik terakhir; ${level.tone}.`
+            : `Kondisi lalu lintas di ${locationLabel} ${level.tone}: rata-rata ${fmtNum(d.total)} kendaraan terlihat di layar selama ${windowSec} detik terakhir.`;
+
+        elDesc.textContent = d.total < 0.5
+            ? 'Kamera AI aktif memantau, tetapi tidak ada kendaraan yang masuk hitungan pada pembacaan terakhir. Jalur kemungkinan lengang, atau kendaraan berada di luar area deteksi.'
+            : `Rata-rata itu didominasi ${dominant.name} (${fmtNum(dominant.count)} unit)${others.length ? `, diikuti ${others.map((item) => `${item.name} ${fmtNum(item.count)}`).join(' dan ')}` : ''}. Angka ini menghitung kendaraan yang terlihat di layar, bukan kendaraan unik yang melintas.`;
 
         // Kartu 1: Situasi di Persimpangan
-        const breakdown = [];
-        if (motor > 0) breakdown.push(`${motor} motor`);
-        if (mobil > 0) breakdown.push(`${mobil} mobil`);
-        if (truk > 0) breakdown.push(`${truk} truk`);
-        if (bus > 0) breakdown.push(`${bus} bus`);
-        elSituation.textContent = `Terpantau di layar saat ini: ${breakdown.join(', ')}. ${heavyCount > 0 ? `Terdapat ${heavyCount} kendaraan besar melintas.` : 'Didominasi kendaraan ringan/pribadi.'}`;
+        elSituation.textContent = `Rata-rata di layar: ${fmtNum(d.mobil)} mobil, ${fmtNum(d.motor)} motor, ${fmtNum(d.truk)} truk, ${fmtNum(d.bus)} bus (≈${fmtNum(d.smp)} SMP). ${heavyCount >= 1 ? `Ada ${fmtNum(heavyCount)} kendaraan besar dalam pandangan kamera.` : (d.total >= 0.5 ? 'Didominasi kendaraan ringan/pribadi.' : 'Tidak ada kendaraan pada jendela ini.')}`;
 
         // Kartu 2: Cara Kerja Kamera AI
-        elTech.textContent = `Tayangan diputar ${fps > 0 ? 'pada ' + fps + ' FPS' : 'secara real-time'}; AI memisahkan jenis kendaraan secara otomatis tanpa merekam pelat nomor atau wajah.`;
+        elTech.textContent = (fps > 0
+            ? `Tayangan live tampil di peramban ini pada ${fpsLabel}. `
+            : 'Tayangan live berjalan di peramban ini. ') +
+            `AI memisahkan jenis kendaraan tanpa merekam pelat nomor atau wajah; panel ini merangkum kepadatan rata-rata ${windowSec} detik, bukan volume kendaraan per jam.`;
 
         // Kartu 3: Saran untuk Pengendara
-        if (total > 35) {
+        if (d.smp >= 14) {
             elAdvice.textContent = `Kepadatan tinggi di sekitar ${camName}. Pengendara disarankan bersabar, menjaga jarak aman, atau mempertimbangkan jalur alternatif.`;
-        } else if (heavyCount >= 3) {
-            elAdvice.textContent = 'Cukup banyak truk/bus melintas di persimpangan ini. Beri ruang manuver yang cukup dan hindari menyalip dari titik buta.';
-        } else if (motor > mobil * 2) {
+        } else if (heavyCount >= 1.5) {
+            elAdvice.textContent = 'Cukup banyak truk/bus di area pantauan. Beri ruang manuver yang cukup dan hindari menyalip dari titik buta.';
+        } else if (d.motor >= 1 && d.motor > d.mobil * 2) {
             elAdvice.textContent = 'Arus sepeda motor cukup tinggi. Tetap gunakan lampu sein saat berbelok dan perhatikan lajur kiri di persimpangan.';
         } else {
             elAdvice.textContent = `Kondisi ${camName} kondusif untuk dilalui. Tetap ikuti isyarat lampu lalu lintas dan marka jalan.`;
@@ -493,6 +594,23 @@
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(updateCitizenLiveInsight, 160);
     };
+
+    /* Sampler tetap: satu sampel tiap 2 dtk, termasuk saat angka tidak berubah
+       (MutationObserver tidak terpicu bila teks kartu sama). Saat video belum
+       tampil atau error, jendela dikosongkan supaya angka lama tidak
+       tertinggal. */
+    setInterval(() => {
+        const belumSiap = isElementVisible(document.getElementById('overlay-error')) ||
+                          isElementVisible(document.getElementById('overlay-loading'));
+        if (belumSiap) {
+            densityHistory.length = 0;
+            currentLevel = null;
+            pendingLevel = null;
+        } else {
+            densitySample((document.getElementById('active-cam-name')?.textContent || '').trim());
+        }
+        updateCitizenLiveInsight();
+    }, SAMPLE_MS);
 
     const textIds = [
         'active-cam-name', 'active-cam-city', 'ai-status-indicator',

@@ -20,6 +20,8 @@
 
     /** Cache daftar akun dari /api/akun; halaman ini tidak menulis RTDB. */
     let accounts = [];
+    /** Isi tempat sampah (akun yang di-soft delete). */
+    let trashAccounts = [];
 
     const el = {
         total: document.getElementById('sum-total'),
@@ -33,6 +35,11 @@
         tableBody: document.getElementById('user-table-body'),
         addBtn: document.getElementById('btn-add-user'),
         resetBtn: document.getElementById('btn-reset-accounts'),
+        trashToggle: document.getElementById('btn-akun-trash'),
+        trashClose: document.getElementById('btn-akun-trash-close'),
+        trashPanel: document.getElementById('akun-trash-panel'),
+        trashList: document.getElementById('akun-trash-list'),
+        trashCount: document.getElementById('akun-trash-count'),
 
         modal: document.getElementById('user-modal'),
         modalTitle: document.getElementById('modal-title'),
@@ -241,6 +248,58 @@
         }
         paintSummary();
         paintList();
+        loadTrash();
+    }
+
+    /* --- Tempat sampah akun ---------------------------------------------- */
+    function fmtDeleted(value) {
+        if (!value) return '—';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime())
+            ? value
+            : date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function paintTrash() {
+        el.trashCount.textContent = trashAccounts.length;
+
+        if (trashAccounts.length === 0) {
+            el.trashList.innerHTML = `
+                <div class="px-4 py-8 text-center sk-muted text-xs">
+                    <i class="fa-solid fa-trash-can text-2xl mb-2 block opacity-40"></i>
+                    Tempat sampah kosong.
+                </div>`;
+            return;
+        }
+
+        el.trashList.innerHTML = trashAccounts.map(user => `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3">
+                <div class="min-w-0">
+                    <div class="font-bold sk-ink truncate">${user.nama}</div>
+                    <div class="text-[11px] sk-muted font-mono">${user.username}${user.nip ? ' · ' + user.nip : ''}</div>
+                    <div class="text-[10px] sk-muted">${Auth.roleLabel(user.role)} · dihapus ${fmtDeleted(user.deleted_at)}</div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" data-restore="${user.uid}"
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white transition">
+                        <i class="fa-solid fa-rotate-left"></i> Pulihkan
+                    </button>
+                    <button type="button" data-purge="${user.uid}"
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                        <i class="fa-solid fa-trash-can"></i> Hapus permanen
+                    </button>
+                </div>
+            </div>`).join('');
+    }
+
+    async function loadTrash() {
+        try {
+            trashAccounts = await Auth.list(true);
+        } catch (err) {
+            trashAccounts = [];
+            App.toast(err.message || 'Gagal memuat tempat sampah akun.', 'error');
+        }
+        paintTrash();
     }
 
     /* --- Akses di modal --------------------------------------------------
@@ -389,7 +448,7 @@
         const user = findUser(delBtn.dataset.delete);
         if (!user) return;
 
-        if (!confirm(`Hapus akun "${user.nama}" (${user.username})? Tindakan ini tidak bisa dibatalkan.`)) return;
+        if (!confirm(`Pindahkan akun "${user.nama}" (${user.username}) ke tempat sampah?\n\nAkun langsung tidak bisa login dan hilang dari daftar. Bisa dipulihkan lewat Tempat sampah.`)) return;
 
         const result = await Auth.remove(user.uid);
         if (!result.ok) {
@@ -397,7 +456,7 @@
             return;
         }
         refresh();
-        App.toast(`Akun ${user.username} dihapus.`, 'success');
+        App.toast(`Akun ${user.username} dipindah ke tempat sampah.`, 'success');
     }
 
     /* --- Sakelar akses di tabel/kartu (langsung tersimpan) ---------------- */
@@ -479,6 +538,53 @@
 
     el.resetBtn && el.resetBtn.addEventListener('click', async () => {
         App.toast('Akun dikelola Firebase Auth; tidak ada reset demo.', 'info');
+    });
+
+    /* --- Aksi tempat sampah akun ----------------------------------------- */
+    el.trashToggle.addEventListener('click', async () => {
+        const dibuka = el.trashPanel.classList.toggle('hidden') === false;
+        if (dibuka) await loadTrash();
+    });
+    el.trashClose.addEventListener('click', () => el.trashPanel.classList.add('hidden'));
+
+    el.trashList.addEventListener('click', async (event) => {
+        const pulih = event.target.closest('[data-restore]');
+        const hapus = event.target.closest('[data-purge]');
+        if (!pulih && !hapus) return;
+
+        const uid = (pulih || hapus).dataset.restore || (pulih || hapus).dataset.purge;
+        const user = trashAccounts.find(item => item.uid === uid);
+        const nama = user ? user.nama : uid;
+
+        if (pulih) {
+            pulih.disabled = true;
+            try {
+                const result = await Auth.restore(uid);
+                if (!result.ok) {
+                    App.toast(result.error, 'error');
+                    return;
+                }
+                App.toast(`Akun ${nama} dipulihkan.`, 'success');
+                await refresh();
+            } finally {
+                pulih.disabled = false;
+            }
+            return;
+        }
+
+        if (!confirm(`Hapus permanen akun "${nama}"?\n\nIdentitas Firebase Authentication dan profilnya dihapus. Tindakan ini tidak dapat dibatalkan.`)) return;
+        hapus.disabled = true;
+        try {
+            const result = await Auth.purge(uid);
+            if (!result.ok) {
+                App.toast(result.error, 'error');
+                return;
+            }
+            App.toast(`Akun ${nama} dihapus permanen.`, 'success');
+            await refresh();
+        } finally {
+            hapus.disabled = false;
+        }
     });
 
     document.addEventListener('auth:change', refresh);

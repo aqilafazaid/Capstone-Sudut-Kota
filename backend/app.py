@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, g, jsonify, request, send_file
+from flask import Flask, Response, g, jsonify, request, send_file
 from flask_cors import CORS
 
 import accounts
@@ -252,10 +252,16 @@ def create_app() -> Flask:
         """Publik: daftar node tanpa URL RTSP."""
         return jsonify([_with_stream(node) for node in node_store.list_nodes()])
 
+    @app.get("/api/nodes/trash")
+    @auth.require_feature("dashboard")
+    def nodes_trash():
+        """Node di tempat sampah (soft delete), untuk restore/hapus permanen."""
+        return jsonify([_with_stream(node) for node in node_store.list_nodes(only_deleted=True)])
+
     @app.get("/api/nodes/<node_id>")
     @auth.require_feature("dashboard")
     def node_detail(node_id):
-        return jsonify(_with_stream(node_store.get_node(node_id)))
+        return jsonify(_with_stream(node_store.get_node(node_id, allow_deleted=False)))
 
     @app.post("/api/nodes")
     @auth.require_feature("dashboard")
@@ -294,6 +300,8 @@ def create_app() -> Flask:
         mengeksekusi dan melaporkan keadaan sebenarnya lewat ``cam_<channel>``.
         """
         node = node_store.get_node(node_id)
+        if node.get("dihapus"):
+            raise node_store.NodeError("Node ada di tempat sampah. Pulihkan dulu.", 409)
         if not AI_ENGINE:
             return jsonify(error="Engine AI tidak aktif di server ini."), 503
         channel = str(node.get("channel") or "").strip()
@@ -336,20 +344,73 @@ def create_app() -> Flask:
     @app.delete("/api/nodes/<node_id>")
     @auth.require_feature("dashboard")
     def node_delete(node_id):
-        node_store.get_node(node_id)
-        # Folder HLS ikut dihapus: tanpa ini /hls/<id>/index.m3u8 tetap
-        # dilayani untuk node yang sudah tidak ada.
+        """Soft delete: pindahkan node ke tempat sampah (bisa dipulihkan).
+
+        Baris SQLite + URL RTSP tetap ada. Yang dibersihkan hanya artefak
+        sementara supaya tidak ada yang tersisa di luar tempat sampah: proses
+        engine, folder HLS, log engine, dan telemetri live ``cam_<channel>``.
+        Statistik historis dipertahankan agar restore mengembalikan riwayat.
+        """
+        node = node_store.get_node(node_id)
+        if node.get("dihapus"):
+            return jsonify(ok=True, id=node_id, sudah_dihapus=True, deleted_at=node.get("deleted_at"))
+
+        _stop_node(node_id, purge=True)
+        cleanup = stats_store.purge_live(node_id, node.get("channel") or "")
+        cleanup["log"] = 1 if ai_engine.purge_log(node_id) else 0
+        node = node_store.soft_delete_node(node_id)
+        stats_store.invalidate_cache()
+        return jsonify(ok=True, id=node_id, deleted_at=node["deleted_at"], cleanup=cleanup)
+
+    @app.post("/api/nodes/<node_id>/restore")
+    @auth.require_feature("dashboard")
+    def node_restore(node_id):
+        """Batalkan soft delete; node aktif dinyalakan lagi."""
+        node = node_store.restore_node(node_id)
+        stats_store.invalidate_cache()
+        started = False
+        if node["aktif"]:
+            _start_node(node)
+            started = True
+        return jsonify(
+            ok=True,
+            id=node_id,
+            started=started,
+            node=_with_stream(_without_rtsp(node)),
+        )
+
+    @app.delete("/api/nodes/<node_id>/permanent")
+    @auth.require_feature("dashboard")
+    def node_purge(node_id):
+        """Hapus permanen: hanya untuk node yang sudah di tempat sampah."""
+        node = node_store.get_node(node_id)
+        if not node.get("dihapus"):
+            raise node_store.NodeError(
+                "Node belum di tempat sampah. Hapus dulu (soft delete), baru hapus permanen.", 409
+            )
+
         _stop_node(node_id, purge=True)
         node_store.delete_node(node_id)
-        return jsonify(ok=True, id=node_id)
+        cleanup = stats_store.purge_node(node_id, node.get("channel") or "")
+        cleanup["log"] = 1 if ai_engine.purge_log(node_id) else 0
+        return jsonify(ok=True, id=node_id, permanent=True, cleanup=cleanup)
 
     @app.post("/api/nodes/reset")
     @auth.require_feature("dashboard")
     def node_reset():
+        # Termasuk isi tempat sampah: reset mengosongkan direktori, jadi baris
+        # yang masih bertanda deleted_at harus ikut dibersihkan di RTDB.
+        existing = [dict(node) for node in node_store.list_nodes(include_deleted=True)]
         STREAM.stop_all()
         node_store.reset_nodes()
         # Node lama (ID berbeda) tidak boleh meninggalkan folder HLS-nya.
         STREAM.prune([node["id"] for node in node_store.list_nodes()])
+        # Reset juga membersihkan RTDB + log engine milik node yang dihapus.
+        cleanup = []
+        for node in existing:
+            report = stats_store.purge_node(node["id"], node.get("channel") or "")
+            report["log"] = 1 if ai_engine.purge_log(node["id"]) else 0
+            cleanup.append(report)
         started = []
         for node in node_store.list_nodes():
             if node["aktif"]:
@@ -358,6 +419,7 @@ def create_app() -> Flask:
         return jsonify(
             nodes=[_with_stream(node) for node in node_store.list_nodes()],
             started=started,
+            cleanup=cleanup,
         )
 
     # --- Akun operator -------------------------------------------------
@@ -382,12 +444,20 @@ def create_app() -> Flask:
     @app.get("/api/akun")
     @auth.require_feature("akun")
     def akun_list():
-        return jsonify(accounts.list_accounts())
+        """Administrator: daftar akun aktif, atau isi tempat sampah (?deleted=1)."""
+        hanya_sampah = request.args.get("deleted", "").strip().lower() in {"1", "true", "yes"}
+        return jsonify(accounts.list_accounts(only_deleted=hanya_sampah))
 
     @app.post("/api/akun")
     @auth.require_feature("akun")
     def akun_create():
         return jsonify(accounts.create_account(request.get_json(silent=True))), 201
+
+    @app.get("/api/akun/<uid>")
+    @auth.require_feature("akun")
+    def akun_detail(uid):
+        """Detail satu akun (akun di tempat sampah dianggap tidak ada)."""
+        return jsonify(accounts.get_account(uid, include_deleted=False))
 
     @app.put("/api/akun/<uid>")
     @auth.require_feature("akun")
@@ -398,8 +468,21 @@ def create_app() -> Flask:
     @app.delete("/api/akun/<uid>")
     @auth.require_feature("akun")
     def akun_delete(uid):
-        user = auth.authenticate(required=True)
-        return jsonify(accounts.delete_account(uid, user["uid"]))
+        """Soft delete: akun masuk tempat sampah, login dinonaktifkan."""
+        user = auth.authenticate(required=True) or {}
+        return jsonify(accounts.soft_delete_account(uid, str(user.get("uid") or "")))
+
+    @app.post("/api/akun/<uid>/restore")
+    @auth.require_feature("akun")
+    def akun_restore(uid):
+        return jsonify(accounts.restore_account(uid))
+
+    @app.delete("/api/akun/<uid>/permanent")
+    @auth.require_feature("akun")
+    def akun_purge(uid):
+        """Hapus permanen: hanya untuk akun yang sudah di tempat sampah."""
+        user = auth.authenticate(required=True) or {}
+        return jsonify(accounts.delete_account(uid, str(user.get("uid") or "")))
 
     # --- Statistik (agregat telemetri RTDB) -----------------------------
     @app.get("/api/stats/telemetry")
@@ -489,7 +572,27 @@ def create_app() -> Flask:
         if mime is None:
             return jsonify(error="Berkas HLS tidak ditemukan."), 404
 
-        response = send_file(safe, mimetype=mime, conditional=True)
+        # Isi berkas dibaca lalu handle ditutup, bukan dikirim sebagai stream
+        # terbuka: ffmpeg mengganti playlist lewat rename, dan di Windows rename
+        # ditolak selama ada handle yang tidak mengizinkan delete. Gejalanya
+        # "failed to rename index.m3u8.tmp" di engine.log dan playlist beku.
+        # Kalau ffmpeg kebetulan sedang mengganti berkas, baca diulang.
+        data = None
+        for attempt in range(4):
+            try:
+                data = safe.read_bytes()
+                break
+            except PermissionError:
+                time.sleep(0.05 * (attempt + 1))
+            except OSError:
+                break
+        if data is None:
+            response = jsonify(error="Berkas HLS sedang ditulis ulang. Coba lagi.")
+            response.status_code = 503
+            response.headers["Retry-After"] = "1"
+            return response
+
+        response = Response(data, mimetype=mime)
         # Playlist berubah tiap beberapa detik: jangan pernah di-cache.
         response.headers["Cache-Control"] = "no-store" if safe.suffix == ".m3u8" else "max-age=30"
         return response

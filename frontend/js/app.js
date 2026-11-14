@@ -174,43 +174,6 @@
         return links + account;
     }
 
-    /* Pencarian hanya dirender sekali per halaman. Di layar kecil kolom
-       navbar tidak cukup, jadi input dipindah ke panel menu; nilai yang
-       diketik disalin ke input desktop supaya main.js tetap punya satu
-       sumber (id search-input) untuk didengarkan. */
-    function searchMarkup(variant) {
-        if (variant === 'mobile') {
-            return `
-                <div class="relative mb-1">
-                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                    <input id="search-input-mobile" type="text" autocomplete="off" placeholder="Cari lokasi simpang / tiang..."
-                           class="w-full bg-slate-100 dark:bg-[#050a1f] border border-slate-300 dark:border-blue-900/60 text-slate-800 dark:text-white text-sm rounded-xl py-3 pl-11 pr-4 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition placeholder:text-slate-500">
-                </div>`;
-        }
-        return `
-            <div class="hidden md:block flex-1 min-w-0 max-w-md mx-2 lg:mx-4">
-                <div class="relative group">
-                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 text-sm"></i>
-                    <input id="search-input" type="text" autocomplete="off"
-                           placeholder="Cari lokasi simpang / tiang..."
-                           class="w-full bg-slate-100 dark:bg-[#050a1f] border border-slate-300 dark:border-blue-900/60 text-slate-800 dark:text-white text-sm rounded-full py-2.5 pl-11 pr-4 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition placeholder:text-slate-500">
-                </div>
-            </div>`;
-    }
-
-    /* Panel menu dirender ulang setiap kali status auth berubah; input
-       pencariannya ikut dirender ulang, jadi pendengar harus dipasang lagi. */
-    function bindMobileSearch() {
-        const mobileSearch = document.getElementById('search-input-mobile');
-        const mainSearch = document.getElementById('search-input');
-        if (!mobileSearch || !mainSearch) return;
-
-        mobileSearch.addEventListener('input', () => {
-            mainSearch.value = mobileSearch.value;
-            mainSearch.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-    }
-
     function clockMarkup() {
         return `
             <div class="hidden min-[430px]:flex glass-pill px-2.5 sm:px-3 py-1.5 rounded-full items-center gap-2 shrink-0">
@@ -225,7 +188,7 @@
             </div>`;
     }
 
-    function navbarMarkup(active, withSearch) {
+    function navbarMarkup(active) {
         return `
         <nav class="fixed top-0 inset-x-0 z-50 bg-white/85 dark:bg-[#0a143c]/90 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.04)] transition-colors duration-300">
             <div class="sk-shell h-16 md:h-20 flex items-center justify-between gap-2 md:gap-3">
@@ -241,8 +204,6 @@
                         <span class="hidden sm:block text-[7px] md:text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.14em] md:tracking-[0.18em] mt-1 truncate">Dinas Perhubungan Kota Pekalongan</span>
                     </span>
                 </a>
-
-                ${withSearch ? searchMarkup() : ''}
 
                 <div class="flex items-center gap-1.5 md:gap-2 shrink-0">
                     <div id="nav-links" class="hidden lg:flex items-center gap-0.5 xl:gap-1">${desktopLinksMarkup(active)}</div>
@@ -264,7 +225,6 @@
             <div id="mobile-menu"
                  class="lg:hidden absolute inset-x-0 top-full bg-white/95 dark:bg-[#0a143c]/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 shadow-2xl px-4 pb-5 pt-4 flex-col gap-1 max-h-[calc(100vh-4rem)] overflow-y-auto"
                  style="display:none;">
-                ${withSearch ? searchMarkup('mobile') : ''}
                 ${mobileLinksMarkup(active)}
             </div>
         </nav>`;
@@ -487,7 +447,7 @@
 
         if (opts.chrome) {
             const navHost = document.getElementById('site-nav');
-            if (navHost) navHost.innerHTML = navbarMarkup(opts.active, !!opts.search);
+            if (navHost) navHost.innerHTML = navbarMarkup(opts.active);
 
             const footerHost = document.getElementById('site-footer');
             if (footerHost) footerHost.innerHTML = footerMarkup();
@@ -500,8 +460,6 @@
             if (!document.getElementById('initial-loader')) {
                 document.body.insertAdjacentHTML('afterbegin', loaderMarkup());
             }
-
-            bindMobileSearch();
         }
 
         if (opts.chrome) {
@@ -524,10 +482,7 @@
             const menu = document.getElementById('mobile-menu');
             const user = document.getElementById('nav-user');
             if (links) links.innerHTML = desktopLinksMarkup(opts.active);
-            if (menu) {
-                menu.innerHTML = (opts.search ? searchMarkup('mobile') : '') + mobileLinksMarkup(opts.active);
-                bindMobileSearch();
-            }
+            if (menu) menu.innerHTML = mobileLinksMarkup(opts.active);
             if (user) user.innerHTML = userChipMarkup();
 
             const barHost = document.getElementById('site-bottombar');

@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261114k">
+    <link rel="stylesheet" href="css/style.css?v=20261114s">
 
     <!-- Pustaka ekspor & grafik, dimuat hanya di halaman ini -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -330,15 +330,15 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261114k"></script>
-<script src="js/firebase-config.js?v=20261114k"></script>
-<script src="js/firebase-client.js?v=20261114k"></script>
-<script src="js/config.js?v=20261114k"></script>
+<script src="js/public-config.js?v=20261114s"></script>
+<script src="js/firebase-config.js?v=20261114s"></script>
+<script src="js/firebase-client.js?v=20261114s"></script>
+<script src="js/config.js?v=20261114s"></script>
 
-<script src="js/store.js?v=20261114k"></script>
-<script src="js/auth.js?v=20261114k"></script>
-<script src="js/app.js?v=20261114k"></script>
-<script src="js/statistik.js?v=20261114k"></script>
+<script src="js/store.js?v=20261114s"></script>
+<script src="js/auth.js?v=20261114s"></script>
+<script src="js/app.js?v=20261114s"></script>
+<script src="js/statistik.js?v=20261114s"></script>
 
 <!-- Penghubung AI Penjelasan Bahasa Masyarakat (non-intrusif terhadap statistik.js) -->
 <script>
@@ -382,7 +382,6 @@
         const sourceText = (document.getElementById('stats-source')?.textContent || '').trim();
         const peakText = (document.getElementById('kpi-peak')?.textContent || '—').trim();
         const peakLabel = (document.getElementById('kpi-peak-label')?.textContent || 'Jam Tersibuk').trim().toLowerCase();
-        const avgLabel = (document.getElementById('kpi-avg-label')?.textContent || 'Rata-rata / Jam').trim().toLowerCase();
 
         const elBadge = document.getElementById('ai-status-badge');
         const elHeadline = document.getElementById('ai-summary-headline');
@@ -400,12 +399,12 @@
         if (total === 0) {
             if (elBadge) elBadge.textContent = 'Menunggu Data Kamera';
             elHeadline.textContent = `Belum ada kendaraan tercatat pada ${rangeText}.`;
-            elNarrative.textContent = `Saat ini sistem pemantau AI (${sourceText || 'Firebase RTDB'}) belum menerima rekaman arus kendaraan untuk rentang waktu ini, atau kamera sedang dalam mode siaga.`;
-            elVehicle.textContent = 'Komposisi motor, mobil, truk, dan bus masih 0% karena belum ada sampel kendaraan yang melintas.';
+            elNarrative.textContent = `Saat ini sistem pemantau AI (${sourceText || 'Firebase RTDB'}) belum menerima sampel kendaraan untuk rentang waktu ini, atau kamera sedang dalam mode siaga.`;
+            elVehicle.textContent = 'Komposisi motor, mobil, truk, dan bus masih 0% karena belum ada sampel kendaraan yang terdeteksi.';
             elHotspot.textContent = 'Belum ada titik persimpangan maupun jam sibuk yang tercatat pada periode ini.';
             elAdvice.textContent = 'Silakan coba pilih tab periode lain (seperti 1 Minggu, 1 Bulan, atau Seluruhnya) untuk melihat riwayat lalu lintas sebelumnya.';
             if (elVolNarr) elVolNarr.textContent = 'Grafik masih kosong karena belum ada sampel deteksi kendaraan pada periode ini.';
-            if (elCompNarr) elCompNarr.textContent = 'Diagram pembagian jenis kendaraan akan muncul otomatis begitu kamera mulai menghitung arus lalu lintas.';
+            if (elCompNarr) elCompNarr.textContent = 'Diagram pembagian jenis kendaraan akan muncul otomatis begitu kamera mulai menghitung kendaraan.';
             if (elTableNarr) elTableNarr.textContent = 'Belum ada volume kendaraan yang tercatat di tiap titik kamera CCTV untuk rentang waktu ini.';
             return;
         }
@@ -434,11 +433,11 @@
         if (elBadge) elBadge.textContent = 'Ringkasan AI Aktif';
 
         // 1. Headline & Narasi Utama
-        elHeadline.textContent = `Tercatat ${fmt(total)} kendaraan melintas pada ${rangeText}, didominasi oleh ${topClass.name} (${topClass.pct}%).`;
-        elNarrative.textContent = `Secara keseluruhan, arus lalu lintas memiliki ${avgLabel} sekitar ${fmt(avg)} kendaraan. Aktivitas kendaraan paling padat terjadi pada ${peakLabel} ${peakText !== '—' ? peakText : 'tertentu'}${busiestNode ? `, dengan titik paling ramai berada di ${busiestNode.name}` : ''}.`;
+        elHeadline.textContent = `Tercatat ${fmt(total)} kendaraan terdeteksi pada ${rangeText}, didominasi oleh ${topClass.name} (${topClass.pct}%).`;
+        elNarrative.textContent = `Angka ini menjumlahkan pembacaan kamera tiap sampel (±1 menit): kendaraan yang terlihat di layar, bukan kendaraan unik yang melintas. Beban rata-rata sekitar ${fmt(avg)} kendaraan per satuan waktu. Aktivitas paling padat terjadi pada ${peakLabel} ${peakText !== '—' ? peakText : 'tertentu'}${busiestNode ? `, dengan titik paling ramai berada di ${busiestNode.name}` : ''}.`;
 
         // 2. Dominasi Kendaraan
-        elVehicle.textContent = `Jalanan paling banyak diisi ${topClass.name} sebanyak ${fmt(topClass.count)} unit (${topClass.pct}%), diikuti ${secondClass.name} (${secondClass.pct}%). Kendaraan besar seperti truk dan bus menyumbang ${pctBerat}% dari total arus.`;
+        elVehicle.textContent = `Jalanan paling banyak diisi ${topClass.name} sebanyak ${fmt(topClass.count)} unit (${topClass.pct}%), diikuti ${secondClass.name} (${secondClass.pct}%). Kendaraan besar seperti truk dan bus menyumbang ${pctBerat}% dari total deteksi.`;
 
         // 3. Titik & Waktu Terpadat
         if (busiestNode) {
@@ -458,7 +457,7 @@
         if (pctMotor >= 60) {
             advice += 'Tingginya proporsi sepeda motor menuntut kewaspadaan ekstra di persimpangan dan lajur kiri.';
         } else if (pctBerat >= 15) {
-            advice += 'Cukup banyak truk dan bus melintas—jaga jarak aman pengereman di area persimpangan.';
+            advice += 'Cukup banyak truk dan bus melintas. Jaga jarak aman pengereman di area persimpangan.';
         } else {
             advice += 'Arus kendaraan terpantau relatif seimbang; tetap patuhi lampu lalu lintas dan marka jalan.';
         }
@@ -466,7 +465,7 @@
 
         // 5. Narasi Bawah Grafik & Tabel
         if (elVolNarr) {
-            elVolNarr.textContent = `Arus rata-rata mencapai ${fmt(avg)} kendaraan per satuan waktu${peakText !== '—' ? `, dengan lonjakan tertinggi terdeteksi pada ${peakText}` : ''}.`;
+            elVolNarr.textContent = `Rata-rata ${fmt(avg)} kendaraan terdeteksi per satuan waktu${peakText !== '—' ? `, dengan lonjakan tertinggi terdeteksi pada ${peakText}` : ''}.`;
         }
         if (elCompNarr) {
             elCompNarr.textContent = `Rincian: Motor ${pctMotor}% (${fmt(motor)}), Mobil ${pctMobil}% (${fmt(mobil)}), Truk ${pctTruk}% (${fmt(truk)}), dan Bus ${pctBus}% (${fmt(bus)}).`;
@@ -475,7 +474,7 @@
             if (busiestNode && quietestNode && busiestNode.name !== quietestNode.name) {
                 elTableNarr.innerHTML = `<strong>Perbandingan Lokasi:</strong> Titik paling ramai adalah <strong>${busiestNode.name}</strong> (${fmt(busiestNode.total)} kendaraan), sedangkan titik paling lengang adalah <strong>${quietestNode.name}</strong> (${fmt(quietestNode.total)} kendaraan).`;
             } else if (busiestNode) {
-                elTableNarr.innerHTML = `<strong>Sorotan Lokasi:</strong> Kamera <strong>${busiestNode.name}</strong> mencatat arus tertinggi sebesar <strong>${fmt(busiestNode.total)} kendaraan</strong>.`;
+                elTableNarr.innerHTML = `<strong>Sorotan Lokasi:</strong> Kamera <strong>${busiestNode.name}</strong> mencatat deteksi terbanyak sebesar <strong>${fmt(busiestNode.total)} kendaraan</strong>.`;
             }
         }
     };

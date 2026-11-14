@@ -27,7 +27,8 @@
         telemetry: null,
         aiPending: null,
         aiCatalog: null,
-        fpsSamples: null
+        fpsSamples: null,
+        fps: 0
     };
 
     const el = {};
@@ -77,6 +78,15 @@
     /* FPS yang tampil: jumlah frame yang benar-benar didekode per detik
        nyata (totalVideoFrames / waktu), bukan angka kiriman server. Dengan
        definisi yang sama di engine, keduanya bisa dibandingkan langsung. */
+    /* Satu sumber angka FPS untuk seluruh halaman: kartu FPS dan narasi warga
+       membaca `state.fps` lewat CctvPlayer.getFps(), bukan mengurai teks kartu.
+       Mengurai teks pernah membuat "23.5" terbaca 235 (titik desimal hilang),
+       sehingga narasi dan kartu menyebut angka berbeda. */
+    function paintFpsValue(text, value) {
+        if (el['stat-fps']) el['stat-fps'].textContent = text;
+        state.fps = value > 0 ? Math.round(value * 10) / 10 : 0;
+    }
+
     function paintFps() {
         const target = el['stat-fps'];
         const video = el['video-element'];
@@ -96,14 +106,15 @@
         const first = state.fpsSamples[0];
         if (!first) return;
         if (now - first.at < 1000) {
-            if (state.fpsSamples.length === 1) target.textContent = '—';
+            if (state.fpsSamples.length === 1) paintFpsValue('—', 0);
             return;
         }
         if (video.readyState < 2 || video.paused) {
-            target.textContent = '—';
+            paintFpsValue('—', 0);
             return;
         }
-        target.textContent = ((frames - first.frames) / ((now - first.at) / 1000)).toFixed(1);
+        const value = (frames - first.frames) / ((now - first.at) / 1000);
+        paintFpsValue(value.toFixed(1), value);
     }
 
     /* Latensi yang tampil: selisih waktu sekarang dengan waktu rekam frame
@@ -371,6 +382,10 @@
             el['video-element'].removeAttribute('src');
             el['video-element'].load();
         }
+        /* Sampel FPS milik stream lama: jangan diwarisi ke node berikutnya,
+           karena angka itu bisa tampil sebelum frame baru sempat didekode. */
+        state.fpsSamples = null;
+        paintFpsValue('—', 0);
     }
 
     function showError(message) {
@@ -770,6 +785,10 @@
             }).catch(start);
         },
         select: selectCamera,
-        refresh: applyStream
+        refresh: applyStream,
+        /* Angka FPS yang sedang tampil di kartu (frame didekode per detik,
+           satu desimal) — dipakai panel narasi warga supaya teks dan kartu
+           tidak pernah menyebut angka berbeda. 0 berarti belum terukur. */
+        getFps: function () { return state.fps; }
     };
 })(window);

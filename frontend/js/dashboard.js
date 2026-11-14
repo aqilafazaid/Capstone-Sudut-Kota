@@ -32,6 +32,11 @@
         tableBody: document.getElementById('node-table-body'),
         cards: document.getElementById('node-cards'),
         resetDemo: document.getElementById('btn-reset-demo'),
+        trashToggle: document.getElementById('btn-trash-toggle'),
+        trashClose: document.getElementById('btn-trash-close'),
+        trashPanel: document.getElementById('trash-panel'),
+        trashList: document.getElementById('trash-list'),
+        trashCount: document.getElementById('trash-count'),
         logoutBtn: document.getElementById('btn-logout-dash')
     };
 
@@ -191,12 +196,68 @@
         el.statusText.textContent = `Menampilkan ${rows.length} dari ${Store.list().length} node.`;
     }
 
+    /* --- Tempat sampah (soft delete) -------------------------------------- */
+    let trashItems = [];
+
+    function fmtDeleted(value) {
+        if (!value) return '—';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime())
+            ? value
+            : date.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function paintTrash() {
+        el.trashCount.textContent = trashItems.length;
+
+        if (trashItems.length === 0) {
+            el.trashList.innerHTML = `
+                <div class="px-4 py-8 text-center sk-muted text-xs">
+                    <i class="fa-solid fa-trash-can text-2xl mb-2 block opacity-40"></i>
+                    Tempat sampah kosong.
+                </div>`;
+            return;
+        }
+
+        el.trashList.innerHTML = trashItems.map(cam => `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3">
+                <div class="min-w-0">
+                    <div class="font-bold sk-ink truncate">${cam.nama}</div>
+                    <div class="text-[11px] sk-muted font-mono">${cam.id}${cam.channel ? ' · CH ' + cam.channel : ''}</div>
+                    <div class="text-[10px] sk-muted">Dihapus ${fmtDeleted(cam.deleted_at)}</div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" data-restore="${cam.id}"
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white transition">
+                        <i class="fa-solid fa-rotate-left"></i> Pulihkan
+                    </button>
+                    <button type="button" data-purge="${cam.id}"
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                        <i class="fa-solid fa-trash-can"></i> Hapus permanen
+                    </button>
+                </div>
+            </div>`).join('');
+    }
+
+    async function loadTrash() {
+        try {
+            trashItems = await Store.trash();
+        } catch (err) {
+            trashItems = [];
+            App.toast(err.message || 'Gagal memuat tempat sampah.', 'error');
+        }
+        paintTrash();
+    }
+
     /* --- Render ulang ---------------------------------------------------- */
     function refresh() {
         paintSummary();
         paintZoneOptions();
         paintRoadOptions();
         paintTable();
+        /* Isi tempat sampah berubah setiap kali node dihapus/dipulihkan; tanpa
+           ini hitungannya tetap angka lama sampai panel ditutup-buka. */
+        loadTrash();
     }
 
     /* --- Event ----------------------------------------------------------- */
@@ -214,12 +275,19 @@
         const cam = Store.get(btn.dataset.delete);
         if (!cam) return;
 
-        if (!confirm(`Hapus node "${cam.nama}" (${cam.id}) dari direktori?`)) return;
+        if (!confirm(`Pindahkan node "${cam.nama}" (${cam.id}) ke tempat sampah?\n\nNode berhenti mengudara dan hilang dari CCTV/statistik. Bisa dipulihkan lewat tombol Tempat sampah.`)) return;
 
         btn.disabled = true;
         try {
-            if (await Store.remove(cam.id)) {
-                App.toast(`Node ${cam.id} dihapus.`, 'success');
+            const hasil = await Store.remove(cam.id);
+            if (hasil) {
+                App.toast(`Node ${cam.id} dipindah ke tempat sampah.`, 'success');
+                /* Pembersihan RTDB bersifat best-effort (koneksi Firebase bisa
+                   putus); kalau ada yang gagal, jangan diam. */
+                const sisa = hasil.cleanup && hasil.cleanup.errors ? hasil.cleanup.errors : [];
+                if (sisa.length) {
+                    App.toast(`Sebagian data Firebase node ini gagal dihapus: ${sisa[0]}`, 'error', 7000);
+                }
             } else {
                 App.toast('Node gagal dihapus.', 'error');
             }
@@ -233,11 +301,62 @@
     el.tableBody.addEventListener('click', onDeleteClick);
     el.cards.addEventListener('click', onDeleteClick);
 
-    el.resetDemo.addEventListener('click', async () => {
-        if (!confirm('Kosongkan seluruh direktori node? Semua konfigurasi kamera dan folder HLS-nya ikut dihapus, akun operator tidak diubah.')) return;
+    /* --- Aksi tempat sampah ---------------------------------------------- */
+    el.trashToggle.addEventListener('click', async () => {
+        const dibuka = el.trashPanel.classList.toggle('hidden') === false;
+        if (dibuka) await loadTrash();
+    });
+    el.trashClose.addEventListener('click', () => el.trashPanel.classList.add('hidden'));
+
+    el.trashList.addEventListener('click', async (event) => {
+        const pulih = event.target.closest('[data-restore]');
+        const hapus = event.target.closest('[data-purge]');
+        if (!pulih && !hapus) return;
+
+        const id = (pulih || hapus).dataset.restore || (pulih || hapus).dataset.purge;
+        const cam = trashItems.find(item => item.id === id);
+        const nama = cam ? cam.nama : id;
+
+        if (pulih) {
+            pulih.disabled = true;
+            try {
+                const hasil = await Store.restore(id);
+                App.toast(`Node ${id} dipulihkan${hasil && hasil.started ? ' dan dinyalakan lagi' : ''}.`, 'success');
+                await loadTrash();
+            } catch (err) {
+                App.toast(err.message || 'Node gagal dipulihkan.', 'error');
+            } finally {
+                pulih.disabled = false;
+            }
+            return;
+        }
+
+        if (!confirm(`Hapus permanen node "${nama}" (${id})?\n\nKonfigurasi, telemetri, dan SELURUH statistik historis node ini dihapus. Tindakan ini tidak dapat dibatalkan.`)) return;
+        hapus.disabled = true;
         try {
-            await Store.resetDemo();
+            const hasil = await Store.purge(id);
+            App.toast(`Node ${id} dihapus permanen.`, 'success');
+            const sisa = hasil && hasil.cleanup && hasil.cleanup.errors ? hasil.cleanup.errors : [];
+            if (sisa.length) {
+                App.toast(`Sebagian data Firebase gagal dihapus: ${sisa[0]}`, 'error', 7000);
+            }
+            await loadTrash();
+        } catch (err) {
+            App.toast(err.message || 'Node gagal dihapus permanen.', 'error');
+        } finally {
+            hapus.disabled = false;
+        }
+    });
+
+    el.resetDemo.addEventListener('click', async () => {
+        if (!confirm('Kosongkan seluruh direktori node? Semua konfigurasi kamera, folder HLS, telemetri, dan statistik node ikut dihapus. Akun operator tidak diubah.')) return;
+        try {
+            const hasil = await Store.resetDemo();
             App.toast('Direktori node dikosongkan.', 'success');
+            const gagal = (hasil && hasil.cleanup ? hasil.cleanup : []).flatMap(item => item.errors || []);
+            if (gagal.length) {
+                App.toast(`Sebagian data Firebase gagal dihapus: ${gagal[0]}`, 'error', 7000);
+            }
         } catch (err) {
             App.toast(err.message || 'Gagal mengosongkan direktori node.', 'error');
         }
@@ -255,7 +374,10 @@
     });
 
     paintProfile();
-    Store.ready().then(refresh);
+    Store.ready().then(() => {
+        refresh();
+        loadTrash();
+    });
 
     document.addEventListener('store:offline', () => {
         App.toast('Backend tidak dapat dihubungi. Data yang tampil berasal dari cache.', 'error', 5000);

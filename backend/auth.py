@@ -152,21 +152,26 @@ def _state_of(uid: str) -> dict[str, Any]:
 
     peran = "visitor"
     raw_akses: Any = None
+    dihapus = False
     try:
         from firebase_admin import db as fb_db
 
-        data = fb_db.reference(_rtdb_path("akun", uid), app=_app()).get() or {}
+        raw = fb_db.reference(_rtdb_path("akun", uid), app=_app()).get() or {}
+        data: dict[str, Any] = raw if isinstance(raw, dict) else {}
         candidate = str(data.get("peran") or "").strip().lower()
         if candidate in VALID_ROLES:
             peran = candidate
         raw_akses = data.get("akses")
+        dihapus = bool(data.get("deleted_at"))
     except Exception:
         peran = "visitor"
         raw_akses = None
+        dihapus = False
 
     state = {
         "peran": peran,
         "akses": _merge_akses(peran, raw_akses),
+        "dihapus": dihapus,
     }
     with _lock:
         _profile_cache[uid] = (state, now)
@@ -181,6 +186,11 @@ def role_of(uid: str) -> str:
 def akses_of(uid: str) -> dict[str, bool]:
     """Akses fitur efektif akun (gabungan peran + `akses` tersimpan)."""
     return dict(_state_of(uid)["akses"])
+
+
+def is_deleted(uid: str) -> bool:
+    """True bila profil akun ditandai di tempat sampah (soft delete)."""
+    return bool(_state_of(uid).get("dihapus"))
 
 
 def profile_of(uid: str) -> dict[str, Any] | None:
@@ -233,6 +243,11 @@ def authenticate(required: bool = True) -> dict[str, Any] | None:
     uid = str(claims.get("uid") or claims.get("sub") or "").strip()
     if not uid:
         raise AuthError("Token tidak memuat uid.", 401)
+
+    # Akun di tempat sampah tidak boleh memakai API walau tokennya belum
+    # kedaluwarsa (±1 jam). Pemeriksaan ini memakai cache profil yang sama.
+    if is_deleted(uid):
+        raise AuthError("Akun ini dinonaktifkan (di tempat sampah).", 403)
 
     return {
         "uid": uid,

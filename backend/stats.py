@@ -394,6 +394,99 @@ def write_ai_status(channel: str, status: dict[str, Any]) -> dict[str, Any]:
     return dict(status)
 
 
+def purge_live(node_id: str, channel: str = "") -> dict[str, Any]:
+    """Hapus hanya telemetri live ``cam_<channel>`` (dipakai soft delete).
+
+    Statistik historis tidak disentuh: node yang dipulihkan harus mendapat
+    riwayatnya kembali. Hapus permanen memakai :func:`purge_node`.
+    """
+    node_id = (node_id or "").strip()
+    chan = str(channel or "").strip() or "".join(ch for ch in node_id if ch.isdigit())
+    report: dict[str, Any] = {"node": node_id, "cam": 0, "errors": []}
+    if not chan:
+        return report
+    try:
+        _ref("cam_" + chan).delete()
+        report["cam"] = 1
+    except Exception as exc:
+        report["errors"].append(f"cam_{chan}: {exc}")
+    return report
+
+
+def purge_node(node_id: str, channel: str = "") -> dict[str, Any]:
+    """Hapus seluruh jejak satu node di RTDB.
+
+    Node yang dihapus dari direktori tidak boleh meninggalkan data di Firebase:
+
+    - ``cam_<channel>`` — telemetri live + ``ai_status`` (dibaca panel CCTV),
+    - ``statistik/<tanggal>/<jam>/<node>`` — agregat per jam,
+    - ``statistik_harian/<tanggal>/<node>`` — agregat harian (tabel Statistik).
+
+    Semua langkah best-effort: kegagalan dicatat di ``errors`` tanpa
+    menggagalkan penghapusan node, karena koneksi Firebase bisa sedang mati.
+    Biayanya satu shallow read untuk daftar tanggal + satu read per tanggal
+    (24 jam × node), dan hanya dijalankan saat operator menghapus node.
+    """
+    node_id = (node_id or "").strip()
+    report: dict[str, Any] = {"node": node_id, "cam": 0, "hours": 0, "days": 0, "errors": []}
+    if not node_id:
+        return report
+
+    chan = str(channel or "").strip()
+    if not chan:
+        chan = "".join(ch for ch in node_id if ch.isdigit())
+
+    live = purge_live(node_id, chan)
+    report["cam"] = live["cam"]
+    report["errors"].extend(live["errors"])
+
+    try:
+        hours_days = _ref(HOURS_ROOT).get(shallow=True) or {}
+    except Exception as exc:
+        report["errors"].append(f"{HOURS_ROOT}: {exc}")
+        hours_days = {}
+
+    for day in sorted(hours_days)[:4000]:
+        try:
+            hours = _ref(HOURS_ROOT, day).get() or {}
+        except Exception as exc:
+            report["errors"].append(f"{HOURS_ROOT}/{day}: {exc}")
+            continue
+        if not isinstance(hours, dict):
+            continue
+        for hour, nodes in hours.items():
+            if not isinstance(nodes, dict) or node_id not in nodes:
+                continue
+            try:
+                _ref(HOURS_ROOT, day, hour, node_id).delete()
+                report["hours"] += 1
+            except Exception as exc:
+                report["errors"].append(f"{HOURS_ROOT}/{day}/{hour}/{node_id}: {exc}")
+
+    try:
+        daily_days = _ref(DAILY_ROOT).get(shallow=True) or {}
+    except Exception as exc:
+        report["errors"].append(f"{DAILY_ROOT}: {exc}")
+        daily_days = {}
+
+    for day in sorted(daily_days)[:4000]:
+        try:
+            if _ref(DAILY_ROOT, day, node_id).get(shallow=True) is None:
+                continue
+            _ref(DAILY_ROOT, day, node_id).delete()
+            report["days"] += 1
+        except Exception as exc:
+            report["errors"].append(f"{DAILY_ROOT}/{day}/{node_id}: {exc}")
+
+    # Cache agregat di memori memuat node ini; buang supaya halaman Statistik
+    # tidak menyajikan angka lama sampai TTL habis.
+    with _lock:
+        _cache["data"] = None
+        _cache["at"] = 0.0
+
+    return report
+
+
 def read_telemetry(days: int | None = None) -> dict[str, Any]:
     """Agregat siap-pakai untuk ``Store.stats()`` di peramban.
 
@@ -468,6 +561,23 @@ def read_telemetry(days: int | None = None) -> dict[str, Any]:
             today_nodes[node_id] = fallback
     if today_nodes:
         daily[today_key] = today_nodes
+
+    # Node di tempat sampah tidak ditampilkan di halaman/ekspor: riwayatnya
+    # tetap tersimpan supaya restore mengembalikan angka lamanya. Node yang
+    # tidak ada di direktori (yatim) juga tidak ikut ditampilkan.
+    try:
+        import nodes as node_store
+
+        aktif = {node["id"] for node in node_store.list_nodes()}
+    except Exception:
+        aktif = None
+    if aktif is not None:
+        daily = {
+            day: {node_id: record for node_id, record in items.items() if node_id in aktif}
+            for day, items in daily.items()
+        }
+        daily = {day: items for day, items in daily.items() if items}
+        hourly = {node_id: slots for node_id, slots in hourly.items() if node_id in aktif}
 
     meta = _meta()
 
