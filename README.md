@@ -35,6 +35,12 @@ kiri navbar yang menjadi tautan ke `index.html` (dan diberi cincin biru saat hal
 - **Kolom pencarian ada di dalam navbar** dan hanya dirender di halaman Stream, bukan di badan
   halaman. Pada layar < 768 px kolom itu turun menjadi baris kedua di dalam kartu navbar yang sama,
   lalu tautan menu dilipat ke hamburger.
+- **Judul tab seragam** — kesembilan halaman memakai pola `… | Sudut Kota Dishub Kota Pekalongan`,
+  dengan awalan sesuai isi: `Beranda`, `LIVE CCTV`, `Statistik Lalin`, `Command Center`,
+  `Kelola Akun`, `Otorisasi Petugas`, `Registrasi Petugas`, `Registrasi Node`, dan
+  `Pemulihan Kata Sandi`. Judul ditulis di `<title>` masing-masing file HTML (bukan di `app.js`),
+  jadi menambah halaman baru berarti menyalin akhiran yang sama — itu yang membuat tab tidak
+  tertukar saat banyak halaman dibuka bersamaan.
 
 ## Tema
 
