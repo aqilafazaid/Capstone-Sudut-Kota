@@ -22,6 +22,8 @@
     let accounts = [];
     /** Isi tempat sampah (akun yang di-soft delete). */
     let trashAccounts = [];
+    /** UID akun yang dicentang untuk aksi massal. */
+    const selected = new Set();
 
     const el = {
         total: document.getElementById('sum-total'),
@@ -34,7 +36,11 @@
         cards: document.getElementById('user-cards'),
         tableBody: document.getElementById('user-table-body'),
         addBtn: document.getElementById('btn-add-user'),
-        resetBtn: document.getElementById('btn-reset-accounts'),
+        selectAll: document.getElementById('select-all-akun'),
+        bulk: document.getElementById('akun-bulk'),
+        bulkCount: document.getElementById('akun-bulk-count'),
+        bulkDelete: document.getElementById('btn-akun-bulk-delete'),
+        bulkClear: document.getElementById('btn-akun-bulk-clear'),
         trashToggle: document.getElementById('btn-akun-trash'),
         trashClose: document.getElementById('btn-akun-trash-close'),
         trashPanel: document.getElementById('akun-trash-panel'),
@@ -155,6 +161,35 @@
         });
     }
 
+    /* --- Pilihan baris (sebagian / semua) -------------------------------- */
+    function visibleIds() {
+        /* Akun sendiri tidak pernah ikut: backend menolak (409) dan tombolnya
+           memang dinonaktifkan di UI. */
+        return filtered().map(user => user.uid).filter(uid => uid !== admin.uid);
+    }
+
+    function syncSelection() {
+        const ids = visibleIds();
+        const jumlah = selected.size;
+
+        el.bulk.classList.toggle('hidden', jumlah === 0);
+        el.bulkCount.textContent = jumlah;
+        el.bulkDelete.disabled = jumlah === 0;
+
+        const semua = ids.length > 0 && ids.every(uid => selected.has(uid));
+        el.selectAll.checked = semua;
+        el.selectAll.indeterminate = !semua && ids.some(uid => selected.has(uid));
+
+        document.querySelectorAll('[data-select]').forEach(box => {
+            box.checked = selected.has(box.dataset.select);
+        });
+    }
+
+    function clearSelection() {
+        selected.clear();
+        syncSelection();
+    }
+
     function paintSummary() {
         const c = {
             total: accounts.length,
@@ -174,9 +209,14 @@
         return `
             <div class="rounded-2xl border sk-line sk-panel p-4">
                 <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="font-bold sk-ink text-sm leading-snug break-words">${user.nama}</div>
-                        <div class="text-[11px] sk-muted font-mono mt-0.5">${user.nip || 'tanpa NIP'}</div>
+                    <div class="flex items-start gap-3 min-w-0">
+                        <input type="checkbox" data-select="${user.uid}" aria-label="Pilih ${user.nama}"
+                               ${isSelf ? 'disabled title="Akun yang sedang dipakai tidak bisa dihapus"' : ''}
+                               class="mt-1 h-4 w-4 shrink-0 rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                        <div class="min-w-0">
+                            <div class="font-bold sk-ink text-sm leading-snug break-words">${user.nama}</div>
+                            <div class="text-[11px] sk-muted font-mono mt-0.5">${user.nip || 'tanpa NIP'}</div>
+                        </div>
                     </div>
                     ${roleBadge(user.role)}
                 </div>
@@ -196,9 +236,12 @@
         const rows = filtered();
         const total = accounts.length;
 
+        const ada = new Set(accounts.map(user => user.uid));
+        [...selected].forEach(uid => { if (!ada.has(uid)) selected.delete(uid); });
+
         if (rows.length === 0) {
             el.tableBody.innerHTML = `
-                <tr><td colspan="5" class="px-4 py-12 text-center sk-muted text-sm">
+                <tr><td colspan="6" class="px-4 py-12 text-center sk-muted text-sm">
                     <i class="fa-solid fa-user-slash text-3xl mb-3 block opacity-50"></i>
                     Tidak ada akun yang cocok dengan filter.
                 </td></tr>`;
@@ -208,6 +251,7 @@
                     Tidak ada akun yang cocok dengan filter.
                 </div>`;
             el.status.textContent = 'Tidak ada akun yang cocok dengan filter.';
+            syncSelection();
             return;
         }
 
@@ -215,6 +259,11 @@
             const isSelf = user.uid === admin.uid;
             return `
             <tr class="sk-row-hover">
+                <td class="px-4 py-4">
+                    <input type="checkbox" data-select="${user.uid}" aria-label="Pilih ${user.nama}"
+                           ${isSelf ? 'disabled title="Akun yang sedang dipakai tidak bisa dihapus"' : ''}
+                           class="h-4 w-4 rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                </td>
                 <td class="px-4 py-4">
                     <div class="font-bold sk-ink">${user.nama}${isSelf ? ' <span class="text-[10px] font-black sk-accent uppercase tracking-wider">(Anda)</span>' : ''}</div>
                     <div class="text-[11px] sk-muted font-mono">${user.nip || '—'}</div>
@@ -237,6 +286,7 @@
         el.status.textContent = rows.length === total
             ? `Menampilkan seluruh ${total} akun.`
             : `Menampilkan ${rows.length} dari ${total} akun.`;
+        syncSelection();
     }
 
     async function refresh() {
@@ -516,6 +566,50 @@
     el.search.addEventListener('input', paintList);
     el.role.addEventListener('change', paintList);
 
+    function onSelectChange(event) {
+        const box = event.target.closest('[data-select]');
+        if (!box || box.disabled) return;
+        if (box.checked) selected.add(box.dataset.select);
+        else selected.delete(box.dataset.select);
+        paintList();
+    }
+
+    el.tableBody.addEventListener('change', onSelectChange);
+    el.cards.addEventListener('change', onSelectChange);
+
+    el.selectAll.addEventListener('change', () => {
+        const ids = visibleIds();
+        if (el.selectAll.checked) ids.forEach(uid => selected.add(uid));
+        else ids.forEach(uid => selected.delete(uid));
+        paintList();
+    });
+
+    el.bulkClear.addEventListener('click', clearSelection);
+
+    el.bulkDelete.addEventListener('click', async () => {
+        const ids = [...selected];
+        if (ids.length === 0) return;
+        if (!confirm(`Hapus ${ids.length} akun terpilih?\n\nAkun dipindah ke tempat sampah dan langsung tidak bisa login. Bisa dipulihkan lewat Tempat sampah.`)) return;
+
+        el.bulkDelete.disabled = true;
+        let berhasil = 0;
+        const gagal = [];
+        for (const uid of ids) {
+            const user = accounts.find(item => item.uid === uid);
+            const result = await Auth.remove(uid);
+            if (result.ok) berhasil += 1;
+            else gagal.push(`${user ? user.nama : uid}: ${result.error}`);
+        }
+        clearSelection();
+        await refresh();
+        App.toast(
+            `${berhasil} akun dipindah ke tempat sampah` +
+            (gagal.length ? `, ${gagal.length} ditolak (${gagal[0]})` : '.'),
+            gagal.length ? 'error' : 'success',
+            gagal.length ? 8000 : undefined
+        );
+    });
+
     /* Sakelar akses di modal: ubah peran = kembalikan ke bawaan peran itu. */
     el.roleField.addEventListener('change', () => {
         modalAksesState = Auth.aksesOf(el.roleField.value, null);
@@ -535,10 +629,6 @@
 
     el.tableBody.addEventListener('click', handleAction);
     el.cards.addEventListener('click', handleAction);
-
-    el.resetBtn && el.resetBtn.addEventListener('click', async () => {
-        App.toast('Akun dikelola Firebase Auth; tidak ada reset demo.', 'info');
-    });
 
     /* --- Aksi tempat sampah akun ----------------------------------------- */
     el.trashToggle.addEventListener('click', async () => {

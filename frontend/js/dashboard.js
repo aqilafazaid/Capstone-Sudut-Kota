@@ -28,10 +28,15 @@
         filterZona: document.getElementById('filter-zona'),
         filterJalan: document.getElementById('filter-jalan'),
         filterStatus: document.getElementById('filter-status'),
+        search: document.getElementById('search-node'),
+        bulk: document.getElementById('node-bulk'),
+        bulkCount: document.getElementById('node-bulk-count'),
+        bulkDelete: document.getElementById('btn-node-bulk-delete'),
+        bulkClear: document.getElementById('btn-node-bulk-clear'),
+        selectAll: document.getElementById('select-all-nodes'),
         statusText: document.getElementById('status-text-body'),
         tableBody: document.getElementById('node-table-body'),
         cards: document.getElementById('node-cards'),
-        resetDemo: document.getElementById('btn-reset-demo'),
         trashToggle: document.getElementById('btn-trash-toggle'),
         trashClose: document.getElementById('btn-trash-close'),
         trashPanel: document.getElementById('trash-panel'),
@@ -87,13 +92,46 @@
         const zona = el.filterZona.value;
         const jalan = el.filterJalan.value;
         const status = el.filterStatus.value;
+        const q = el.search.value.trim().toLowerCase();
+
         return Store.list().filter(cam => {
             if (zona && cam.zona !== zona) return false;
             if (jalan && cam.jalan !== jalan) return false;
             if (status === 'online' && !cam.aktif) return false;
             if (status === 'offline' && cam.aktif) return false;
-            return true;
+            if (!q) return true;
+            return [cam.nama, cam.id, cam.channel, cam.jalan, cam.zona]
+                .some(v => String(v || '').toLowerCase().includes(q));
         });
+    }
+
+    /* --- Pilihan baris (sebagian / semua) -------------------------------- */
+    const selected = new Set();
+
+    function visibleIds() {
+        return filtered().map(cam => cam.id);
+    }
+
+    function syncSelection() {
+        const ids = visibleIds();
+        const jumlah = selected.size;
+
+        el.bulk.classList.toggle('hidden', jumlah === 0);
+        el.bulkCount.textContent = jumlah;
+        el.bulkDelete.disabled = jumlah === 0;
+
+        const semua = ids.length > 0 && ids.every(id => selected.has(id));
+        el.selectAll.checked = semua;
+        el.selectAll.indeterminate = !semua && ids.some(id => selected.has(id));
+
+        document.querySelectorAll('[data-select]').forEach(box => {
+            box.checked = selected.has(box.dataset.select);
+        });
+    }
+
+    function clearSelection() {
+        selected.clear();
+        syncSelection();
     }
 
     /* --- Tabel ----------------------------------------------------------- */
@@ -138,9 +176,13 @@
         return `
             <div class="rounded-2xl border sk-line sk-panel p-4">
                 <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="font-bold sk-ink text-sm leading-snug break-words">${cam.nama}</div>
-                        <div class="text-[11px] sk-muted font-mono mt-0.5">${cam.id}${cam.channel && cam.channel !== '—' ? ' · CH ' + cam.channel : ''}</div>
+                    <div class="flex items-start gap-3 min-w-0">
+                        <input type="checkbox" data-select="${cam.id}" aria-label="Pilih ${cam.nama}"
+                               class="mt-1 h-4 w-4 shrink-0 rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                        <div class="min-w-0">
+                            <div class="font-bold sk-ink text-sm leading-snug break-words">${cam.nama}</div>
+                            <div class="text-[11px] sk-muted font-mono mt-0.5">${cam.id}${cam.channel && cam.channel !== '—' ? ' · CH ' + cam.channel : ''}</div>
+                        </div>
                     </div>
                     ${statusBadge(cam)}
                 </div>
@@ -157,9 +199,14 @@
     function paintTable() {
         const rows = filtered();
 
+        /* Pilihan mengikuti direktori: node yang sudah dihapus/berpindah tidak
+           boleh tertinggal di Set dan ikut terkirim saat aksi massal. */
+        const ada = new Set(Store.list().map(cam => cam.id));
+        [...selected].forEach(id => { if (!ada.has(id)) selected.delete(id); });
+
         if (rows.length === 0) {
             el.tableBody.innerHTML = `
-                <tr><td colspan="5" class="px-4 py-12 text-center sk-muted text-sm">
+                <tr><td colspan="6" class="px-4 py-12 text-center sk-muted text-sm">
                     <i class="fa-solid fa-folder-open text-3xl mb-3 block opacity-50"></i>
                     Tidak ada node yang cocok dengan filter.
                 </td></tr>`;
@@ -169,11 +216,16 @@
                     Tidak ada node yang cocok dengan filter.
                 </div>`;
             el.statusText.textContent = 'Tidak ada node yang cocok dengan filter.';
+            syncSelection();
             return;
         }
 
         el.tableBody.innerHTML = rows.map(cam => `
             <tr class="sk-row-hover">
+                <td class="px-4 py-4">
+                    <input type="checkbox" data-select="${cam.id}" aria-label="Pilih ${cam.nama}"
+                           class="h-4 w-4 rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                </td>
                 <td class="px-4 py-4">
                     <div class="font-bold sk-ink">${cam.nama}</div>
                     <div class="text-[11px] sk-muted font-mono">${cam.id}${cam.channel && cam.channel !== '—' ? ' · CH ' + cam.channel : ''}</div>
@@ -194,6 +246,7 @@
 
         el.cards.innerHTML = rows.map(cardOf).join('');
         el.statusText.textContent = `Menampilkan ${rows.length} dari ${Store.list().length} node.`;
+        syncSelection();
     }
 
     /* --- Tempat sampah (soft delete) -------------------------------------- */
@@ -267,6 +320,54 @@
     });
     el.filterJalan.addEventListener('change', paintTable);
     el.filterStatus.addEventListener('change', paintTable);
+    el.search.addEventListener('input', paintTable);
+
+    function onSelectChange(event) {
+        const box = event.target.closest('[data-select]');
+        if (!box) return;
+        if (box.checked) selected.add(box.dataset.select);
+        else selected.delete(box.dataset.select);
+        paintTable();
+    }
+
+    el.tableBody.addEventListener('change', onSelectChange);
+    el.cards.addEventListener('change', onSelectChange);
+
+    el.selectAll.addEventListener('change', () => {
+        const ids = visibleIds();
+        if (el.selectAll.checked) ids.forEach(id => selected.add(id));
+        else ids.forEach(id => selected.delete(id));
+        paintTable();
+    });
+
+    el.bulkClear.addEventListener('click', clearSelection);
+
+    el.bulkDelete.addEventListener('click', async () => {
+        const ids = [...selected];
+        if (ids.length === 0) return;
+        if (!confirm(`Pindahkan ${ids.length} node terpilih ke tempat sampah?\n\nNode berhenti mengudara dan hilang dari CCTV/statistik. Bisa dipulihkan lewat Tempat sampah.`)) return;
+
+        el.bulkDelete.disabled = true;
+        let berhasil = 0;
+        const gagal = [];
+        for (const id of ids) {
+            try {
+                const hasil = await Store.remove(id);
+                if (hasil) berhasil += 1;
+                else gagal.push(id);
+            } catch (err) {
+                gagal.push(`${id}: ${err.message}`);
+            }
+        }
+        clearSelection();
+        refresh();
+        App.toast(
+            `${berhasil} node dipindah ke tempat sampah` +
+            (gagal.length ? `, ${gagal.length} gagal (${gagal[0]})` : '.'),
+            gagal.length ? 'error' : 'success',
+            gagal.length ? 7000 : undefined
+        );
+    });
 
     async function onDeleteClick(event) {
         const btn = event.target.closest('[data-delete]');
@@ -345,20 +446,6 @@
             App.toast(err.message || 'Node gagal dihapus permanen.', 'error');
         } finally {
             hapus.disabled = false;
-        }
-    });
-
-    el.resetDemo.addEventListener('click', async () => {
-        if (!confirm('Kosongkan seluruh direktori node? Semua konfigurasi kamera, folder HLS, telemetri, dan statistik node ikut dihapus. Akun operator tidak diubah.')) return;
-        try {
-            const hasil = await Store.resetDemo();
-            App.toast('Direktori node dikosongkan.', 'success');
-            const gagal = (hasil && hasil.cleanup ? hasil.cleanup : []).flatMap(item => item.errors || []);
-            if (gagal.length) {
-                App.toast(`Sebagian data Firebase gagal dihapus: ${gagal[0]}`, 'error', 7000);
-            }
-        } catch (err) {
-            App.toast(err.message || 'Gagal mengosongkan direktori node.', 'error');
         }
     });
 

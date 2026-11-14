@@ -326,14 +326,14 @@
                 <span class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 border-4 border-white dark:border-[#0a143c] active:scale-95 transition-transform group-hover:scale-105">
                     <i class="fa-solid ${link.icon} text-lg"></i>
                 </span>
-                <span class="text-[10px] font-display font-bold uppercase tracking-widest mt-1 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}">${link.short}</span>
+                <span class="text-[9px] sm:text-[10px] font-display font-bold uppercase tracking-tight sm:tracking-widest mt-1 max-w-[72px] truncate ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}">${link.short}</span>
             </a>`;
         }
 
         return `
-            <a href="${link.href}" class="flex flex-col items-center justify-center w-full h-full gap-1 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            <a href="${link.href}" class="flex flex-col items-center justify-center w-full h-full gap-1 min-w-0 px-0.5 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                 <i class="fa-solid ${link.icon} text-lg"></i>
-                <span class="text-[10px] font-display font-bold uppercase tracking-widest">${link.short}</span>
+                <span class="text-[9px] sm:text-[10px] font-display font-bold uppercase tracking-tight sm:tracking-widest max-w-full truncate">${link.short}</span>
             </a>`;
     }
 

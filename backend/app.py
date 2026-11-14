@@ -395,33 +395,6 @@ def create_app() -> Flask:
         cleanup["log"] = 1 if ai_engine.purge_log(node_id) else 0
         return jsonify(ok=True, id=node_id, permanent=True, cleanup=cleanup)
 
-    @app.post("/api/nodes/reset")
-    @auth.require_feature("dashboard")
-    def node_reset():
-        # Termasuk isi tempat sampah: reset mengosongkan direktori, jadi baris
-        # yang masih bertanda deleted_at harus ikut dibersihkan di RTDB.
-        existing = [dict(node) for node in node_store.list_nodes(include_deleted=True)]
-        STREAM.stop_all()
-        node_store.reset_nodes()
-        # Node lama (ID berbeda) tidak boleh meninggalkan folder HLS-nya.
-        STREAM.prune([node["id"] for node in node_store.list_nodes()])
-        # Reset juga membersihkan RTDB + log engine milik node yang dihapus.
-        cleanup = []
-        for node in existing:
-            report = stats_store.purge_node(node["id"], node.get("channel") or "")
-            report["log"] = 1 if ai_engine.purge_log(node["id"]) else 0
-            cleanup.append(report)
-        started = []
-        for node in node_store.list_nodes():
-            if node["aktif"]:
-                _start_node(node_store.get_node(node["id"]))
-                started.append(node["id"])
-        return jsonify(
-            nodes=[_with_stream(node) for node in node_store.list_nodes()],
-            started=started,
-            cleanup=cleanup,
-        )
-
     # --- Akun operator -------------------------------------------------
     @app.get("/api/akun/me")
     @auth.require_role()

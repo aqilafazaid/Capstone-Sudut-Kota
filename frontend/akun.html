@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261114s">
+    <link rel="stylesheet" href="css/style.css?v=20261114u">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -124,6 +124,21 @@
                 </div>
             </div>
 
+            <!-- Aksi massal untuk akun yang dicentang -->
+            <div id="akun-bulk" class="hidden flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 px-4 py-3 rounded-xl border border-blue-500/30 bg-blue-500/10">
+                <span class="text-xs font-bold sk-ink"><span id="akun-bulk-count">0</span> akun dipilih</span>
+                <div class="flex items-center gap-2">
+                    <button id="btn-akun-bulk-delete" type="button"
+                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                        <i class="fa-solid fa-trash-can"></i> Hapus terpilih
+                    </button>
+                    <button id="btn-akun-bulk-clear" type="button"
+                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider sk-btn-ghost">
+                        Batal
+                    </button>
+                </div>
+            </div>
+
             <div class="flex items-center justify-between mb-3">
                 <div class="text-xs sk-muted font-medium flex items-center gap-2">
                     <i class="fa-solid fa-circle-info text-blue-500"></i>
@@ -137,6 +152,10 @@
                 <table class="w-full text-left text-sm min-w-[820px]">
                     <thead class="sk-panel-2 text-[10px] uppercase tracking-widest sk-accent">
                         <tr>
+                            <th class="px-4 py-3 w-10">
+                                <input id="select-all-akun" type="checkbox" aria-label="Pilih semua akun"
+                                       class="h-4 w-4 rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer align-middle">
+                            </th>
                             <th class="px-4 py-3 font-bold">Petugas</th>
                             <th class="px-4 py-3 font-bold">Username</th>
                             <th class="px-4 py-3 font-bold">Peran</th>
@@ -270,14 +289,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261114s"></script>
-<script src="js/firebase-config.js?v=20261114s"></script>
-<script src="js/firebase-client.js?v=20261114s"></script>
-<script src="js/config.js?v=20261114s"></script>
+<script src="js/public-config.js?v=20261114u"></script>
+<script src="js/firebase-config.js?v=20261114u"></script>
+<script src="js/firebase-client.js?v=20261114u"></script>
+<script src="js/config.js?v=20261114u"></script>
 
-<script src="js/store.js?v=20261114s"></script>
-<script src="js/auth.js?v=20261114s"></script>
-<script src="js/app.js?v=20261114s"></script>
-<script src="js/akun.js?v=20261114s"></script>
+<script src="js/store.js?v=20261114u"></script>
+<script src="js/auth.js?v=20261114u"></script>
+<script src="js/app.js?v=20261114u"></script>
+<script src="js/akun.js?v=20261114u"></script>
 </body>
 </html>

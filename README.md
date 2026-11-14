@@ -267,7 +267,8 @@ Cek cepat: `curl http://127.0.0.1:8080/api/health` → `{"status":"ok",...}`.
 | Alamat backend untuk Vercel | `vercel.json` → `rewrites` `/api` + `/hls`; `frontend/js/public-config.js` (`backendBase: ""`, `funnelBase`) | Halaman Vercel memakai origin sendiri; proxy Vercel yang meneruskan ke Funnel |
 
 Tidak ada node bawaan: tabel `nodes` mulai kosong dan backend tidak pernah menanam node
-sendiri. `POST /api/nodes/reset` mengosongkan direktori beserta folder HLS-nya (permanen).
+sendiri. Tidak ada lagi tombol reset massal: node dihapus satu per satu atau lewat pilihan
+massal, dan hapus permanen membuang baris beserta folder HLS-nya (akun operator tidak tersentuh).
 
 Penghapusan per node memakai **dua tahap**. `DELETE /api/nodes/<id>` memindahkan node ke
 *tempat sampah*: kolom `nodes.deleted_at` diisi, baris SQLite dan URL RTSP tetap disimpan,
@@ -520,7 +521,6 @@ backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panja
 | POST | `/api/nodes/<id>/ai` | teknisi, admin | tulis `cam_<channel>/ai_status` (low-light on/off, model, YOLO) |
 | POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
 | GET | `/api/status` | teknisi, admin | path database, daftar model |
-| POST | `/api/nodes/reset` | teknisi, admin | kosongkan direktori node + folder HLS |
 | GET | `/api/sosmed/instagram?page=N&per_page=6` | publik | kiriman Instagram asli (scrape + cache), berhalaman |
 | GET | `/api/sosmed/instagram/image/<code>.jpg` | publik | gambar kiriman yang disimpan backend |
 | GET | `/api/sosmed/instagram/avatar/<handle>.jpg` | publik | foto profil akun hasil scrape |
@@ -560,7 +560,7 @@ dengan profil di RTDB `/akun/<uid>`:
 | Peran | Kode | Akses |
 |---|---|---|
 | Administrator | `admin` | semua halaman, termasuk Kelola Akun |
-| Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, AI, dan reset |
+| Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, dan AI |
 | Visitor | `visitor` | hanya CCTV Live dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
 
 **Akses fitur per akun.** Selain peran, setiap profil punya field
@@ -644,8 +644,26 @@ wajar; bila kuota jadi masalah, buka halaman lewat `http://127.0.0.1:8080` (ngin
 **Tidak ada node bawaan.** Database baru selalu kosong, dan backend tidak pernah menanam node
 sendiri saat start. Direktori kamera diisi operator lewat **Dashboard → Tambah Data**.
 
-Tombol **Kosongkan direktori** (`POST /api/nodes/reset`, fitur `dashboard`) menghapus seluruh
-node beserta folder HLS-nya. Akun Firebase **tidak** ikut terhapus.
+Tidak ada tombol reset
+massal lagi: penghapusan dilakukan per node (satu per satu atau lewat **pilihan massal**), dan
+akun operator tidak pernah ikut terhapus.
+
+### Cari, filter, dan pilihan massal (node)
+
+Panel *Daftar Node* punya empat kontrol yang saling menumpuk:
+
+- **Cari Node** — mencocokkan nama, ID (`cam_48`), nomor channel, jalan, dan zona (tanpa beda
+  huruf besar/kecil).
+- **Zona Wilayah**, **Nama Jalan**, **Status Node** — filter bertingkat; daftar jalan mengikuti
+  zona yang dipilih.
+- **Centang per baris** (tabel di ≥768 px, kartu di bawahnya) dan **centang semua** di kepala
+  tabel. "Semua" hanya memilih baris yang lolos filter saat itu, dan kotak kepala menampilkan
+  status *indeterminate* bila baru sebagian dipilih.
+- **Bilah aksi massal** muncul saat ada pilihan: jumlah node + **Hapus terpilih** (soft delete
+  berurutan; setiap kegagalan dilaporkan di toast) + **Batal**.
+
+Pilihan disimpan di memori halaman dan dipangkas otomatis bila node hilang dari direktori,
+sehingga aksi massal tidak pernah mengirim ID yang sudah tidak ada.
 
 ### Hapus dua tahap (tempat sampah)
 
@@ -727,9 +745,6 @@ tidak ada input manual, tidak ada kartu contoh.
 - **Prasyarat**: `pip install -r requirements.txt` lalu `python -m playwright install chromium`
   (sekali per mesin, ±150 MB). Tanpa Chromium, endpoint mengembalikan `ok:false` dan halaman
   menampilkan tautan akun.
-
-Tombol **Kosongkan direktori** memanggil `POST /api/nodes/reset` (fitur `dashboard`);
-direktori node dan folder HLS-nya dihapus. Akun Firebase **tidak** ikut dihapus.
 
 ## Titik integrasi backend dan Firebase
 
@@ -934,9 +949,11 @@ untuk `/js/`.
 
 ## Responsif
 
-Semua halaman diuji pada 9 halaman × 17 ukuran viewport (320×568 sampai 3440×1440, termasuk
-ponsel landscape 740×360, 844×390, layar pendek 1920×600 dan 1024×600, serta ultrawide 21:9):
-tidak ada luapan horizontal dan tidak ada konten tertutup navbar.
+Semua halaman diuji ulang pada 9 halaman × 8 ukuran viewport (280×653, 320×568, 360×640,
+390×844, 768×1024, 844×390, 1280×800, 1920×1080): `scrollWidth == innerWidth` pada semua
+kombinasi, termasuk saat bilah aksi massal terbuka. Label navigasi bawah kini `truncate` dengan
+huruf 9 px di bawah 640 px, sehingga lima item tetap muat di 280 px tanpa memperlebar layout
+viewport (sebelumnya 320 px melebar ke 349 px).
 
 Navbar memakai `position: fixed` dengan tinggi tetap yang ditetapkan di CSS — `--sk-nav-h: 64px`
 dan `80px` pada ≥768 px — sehingga `main { padding-top: calc(var(--sk-nav-h) + 20px) !important }`
@@ -1009,6 +1026,11 @@ Fitur:
   /api/akun/<uid>/restore`, `disabled=false`) dan **Hapus permanen** (`DELETE
   /api/akun/<uid>/permanent`, `delete_user` + hapus profil). Akun di tempat sampah ditolak
   `auth.authenticate()` dengan 403 walau token lamanya masih berlaku.
+- **Cari, filter, dan pilihan massal.** Kotak cari mencocokkan nama/NIP/username/email, filter
+  peran, centang per akun (akun sendiri tidak bisa dicentang), dan centang semua untuk baris
+  yang lolos filter. Bilah **Hapus terpilih** memanggil `DELETE /api/akun/<uid>` berurutan;
+  akun yang ditolak backend (mis. Administrator terakhir) dilaporkan di toast tanpa
+  menggagalkan sisanya.
 - Aturan yang ditegakkan di backend, bukan hanya di UI: username dan NIP harus unik, kata sandi
   minimal 6 karakter, akun yang sedang dipakai tidak bisa dihapus, minimal satu Administrator
   harus tersisa, dan Administrator tidak bisa mencabut fitur `akun` dari akunnya sendiri
@@ -1073,7 +1095,10 @@ Vercel di Firebase Console bila memakai tautan reset kata sandi atau OAuth dari 
 | Hapus node meninggalkan data | `DELETE /api/nodes/<id>` (soft) menghentikan engine dan membersihkan HLS, log `_logs/<id>.log`, serta telemetri `cam_<channel>`; `DELETE /api/nodes/<id>/permanent` menghapus baris SQLite + agregat `statistik`/`statistik_harian`; sisa lama dibereskan `scripts/purge_orphan_data.py` | `test_node_delete_cleanup.py` 20/20 · `test_purge_node.py` 18/18 · scan ulang: "tidak ada sisa data" |
 | Hapus tidak bisa dibatalkan | **Soft delete dua tahap** untuk node (`nodes.deleted_at`) dan akun (`deleted_at` + Firebase `disabled`), dengan `restore` dan `hapus permanen` di Dashboard/Akun | `test_soft_delete_accounts.py` 20/20 · `test_soft_delete_api.py` 24/24 · `test_node_delete_cleanup.py` 20/20 |
 | Channel node bisa bertabrakan | Channel dinormalkan ke digit tanpa nol depan dan dijaga unik (termasuk node di tempat sampah) + indeks unik parsial `idx_nodes_channel` | `test_channel_unique.py` 13/13 · E2E: create channel ganda → `409` |
-| CRUD belum diuji end-to-end | Uji E2E dengan akun admin sementara: node create/read/update/delete/restore/permanent dan akun create/read/update/delete/restore/permanent lewat nginx → backend → Firebase asli | 30/30 cek API + klik UI (panel tempat sampah, Pulihkan, Hapus permanen) |
+| CRUD belum diuji end-to-end | Uji E2E dengan akun admin sementara: node create/read/update/delete/restore/permanent dan akun create/read/update/delete/restore/permanent lewat nginx → backend → Firebase asli | 30/30 cek API + klik UI (panel tempat sampah, Pulihkan, Hapus permanen); diulang setelah fitur pilihan massal: 24/24 |
+| Tombol **Kosongkan direktori** membingungkan | Fitur dihapus total: route `POST /api/nodes/reset`, `nodes.reset_nodes()`, `Store.resetDemo()`, dan tombolnya. Penghapusan hanya lewat per node / pilihan massal | `POST /api/nodes/reset` → `405`; `test_hls_crud.py` memeriksa itu |
+| Daftar node/akun tanpa pencarian atau pilihan massal | Dashboard: pencarian (nama/ID/channel/jalan/zona) + filter bertingkat + centang per baris/semua + **Hapus terpilih**. Kelola Akun: pencarian + filter peran + centang (akun sendiri dikecualikan) + **Hapus terpilih** | Uji UI: cari "Gamma" → 1 baris; zona SELATAN → 2 baris; select-all → 2 terpilih → terhapus; akun select-all melewati akun sendiri |
+| Layout melebar di ponsel 320 px | Label navigasi bawah `truncate` + 9 px di bawah 640 px; bilah aksi massal membungkus vertikal di layar sempit | 9 halaman × 8 viewport (280–1920 px): `scrollWidth == innerWidth` |
 | URL RTSP tersimpan teks biasa di SQLite | CRUD menulis ciphertext **AES-256-GCM** (`enc:v2:`) dan mendekripsi saat dibaca; kunci 32 byte dari `NODE_SECRET` di `backend/.env` (atau `data/node_secret.key`); migrasi baris lama + `VACUUM` lewat `scripts/encrypt_rtsp.py` | `test_rtsp_crypto.py` 16/16 · `test_rtsp_crud_api.py` 21/21 · `grep -c "rtsp://" backend/data/sudutkota.db` = 0 |
 | Pencarian navbar bertabrakan dengan menu saat akun melihat kelima item | Input dipindah ke header panel *Daftar Node* (`#search-input`), `searchMarkup`/`bindMobileSearch` dihapus dari `app.js` | Tidak ada `#search-input` di dalam `nav`; baris navbar tidak meluap pada 1024–1920 px |
 | `requirements.txt` memuat 4 paket tak terpakai | `Flask-Mail`, `google-generativeai`, `feedparser`, `pytz` dihapus | `python -c "import flask, firebase_admin, playwright, requests, dotenv"` |

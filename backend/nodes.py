@@ -508,13 +508,3 @@ def delete_node(node_id: str) -> bool:
     with _DB_LOCK, _db() as conn:
         cursor = conn.execute("DELETE FROM nodes WHERE id = ?", (node_id,))
     return cursor.rowcount > 0
-
-
-def reset_nodes() -> None:
-    """Kosongkan direktori node (aksi eksplisit operator).
-
-    Tidak ada seed: setelah reset direktori benar-benar kosong, dan backend
-    tidak pernah menanam node sendiri saat start.
-    """
-    with _DB_LOCK, _db() as conn:
-        conn.execute("DELETE FROM nodes")

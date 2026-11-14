@@ -655,19 +655,6 @@
                 generatedAt: statsTelemetry ? statsTelemetry.generated_at : null,
                 days: statsTelemetry ? statsTelemetry.days : null
             };
-        },
-
-        /** Kosongkan direktori node + folder HLS (akun Firebase tidak disentuh). */
-        async resetDemo() {
-            const data = await apiRequest('nodes/reset', { method: 'POST' });
-            nodes = Array.isArray(data.nodes) ? data.nodes : [];
-            aiState = {};
-            statsCache.clear();
-            statsTelemetry = null;
-            writeJson(NODES_CACHE_KEY, nodes);
-            writeJson(AI_KEY, aiState);
-            emit('store:change', { type: 'reset' });
-            return data || { nodes, cleanup: [] };
         }
     };
 

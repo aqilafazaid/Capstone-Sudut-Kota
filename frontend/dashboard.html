@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261114s">
+    <link rel="stylesheet" href="css/style.css?v=20261114u">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -121,7 +121,15 @@
                 </a>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                <div class="sm:col-span-2 lg:col-span-1">
+                    <label for="search-node" class="block text-[10px] font-bold sk-accent uppercase mb-2 pl-1 tracking-widest">Cari Node</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 sk-faint z-10 pointer-events-none"></i>
+                        <input id="search-node" type="search" autocomplete="off" placeholder="Nama, ID, channel, atau jalan"
+                               class="glass-input w-full p-3.5 pl-11 outline-none font-bold text-sm">
+                    </div>
+                </div>
                 <div>
                     <label for="filter-zona" class="block text-[10px] font-bold sk-accent uppercase mb-2 pl-1 tracking-widest">Zona Wilayah</label>
                     <div class="relative">
@@ -158,6 +166,21 @@
                 </div>
             </div>
 
+            <!-- Aksi massal untuk baris yang dicentang -->
+            <div id="node-bulk" class="hidden flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 px-4 py-3 rounded-xl border border-blue-500/30 bg-blue-500/10">
+                <span class="text-xs font-bold sk-ink"><span id="node-bulk-count">0</span> node dipilih</span>
+                <div class="flex items-center gap-2">
+                    <button id="btn-node-bulk-delete" type="button"
+                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                        <i class="fa-solid fa-trash-can"></i> Hapus terpilih
+                    </button>
+                    <button id="btn-node-bulk-clear" type="button"
+                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider sk-btn-ghost">
+                        Batal
+                    </button>
+                </div>
+            </div>
+
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <div id="status-text" class="text-xs sk-muted font-medium flex items-center gap-2 min-w-0">
                     <i class="fa-solid fa-circle-info text-blue-500 shrink-0"></i>
@@ -166,9 +189,6 @@
                 <div class="flex items-center gap-4 shrink-0">
                     <button id="btn-trash-toggle" type="button" class="text-[10px] font-bold sk-muted hover:text-amber-500 uppercase tracking-widest transition">
                         <i class="fa-solid fa-trash-arrow-up"></i> Tempat sampah (<span id="trash-count">0</span>)
-                    </button>
-                    <button id="btn-reset-demo" type="button" class="text-[10px] font-bold sk-muted hover:text-red-500 uppercase tracking-widest transition">
-                        <i class="fa-solid fa-rotate-left"></i> Kosongkan direktori
                     </button>
                 </div>
             </div>
@@ -179,6 +199,10 @@
                 <table class="w-full text-left text-sm min-w-[640px]">
                     <thead class="sk-panel-2 text-[10px] uppercase tracking-widest sk-accent">
                         <tr>
+                            <th class="px-4 py-3 w-10">
+                                <input id="select-all-nodes" type="checkbox" aria-label="Pilih semua node"
+                                       class="h-4 w-4 rounded border-slate-400 text-blue-600 focus:ring-blue-500 cursor-pointer align-middle">
+                            </th>
                             <th class="px-4 py-3 font-bold">Node</th>
                             <th class="px-4 py-3 font-bold">Zona / Jalan</th>
                             <th class="px-4 py-3 font-bold">Status</th>
@@ -216,14 +240,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261114s"></script>
-<script src="js/firebase-config.js?v=20261114s"></script>
-<script src="js/firebase-client.js?v=20261114s"></script>
-<script src="js/config.js?v=20261114s"></script>
+<script src="js/public-config.js?v=20261114u"></script>
+<script src="js/firebase-config.js?v=20261114u"></script>
+<script src="js/firebase-client.js?v=20261114u"></script>
+<script src="js/config.js?v=20261114u"></script>
 
-<script src="js/store.js?v=20261114s"></script>
-<script src="js/auth.js?v=20261114s"></script>
-<script src="js/app.js?v=20261114s"></script>
-<script src="js/dashboard.js?v=20261114s"></script>
+<script src="js/store.js?v=20261114u"></script>
+<script src="js/auth.js?v=20261114u"></script>
+<script src="js/app.js?v=20261114u"></script>
+<script src="js/dashboard.js?v=20261114u"></script>
 </body>
 </html>
