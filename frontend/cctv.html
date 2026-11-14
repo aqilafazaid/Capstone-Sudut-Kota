@@ -22,6 +22,12 @@
             document.documentElement.classList.add('dark');
         }
     </script>
+    <style>
+        .ai-citizen-card {
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            box-shadow: 0 10px 30px -12px rgba(14, 165, 233, 0.16);
+        }
+    </style>
 </head>
 <body class="sk-root font-sans antialiased min-h-screen flex flex-col">
 
@@ -113,26 +119,111 @@
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Mobil</div>
                         <div id="stat-mobil" class="text-2xl font-black sk-ink mt-1">0</div>
+                        <div class="text-[10px] sk-muted mt-1">Roda 4 di layar</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Motor</div>
                         <div id="stat-motor" class="text-2xl font-black sk-ink mt-1">0</div>
+                        <div class="text-[10px] sk-muted mt-1">Roda 2 di layar</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Truk</div>
                         <div id="stat-truk" class="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">0</div>
+                        <div class="text-[10px] sk-muted mt-1">Angkutan barang</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Bus</div>
                         <div id="stat-bus" class="text-2xl font-black text-orange-600 dark:text-orange-400 mt-1">0</div>
+                        <div class="text-[10px] sk-muted mt-1">Angkutan besar</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Total</div>
                         <div id="stat-total" class="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">0</div>
+                        <div class="text-[10px] sk-muted mt-1">Terdeteksi saat ini</div>
                     </div>
                     <div class="stat-card p-4">
                         <div class="text-[10px] font-bold sk-muted uppercase tracking-widest">Server FPS</div>
                         <div id="stat-fps" class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">0</div>
+                        <div class="text-[10px] sk-muted mt-1">Kecepatan baca AI</div>
+                    </div>
+                </div>
+
+                <!-- INFORMASI LALU LINTAS AI UNTUK MASYARAKAT (Tetap tampil untuk pengunjung umum) -->
+                <div id="public-ai-info-panel" class="mt-4 sk-panel ai-citizen-card rounded-2xl shadow-xl relative z-10 overflow-hidden">
+                    <div class="px-5 py-3.5 sk-line border-b flex flex-wrap items-center justify-between gap-3 sk-panel-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-lg bg-sky-500/15 border border-sky-400/40 flex items-center justify-center text-sky-500 dark:text-sky-300 shrink-0">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h3 class="sk-ink font-black text-sm uppercase tracking-widest leading-none">Informasi Lalu Lintas AI untuk Warga</h3>
+                                    <span id="live-traffic-badge" class="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/25">
+                                        Memantau Lokasi
+                                    </span>
+                                </div>
+                                <p class="text-[11px] sk-muted font-medium mt-1">Penjelasan langsung kondisi jalan di titik kamera aktif agar mudah dipahami masyarakat.</p>
+                            </div>
+                        </div>
+
+                        <button id="btn-copy-live-info" type="button"
+                                class="px-3 py-2 rounded-xl sk-panel border sk-line text-[11px] font-bold sk-ink hover:border-sky-400/50 transition flex items-center gap-2 shrink-0">
+                            <i class="fa-regular fa-copy text-sky-400"></i>
+                            <span id="btn-copy-live-label">Salin Info Jalan</span>
+                        </button>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        <!-- Ringkasan Utama Kondisi Simpang -->
+                        <div class="sk-panel-2 sk-line border rounded-xl p-4">
+                            <p id="live-ai-headline" class="text-sm md:text-base font-bold sk-ink leading-relaxed">
+                                Menunggu pemilihan titik kamera CCTV Sudut Kota...
+                            </p>
+                            <p id="live-ai-description" class="text-xs sk-muted leading-relaxed mt-1.5">
+                                Silakan pilih lokasi persimpangan pada panel Daftar Node untuk melihat tayangan langsung sekaligus pembacaan kondisi lalu lintas oleh kecerdasan buatan (AI).
+                            </p>
+                        </div>
+
+                        <!-- 3 Kartu Penjelasan Sederhana -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div class="sk-panel-2 sk-line border rounded-xl p-3.5">
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-sky-500 dark:text-sky-300 mb-1.5">
+                                    <i class="fa-solid fa-traffic-light"></i>
+                                    <span>Situasi di Persimpangan</span>
+                                </div>
+                                <p id="live-ai-situation" class="text-xs sk-ink leading-relaxed">
+                                    Belum ada pembacaan kendaraan pada layar saat ini.
+                                </p>
+                            </div>
+
+                            <div class="sk-panel-2 sk-line border rounded-xl p-3.5">
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-amber-500 dark:text-amber-300 mb-1.5">
+                                    <i class="fa-solid fa-eye"></i>
+                                    <span>Cara Kerja Kamera AI</span>
+                                </div>
+                                <p id="live-ai-tech" class="text-xs sk-ink leading-relaxed">
+                                    Kamera Dishub Kota Pekalongan menggunakan AI untuk mengenali jenis kendaraan secara otomatis, termasuk memperjelas tampilan saat malam hari.
+                                </p>
+                            </div>
+
+                            <div class="sk-panel-2 sk-line border rounded-xl p-3.5">
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-emerald-500 dark:text-emerald-300 mb-1.5">
+                                    <i class="fa-solid fa-compass"></i>
+                                    <span>Saran untuk Pengendara</span>
+                                </div>
+                                <p id="live-ai-advice" class="text-xs sk-ink leading-relaxed">
+                                    Pantau kondisi arus sebelum berangkat dan selalu utamakan keselamatan di persimpangan.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Catatan Transparansi & Privasi Publik -->
+                        <div class="flex items-start gap-2.5 text-[11px] sk-muted pt-1 leading-relaxed">
+                            <i class="fa-solid fa-shield-halved text-blue-400 mt-0.5 shrink-0"></i>
+                            <p>
+                                <strong class="sk-ink">Catatan untuk Masyarakat:</strong> Angka di atas adalah jumlah kendaraan yang <em>sedang tertangkap kamera pada detik ini</em> (bukan total seharian). Sistem AI hanya menghitung kategori kendaraan untuk informasi kelancaran lalu lintas dan tidak menyimpan identitas pribadi pengendara.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -214,7 +305,7 @@
                 <div class="p-5 sk-line border-b sk-panel sticky top-0 z-20 flex justify-between items-center gap-3 shadow-lg">
                     <div>
                         <h3 class="sk-ink font-black text-base uppercase tracking-widest">Daftar Node</h3>
-                        <p class="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-0.5">Pilih zona untuk memantau kamera</p>
+                        <p class="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-0.5">Pilih lokasi persimpangan untuk dipantau</p>
                     </div>
                     <span id="total-cams" class="text-[11px] bg-gradient-to-r from-blue-800 to-blue-600 text-white px-3 py-1.5 rounded-lg font-black tracking-widest border border-blue-400/50 shrink-0">0 NODE</span>
                 </div>
@@ -244,6 +335,202 @@
 <script>
     App.init({ active: 'cctv', search: true });
     CctvPlayer.init();
+</script>
+
+<!-- Penghubung Narasi AI Bahasa Masyarakat untuk Live CCTV (non-intrusif terhadap main.js) -->
+<script>
+(function () {
+    const parseIntID = (el) => {
+        if (!el) return 0;
+        const digits = (el.textContent || '').replace(/[^\d]/g, '');
+        return digits ? parseInt(digits, 10) : 0;
+    };
+
+    const isElementVisible = (el) => {
+        if (!el) return false;
+        if (el.classList.contains('hidden')) return false;
+        return window.getComputedStyle(el).display !== 'none';
+    };
+
+    const updateCitizenLiveInsight = () => {
+        const camName = (document.getElementById('active-cam-name')?.textContent || 'Kamera Belum Dipilih').trim();
+        const camCity = (document.getElementById('active-cam-city')?.textContent || '').trim();
+        const aiStatusText = (document.getElementById('ai-status-indicator')?.textContent || '').trim().toUpperCase();
+        const streamMode = (document.getElementById('stream-mode-badge')?.textContent || '').trim();
+
+        const mobil = parseIntID(document.getElementById('stat-mobil'));
+        const motor = parseIntID(document.getElementById('stat-motor'));
+        const truk = parseIntID(document.getElementById('stat-truk'));
+        const bus = parseIntID(document.getElementById('stat-bus'));
+        const total = parseIntID(document.getElementById('stat-total'));
+        const fps = parseIntID(document.getElementById('stat-fps'));
+
+        const loadingVisible = isElementVisible(document.getElementById('overlay-loading'));
+        const errorVisible = isElementVisible(document.getElementById('overlay-error'));
+
+        const elBadge = document.getElementById('live-traffic-badge');
+        const elHeadline = document.getElementById('live-ai-headline');
+        const elDesc = document.getElementById('live-ai-description');
+        const elSituation = document.getElementById('live-ai-situation');
+        const elTech = document.getElementById('live-ai-tech');
+        const elAdvice = document.getElementById('live-ai-advice');
+
+        if (!elHeadline) return;
+
+        const locationLabel = camCity && !/MEMUAT/i.test(camCity)
+            ? `${camName} (${camCity})`
+            : camName;
+
+        const isAiActive = aiStatusText.includes('ACTIVE') && !aiStatusText.includes('INACTIVE');
+
+        // 1. Kondisi Error / Kamera Offline
+        if (errorVisible) {
+            if (elBadge) elBadge.textContent = 'Sinyal Terputus';
+            elHeadline.textContent = `Tayangan kamera di ${locationLabel} sedang mengalami gangguan sinyal.`;
+            elDesc.textContent = 'Kamera pemantau di titik ini sementara belum terhubung ke server pusat Dishub Kota Pekalongan, sehingga penghitungan kendaraan otomatis belum dapat ditampilkan.';
+            elSituation.textContent = 'Visual langsung dari persimpangan belum tersedia. Sistem sedang mencoba menyambungkan ulang jalur video.';
+            elTech.textContent = 'Modul pembacaan AI menunggu tayangan video stabil sebelum kembali menghitung arus kendaraan.';
+            elAdvice.textContent = 'Silakan pilih titik kamera lain pada Daftar Node di samping untuk memantau jalur terdekat.';
+            return;
+        }
+
+        // 2. Kondisi Memuat Video
+        if (loadingVisible) {
+            if (elBadge) elBadge.textContent = 'Menghubungkan Kamera';
+            elHeadline.textContent = `Menghubungkan tayangan langsung dari ${locationLabel}...`;
+            elDesc.textContent = 'Sistem sedang memuat siaran video langsung dari persimpangan. Setelah gambar muncul, informasi kepadatan lalu lintas akan diperbarui otomatis.';
+            elSituation.textContent = 'Menunggu gambar jalan raya tampil di pemutar video.';
+            elTech.textContent = isAiActive
+                ? 'Mesin kecerdasan buatan (YOLOv8) sudah aktif dan siap menghitung kendaraan begitu video tampil.'
+                : 'Mode pemantauan video langsung sedang disiapkan.';
+            elAdvice.textContent = 'Mohon tunggu beberapa detik hingga siaran langsung terbuka.';
+            return;
+        }
+
+        // 3. Video Aktif tetapi Hitungan 0 (AI Standby atau Jalan Lengang)
+        if (total === 0) {
+            if (!isAiActive && fps === 0) {
+                if (elBadge) elBadge.textContent = 'Video Langsung Aktif';
+                elHeadline.textContent = `Siaran langsung di ${locationLabel} aktif (mode pantauan visual).`;
+                elDesc.textContent = 'Masyarakat dapat melihat kondisi jalan raya secara langsung melalui layar video di atas. Fitur penghitung otomatis kendaraan sedang dalam posisi siaga.';
+                elSituation.textContent = 'Pantauan visual langsung berjalan normal; angka penghitungan kendaraan otomatis belum diaktifkan pada kamera ini.';
+                elTech.textContent = `Status sistem: ${streamMode || 'Streaming Live'}. Kamera menampilkan kondisi jalan secara real-time untuk pemantauan Dishub dan warga.`;
+                elAdvice.textContent = 'Amati langsung kepadatan pada layar video di atas sebelum melintasi persimpangan ini.';
+            } else {
+                if (elBadge) elBadge.textContent = 'Lancar / Lengang';
+                elHeadline.textContent = `Arus lalu lintas di ${locationLabel} terpantau sangat lengang.`;
+                elDesc.textContent = 'Kamera AI aktif memantau persimpangan dan saat ini belum mendeteksi antrean maupun kepadatan kendaraan yang melintas.';
+                elSituation.textContent = 'Tidak ada penumpukan mobil, sepeda motor, truk, maupun bus pada tangkapan layar saat ini.';
+                elTech.textContent = `Deteksi AI aktif memindai jalan (${fps > 0 ? fps + ' frame/detik' : 'real-time'}) untuk mengenali kendaraan yang lewat.`;
+                elAdvice.textContent = 'Jalur terpantau lancar untuk dilalui. Tetap patuhi batas kecepatan dan rambu lalu lintas.';
+            }
+            return;
+        }
+
+        // 4. Video Aktif & Ada Kendaraan Terdeteksi
+        let level = 'Ramai Lancar';
+        let summaryTone = 'terpantau ramai lancar';
+        if (total <= 8) {
+            level = 'Lancar';
+            summaryTone = 'terpantau lancar';
+        } else if (total <= 20) {
+            level = 'Ramai Lancar';
+            summaryTone = 'terpantau ramai lancar';
+        } else if (total <= 35) {
+            level = 'Cukup Padat';
+            summaryTone = 'mulai cukup padat';
+        } else {
+            level = 'Padat';
+            summaryTone = 'terpantau padat kendaraan';
+        }
+
+        const classes = [
+            { name: 'sepeda motor', count: motor },
+            { name: 'mobil pribadi', count: mobil },
+            { name: 'truk angkutan', count: truk },
+            { name: 'bus', count: bus }
+        ].sort((a, b) => b.count - a.count);
+
+        const dominant = classes[0];
+        const heavyCount = truk + bus;
+
+        if (elBadge) elBadge.textContent = `Arus ${level}`;
+
+        elHeadline.textContent = `Lalu lintas di ${locationLabel} ${summaryTone} (${total} kendaraan terdeteksi di layar).`;
+        elDesc.textContent = `Pembacaan kamera AI menunjukkan arus kendaraan didominasi oleh ${dominant.name} (${dominant.count} unit) dari total ${total} kendaraan yang sedang melintas di area pantauan.`;
+
+        // Kartu 1: Situasi di Persimpangan
+        const breakdown = [];
+        if (motor > 0) breakdown.push(`${motor} motor`);
+        if (mobil > 0) breakdown.push(`${mobil} mobil`);
+        if (truk > 0) breakdown.push(`${truk} truk`);
+        if (bus > 0) breakdown.push(`${bus} bus`);
+        elSituation.textContent = `Terpantau di layar saat ini: ${breakdown.join(', ')}. ${heavyCount > 0 ? `Terdapat ${heavyCount} kendaraan besar melintas.` : 'Didominasi kendaraan ringan/pribadi.'}`;
+
+        // Kartu 2: Cara Kerja Kamera AI
+        elTech.textContent = `AI memproses tayangan pada kecepatan ${fps > 0 ? fps + ' FPS' : 'real-time'} untuk memisahkan jenis kendaraan secara otomatis tanpa merekam pelat nomor atau wajah.`;
+
+        // Kartu 3: Saran untuk Pengendara
+        if (total > 35) {
+            elAdvice.textContent = `Kepadatan tinggi di sekitar ${camName}. Pengendara disarankan bersabar, menjaga jarak aman, atau mempertimbangkan jalur alternatif.`;
+        } else if (heavyCount >= 3) {
+            elAdvice.textContent = 'Cukup banyak truk/bus melintas di persimpangan ini. Beri ruang manuver yang cukup dan hindari menyalip dari titik buta.';
+        } else if (motor > mobil * 2) {
+            elAdvice.textContent = 'Arus sepeda motor cukup tinggi. Tetap gunakan lampu sein saat berbelok dan perhatikan lajur kiri di persimpangan.';
+        } else {
+            elAdvice.textContent = `Kondisi ${camName} kondusif untuk dilalui. Tetap ikuti isyarat lampu lalu lintas dan marka jalan.`;
+        }
+    };
+
+    let debounceTimer = null;
+    const scheduleCitizenUpdate = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(updateCitizenLiveInsight, 160);
+    };
+
+    const textIds = [
+        'active-cam-name', 'active-cam-city', 'ai-status-indicator',
+        'stream-mode-badge', 'stat-mobil', 'stat-motor',
+        'stat-truk', 'stat-bus', 'stat-total', 'stat-fps'
+    ];
+    const observer = new MutationObserver(scheduleCitizenUpdate);
+
+    textIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { childList: true, characterData: true, subtree: true });
+    });
+
+    ['overlay-loading', 'overlay-error', 'ai-status-indicator'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+    });
+
+    const copyBtn = document.getElementById('btn-copy-live-info');
+    const copyLabel = document.getElementById('btn-copy-live-label');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            const text = [
+                'Info Lalu Lintas Live — Sudut Kota Dishub Kota Pekalongan',
+                document.getElementById('live-ai-headline')?.textContent,
+                document.getElementById('live-ai-situation')?.textContent,
+                'Saran: ' + (document.getElementById('live-ai-advice')?.textContent || '')
+            ].filter(Boolean).join('\n');
+
+            try {
+                await navigator.clipboard.writeText(text);
+                if (copyLabel) copyLabel.textContent = 'Tersalin!';
+                setTimeout(() => { if (copyLabel) copyLabel.textContent = 'Salin Info Jalan'; }, 2000);
+            } catch (_) {
+                if (copyLabel) copyLabel.textContent = 'Gagal Menyalin';
+                setTimeout(() => { if (copyLabel) copyLabel.textContent = 'Salin Info Jalan'; }, 2000);
+            }
+        });
+    }
+
+    window.SudutKotaLiveCitizenInfo = { refresh: updateCitizenLiveInsight };
+    document.addEventListener('DOMContentLoaded', scheduleCitizenUpdate);
+    scheduleCitizenUpdate();
+})();
 </script>
 </body>
 </html>
