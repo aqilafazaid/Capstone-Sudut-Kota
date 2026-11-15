@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261114v">
+    <link rel="stylesheet" href="css/style.css?v=20261115v">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -53,13 +53,13 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto md:shrink-0">
                 <button id="btn-akun-trash" type="button"
-                        class="action-btn px-4 py-3 sk-btn-ghost font-black uppercase tracking-wider text-[10px] rounded-xl flex items-center justify-center gap-2">
+                        class="action-btn flex-1 md:flex-none px-3 sm:px-4 py-3 sk-btn-ghost font-black uppercase tracking-wider text-[10px] rounded-xl flex items-center justify-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-trash-arrow-up"></i> Tempat sampah (<span id="akun-trash-count">0</span>)
                 </button>
                 <button id="btn-add-user" type="button"
-                        class="action-btn shrink-0 px-6 py-3 bg-blue-600 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 border border-blue-400/50 flex items-center justify-center gap-2">
+                        class="action-btn flex-1 md:flex-none px-3 sm:px-6 py-3 bg-blue-600 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 border border-blue-400/50 flex items-center justify-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-user-plus"></i> Tambah Akun
                 </button>
             </div>
@@ -129,21 +129,27 @@
                 <span class="text-xs font-bold sk-ink"><span id="akun-bulk-count">0</span> akun dipilih</span>
                 <div class="flex items-center gap-2">
                     <button id="btn-akun-bulk-delete" type="button"
-                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                            class="px-3 sm:px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition whitespace-nowrap">
                         <i class="fa-solid fa-trash-can"></i> Hapus terpilih
                     </button>
                     <button id="btn-akun-bulk-clear" type="button"
-                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider sk-btn-ghost">
+                            class="px-3 sm:px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider sk-btn-ghost whitespace-nowrap">
                         Batal
                     </button>
                 </div>
             </div>
 
-            <div class="flex items-center justify-between mb-3">
-                <div class="text-xs sk-muted font-medium flex items-center gap-2">
-                    <i class="fa-solid fa-circle-info text-blue-500"></i>
-                    <span id="status-text-body">Menampilkan seluruh akun terdaftar.</span>
+            <div class="flex items-center justify-between gap-3 mb-3">
+                <div class="text-xs sk-muted font-medium flex items-center gap-2 min-w-0">
+                    <i class="fa-solid fa-circle-info text-blue-500 shrink-0"></i>
+                    <span id="status-text-body" class="truncate">Menampilkan seluruh akun terdaftar.</span>
                 </div>
+                <!-- Kartu (di bawah lg) tidak punya header tabel: "pilih semua"
+                     tersedia sebagai tombol tersendiri. -->
+                <button id="btn-select-page" type="button" aria-pressed="false"
+                        class="lg:hidden shrink-0 text-[10px] font-black uppercase tracking-widest px-3 h-8 rounded-lg border border-blue-500/40 text-blue-600 dark:text-blue-300 hover:bg-blue-600 hover:text-white transition-colors whitespace-nowrap">
+                    <i class="fa-solid fa-check-double"></i> <span id="btn-select-page-label">Pilih semua</span>
+                </button>
             </div>
 
             <div id="user-cards" class="lg:hidden space-y-3"></div>
@@ -268,7 +274,7 @@
                 </p>
             </div>
 
-            <div id="form-error" class="hidden sk-alert «redacted:sk-…» text-xs font-bold px-4 py-3"></div>
+            <div id="form-error" class="hidden sk-alert sk-alert-error text-xs font-bold px-4 py-3"></div>
 
             <div class="flex items-center gap-3 pt-2">
                 <button id="btn-cancel-modal" type="button"
@@ -289,14 +295,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261114v"></script>
-<script src="js/firebase-config.js?v=20261114v"></script>
-<script src="js/firebase-client.js?v=20261114v"></script>
-<script src="js/config.js?v=20261114v"></script>
+<script src="js/public-config.js?v=20261115v"></script>
+<script src="js/firebase-config.js?v=20261115v"></script>
+<script src="js/firebase-client.js?v=20261115v"></script>
+<script src="js/config.js?v=20261115v"></script>
 
-<script src="js/store.js?v=20261114v"></script>
-<script src="js/auth.js?v=20261114v"></script>
-<script src="js/app.js?v=20261114v"></script>
-<script src="js/akun.js?v=20261114v"></script>
+<script src="js/store.js?v=20261115v"></script>
+<script src="js/auth.js?v=20261115v"></script>
+<script src="js/app.js?v=20261115v"></script>
+<script src="js/akun.js?v=20261115v"></script>
 </body>
 </html>

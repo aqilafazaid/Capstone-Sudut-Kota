@@ -28,6 +28,13 @@ import firebase_init
 ROLE_CACHE_TTL = 60
 VALID_ROLES = ("admin", "teknisi", "visitor")
 
+# Toleransi jam untuk verifikasi ID token. google-auth menolak token yang
+# `iat`-nya beberapa detik "di masa depan" (InvalidValue: Token used too early)
+# ketika jam mesin backend sedikit tertinggal dari jam Google — gejalanya
+# login berhasil di peramban tetapi setiap request pertama dibalas 401.
+# 10 detik cukup lebar untuk drift NTP biasa tanpa membuka celah berarti.
+TOKEN_CLOCK_SKEW_SECONDS = 10
+
 # --- Akses fitur -----------------------------------------------------------
 # Sama dengan model di accounts.py: peran adalah batas atas, `akses` per akun
 # hanya boleh mempersempit. Endpoint tulis memakai require_feature() supaya
@@ -100,7 +107,10 @@ def _decode(token: str) -> dict[str, Any]:
         return _verifier(token)
     from firebase_admin import auth as fb_auth
 
-    return fb_auth.verify_id_token(token, app=_app(), check_revoked=False)
+    return fb_auth.verify_id_token(
+        token, app=_app(), check_revoked=False,
+        clock_skew_seconds=TOKEN_CLOCK_SKEW_SECONDS,
+    )
 
 
 def default_akses(peran: str) -> dict[str, bool]:

@@ -129,7 +129,7 @@
     function paintTable() {
         const rows = state.data.perNode;
 
-        el.tableCount.textContent = `${rows.length} node`;
+        el.tableCount.textContent = `${rows.length} node (semua CCTV)`;
         el.tableBody.innerHTML = rows.map(node => `
             <tr class="sk-row-hover">
                 <td class="px-4 py-3">
@@ -310,6 +310,7 @@
         out.push(csvRow(['Command Center Dishub Kota Pekalongan']));
         out.push(csvRow(['Dibuat', new Date().toLocaleString('id-ID')]));
         out.push(csvRow(['Sumber', sourceLabel()]));
+        out.push(csvRow(['Cakupan', `${periods[0].summary.nodes} node CCTV (seluruh node terdaftar)`]));
         out.push(csvRow(['Isi', periods.length > 1
             ? 'Semua interval: ' + periods.map(p => p.periodLabel).join(', ')
             : periods[0].periodLabel + ' (' + periods[0].rangeLabel + ')']));
@@ -546,9 +547,10 @@
         doc.setTextColor(105, 115, 135);
         doc.text('Sudut Kota - Command Center Dinas Perhubungan ' + ascii(KOP.kota), M, 55.5);
         doc.text('Dibuat: ' + ascii(new Date().toLocaleString('id-ID')) + '   |   Sumber: ' + ascii(sourceLabel()), M, 60);
+        doc.text('Cakupan: seluruh ' + selected.summary.nodes + ' node CCTV terdaftar', M, 64.5);
         doc.text('Isi: ' + (periods.length > 1
             ? 'seluruh interval - ' + ascii(periods.map(p => p.periodLabel).join(', '))
-            : ascii(periods[0].periodLabel) + ' (' + ascii(periods[0].rangeLabel) + ')'), M, 64.5);
+            : ascii(periods[0].periodLabel) + ' (' + ascii(periods[0].rangeLabel) + ')'), M, 69);
 
         /* ---------------- RINGKASAN LINTAS INTERVAL ---------------- */
         /* Hanya muncul saat berkas memuat semua interval ("Seluruhnya"). */

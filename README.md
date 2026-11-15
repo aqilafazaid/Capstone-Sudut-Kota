@@ -332,12 +332,28 @@ python scripts/apply_rtdb_rules.py --show     # lihat aturan aktif
 ### Engine AI — satu folder per cara inferensi
 
 `ai_engine/main_ai.py` adalah jembatan tiga keluarga model. Satu proses per kamera,
-dengan **dua laju** yang terpisah:
+dengan **dua laju** yang terpisah. Urutan tahapnya tetap; hanya tahap yang dimatikan
+yang dilewati:
 
 ```text
-RTSP → jalur tampilan: frame asli 1920x1080 + LUT pencerahan + kotak + HUD → ffmpeg → HLS
-     ↘ jalur AI (thread sendiri): frame kecil 960x540 → low-light → YOLO → kotak + LUT
+RTSP → [1] low-light (opsional) → [2] YOLO (opsional)
+     → kotak + HUD + LUT tampilan → ffmpeg → HLS
 ```
+
+| Sakelar aktif | Alur yang benar-benar dijalankan |
+|---|---|
+| LLE + YOLO | Video → LLE → YOLO → Video |
+| YOLO saja | Video → YOLO → Video |
+| LLE saja | Video → LLE → Video |
+| keduanya mati | Video → Video |
+
+YOLO selalu membaca **keluaran tahap sebelumnya**: saat enhancement aktif, detektor
+menerima frame hasil model low-light (bukan frame mentah yang dicerahkan LUT). Saat
+LLE dimatikan, model low-light tidak dijalankan sama sekali, LUT tampilan lama
+dibuang, dan detektor kembali ke frame sumber. Semuanya tanpa restart proses — hanya
+lewat `cam_<channel>/ai_status` di RTDB. Urutan yang sedang berjalan dilaporkan di
+`ai_stats.json` sebagai `pipeline` (`lowlight->yolo->video`, `yolo->video`,
+`lowlight->video`, atau `video`) dan dicetak di log engine sebagai `alur=…`.
 
 HUD di dalam video ditulis **dua baris di sudut kiri-bawah** — model low-light,
 bobot YOLO, dan perangkat pemroses (`GPU · <nama>` / `CPU`). Kiri-bawah dipilih
@@ -354,17 +370,19 @@ thread** yang tidak pernah ditunggu jalur tampilan:
 | Thread | Kerja | Laju |
 |---|---|---|
 | `ai-prep` | perkecil frame asli → `AI_AI_SIDE` | tiap frame |
-| `ai-enhance` | model low-light → LUT kecerahan | `AI_ENHANCE_HZ` (default 6x/dtk) |
-| `ai-detect` | YOLO pada frame kecil + LUT | secepat perangkat (±laju sumber) |
+| `ai-enhance` | model low-light → frame hasil model + LUT tampilan | `AI_ENHANCE_HZ` (default 6x/dtk) |
+| `ai-detect` | YOLO pada keluaran `ai-enhance` (frame sumber bila LLE mati) | mengikuti laju tahap 1; ±laju sumber saat LLE mati |
 
-Kuncinya: LUT kecerahan berubah lambat, jadi model termahal tidak perlu
-dijalankan tiap frame — yang perlu tiap frame hanya YOLO (18 ms). Dengan
-pemisahan ini deteksi ikut laju sumber (terukur **24,9 deteksi/dtk** pada
-sumber 25 fps), bukan 9/dtk seperti saat enhance + YOLO berurutan.
+Kuncinya: model low-light termahal tidak perlu dijalankan tiap frame — LUT
+tampilan berubah lambat, dan YOLO hanya perlu membaca frame hasil model yang
+terakhir. Saat LLE aktif deteksi mengikuti laju model; saat LLE mati deteksi
+mengikuti laju sumber (terukur **24,9 deteksi/dtk** pada sumber 25 fps).
 
-Yang tampil tetap frame asli yang tajam, bukan hasil upscale 960 → 1080; efek
-low-light-nya mendekati model (kurva gamma per kanal yang menyamakan rata-rata
-tiap kanal dengan keluaran model), bukan identik.
+Model low-light dijalankan pada frame kerja 960×540. Yang tampil di kanvas
+resolusi penuh tetap frame asli yang tajam: pencerahannya memakai LUT kecerahan
+per kanal yang menyamakan rata-rata tiap kanal dengan keluaran model, bukan
+hasil upscale 960 → 1080 yang lunak. Deteksi memakai piksel hasil model yang
+sebenarnya.
 
 **Pemakaian perangkat** (RTX 3050 Laptop, kanvas 1920x1080, kerja AI 960x540):
 
@@ -662,6 +680,9 @@ Panel *Daftar Node* punya empat kontrol yang saling menumpuk:
 - **Centang per baris** (tabel di ≥768 px, kartu di bawahnya) dan **centang semua** di kepala
   tabel. "Semua" hanya memilih baris yang lolos filter saat itu, dan kotak kepala menampilkan
   status *indeterminate* bila baru sebagian dipilih.
+- **Tombol Pilih semua / Batal pilih** muncul di tampilan kartu (dashboard <768 px, akun
+  <1024 px) karena di sana kepala tabel tidak ada. Tombol itu memilih seluruh baris yang lolos
+  filter dan keadaannya selalu sama dengan checkbox kepala tabel (termasuk *indeterminate*).
 - **Bilah aksi massal** muncul saat ada pilihan: jumlah node + **Hapus terpilih** (soft delete
   berurutan; setiap kegagalan dilaporkan di toast) + **Batal**.
 
@@ -727,8 +748,8 @@ tidak ada input manual, tidak ada kartu contoh.
   URL bertanda tangan jadi 403), dan disajikan lewat
   `/api/sosmed/instagram/avatar/<handle>.jpg`. Setiap scrape menimpanya, jadi avatar ikut berubah
   saat akun mengganti foto profil; browser memvalidasi ulang tiap 10 menit (ETag).
-- **Cache**: `backend/data/instagram-cache.json`, umur `IG_CACHE_SECONDS` (default **300 detik** =
-  5 menit). Scrape hanya dipicu permintaan pertama setelah cache basi; `IG_HANDLES` mengganti
+- **Cache**: `backend/data/instagram-cache.json`, umur tetap **300 detik** (5 menit) dari
+  konstanta `IG_CACHE_SECONDS` di `social/instagram.py` — bukan variabel `.env`. Scrape hanya dipicu permintaan pertama setelah cache basi; `IG_HANDLES` mengganti
   daftar akun (default kedua akun di atas). Scrape yang berhenti di tengah menulis cache
   `partial` dengan `fetched_at` lama, dan cache parsial **tidak** dianggap segar — pengunjung
   tidak pernah menerima setengah feed.
@@ -795,6 +816,12 @@ Semua periode memakai satu sumber angka per jam, sehingga totalnya konsisten: 1 
 dengan hari itu di dalam 1 Minggu, dan seterusnya. Isi halaman: KPI (total, mobil, motor, truk, bus,
 rata-rata per bucket, bucket tersibuk), grafik batang bertumpuk, donat komposisi, dan tabel rekap
 per node yang diurutkan dari volume tertinggi.
+
+**Seluruh node ikut dijumlahkan**, bukan hanya yang sakelar `aktif`-nya menyala: riwayat milik
+sebuah titik tetap milik titik itu walau stream-nya sedang mati. `aktif` hanya menentukan kolom
+status dan angka "Node online" pada ringkasan; tabel, PDF, dan CSV selalu memuat semua node
+terdaftar (termasuk yang bernilai nol). Berkas ekspor mencantumkan baris **Cakupan: seluruh N
+node CCTV terdaftar** supaya pembaca laporan tahu cakupannya.
 
 **Ringkasan AI untuk Masyarakat** (`#ai-insight-panel`) ada di atas grafik: satu paragraf narasi
 plus tiga kartu sorotan (komposisi, titik/jam terpadat, saran perjalanan) dan tombol *Salin
@@ -916,6 +943,11 @@ backend/.venv/Scripts/python.exe test/test_soft_delete_accounts.py # akun: soft 
 backend/.venv/Scripts/python.exe test/test_soft_delete_api.py      # endpoint /api/akun tempat sampah
 backend/.venv/Scripts/python.exe test/test_channel_unique.py      # channel kanonik + unik (termasuk tempat sampah)
 backend/.venv/Scripts/python.exe test/test_stats_trash_filter.py   # statistik node di tempat sampah disembunyikan
+backend/.venv/Scripts/python.exe test/test_stats_all_nodes.py    # statistik + CSV/PDF memuat semua node
+backend/.venv/Scripts/python.exe test/test_ai_pipeline_order.py    # urutan LLE -> YOLO + sakelar dinamis (stub model)
+backend/.venv/Scripts/python.exe test/test_ai_engine_toggle.py     # alur AI lewat RTDB pada engine sungguhan
+backend/.venv/Scripts/python.exe test/test_crud_e2e.py             # CRUD node + akun (akun uji sementara, dibersihkan)
+backend/.venv/Scripts/python.exe test/test_ui_select_responsive.py # UI: select/pilih semua/tempat sampah 12 viewport
 
 # profiling (bukan uji lulus/gagal, mencetak angka)
 backend/.venv/Scripts/python.exe test/probe_hls_rate.py        # CFR -r vs wallclock pada HlsSink
@@ -952,9 +984,12 @@ untuk `/js/`.
 
 ## Responsif
 
-Semua halaman diuji ulang pada 9 halaman × 8 ukuran viewport (280×653, 320×568, 360×640,
-390×844, 768×1024, 844×390, 1280×800, 1920×1080): `scrollWidth == innerWidth` pada semua
-kombinasi, termasuk saat bilah aksi massal terbuka. Label navigasi bawah kini `truncate` dengan
+Semua halaman diuji ulang pada 9 halaman × 13 ukuran viewport (280×653, 320×568, 360×640,
+390×844, 430×932, 540×720, 768×1024, 1024×768, 1280×720, 1920×1080, 2560×1080, 3440×1440,
+dan 1920×600 untuk layar pendek): `scrollWidth == innerWidth` pada semua kombinasi, termasuk
+saat bilah aksi massal dan panel tempat sampah terbuka. Selain dashboard/akun, tujuh halaman
+lain (beranda, CCTV, statistik, tambah data, login, registrasi, lupa sandi) diukur pada
+seluruh viewport itu. Label navigasi bawah kini `truncate` dengan
 huruf 9 px di bawah 640 px, sehingga lima item tetap muat di 280 px tanpa memperlebar layout
 viewport (sebelumnya 320 px melebar ke 349 px).
 
@@ -995,6 +1030,17 @@ Titik penyesuaian utama:
   zona/jalan, badge AI, dan tombol Edit/Hapus berlabel. Tabel tetap dipakai pada layar lebar.
   Tombol **Tempat sampah (n)** membuka panel node terhapus dengan aksi Pulihkan / Hapus permanen;
   di layar sempit panelnya menumpuk tombol di bawah identitas node.
+- **Pilihan massal & tempat sampah** — tombol *Hapus terpilih* dan *Batal* memakai
+  `whitespace-nowrap` + padding lebih rapat di bawah 640 px, jadi label tidak pecah dua baris;
+  baris tempat sampah membungkus tombolnya (`flex-wrap`) di bawah 640 px. Tombol **Pilih semua**
+  tersedia di tampilan kartu (dashboard <768 px, akun <1024 px).
+- **Kelola Akun** — tombol *Tempat sampah* dan *Tambah Akun* sebelumnya memaksa satu baris
+  selebar 351 px sehingga halaman melebar 31 px pada 320 px. Sekarang keduanya membungkus
+  (`flex-wrap`), berbagi lebar (`flex-1`) di ponsel, dan `whitespace-nowrap`.
+- **Tambah/ubah node** — dua lingkaran blur dekoratif beranimasi (`animate-blob`) memakai
+  `transform: scale`, sehingga kotaknya melewati tepi layar 9–25 px pada 320–768 px dan membuat
+  halaman bisa digeser horizontal. `<main>` halaman itu sekarang `overflow-hidden`; dekorasinya
+  tetap terlihat, tetapi tidak lagi memperlebar layout.
 - **Statistik** — kolom kontrol judul menumpuk dengan tepi kiri sejajar di bawah 1280 px.
 - **Layar pendek** (<520 px tinggi, mis. ponsel landscape) — padding atas `main` dan `glass-card`
   dirapatkan agar konten tidak terdorong keluar layar.
@@ -1007,6 +1053,9 @@ Pengukuran ulang — tiga skrip di `test/` (lokal, tidak ikut deploy):
 - `audit_ux.py` — target sentuh <40 px, field tanpa label, ukuran field <16 px, teks <10 px,
   jumlah permintaan/berat halaman. 9 halaman × 2 viewport ponsel.
 - `measure_hls_start.py` — waktu sampai frame pertama HLS (browser baru tiap run supaya cold).
+- `test_ui_select_responsive.py` — 7 halaman × 12 viewport, ditambah pemeriksaan khusus:
+  bilah aksi massal muncul, tombol *Pilih semua* memilih/membatalkan seluruh baris, checkbox
+  kepala tabel hanya tampil di layar lebar, dan tidak ada request `DELETE` selama uji.
 
 ## Kelola akun
 
@@ -1053,8 +1102,9 @@ memutar `hls_url` yang diturunkan backend (`/hls/<id>/index.m3u8`). Tidak ada la
 `url_m3u8`, `url_ai`, atau `url_non_ai`.
 
 - Form tambah/ubah hanya punya satu input RTSP; HLS dibentuk otomatis.
-- `rtsp://`/`rtsps://` diterima. `http(s)://` hanya bila `ALLOW_TEST_SOURCES=true`,
-  untuk stream uji lokal seperti berkas HLS publik.
+- `rtsp://`/`rtsps://` diterima. `http(s)://` hanya bila konstanta `ALLOW_TEST_SOURCES`
+  di `backend/nodes.py` diubah menjadi `True` — untuk stream uji lokal seperti berkas HLS
+  publik. Nilai itu sengaja tidak lagi berada di `.env`.
 - `GET /api/nodes` tidak memuat `rtsp`; `GET /api/nodes/<id>` mengembalikannya untuk
   form edit dan membutuhkan ID token Firebase (`Authorization: Bearer`) plus fitur `dashboard`.
 - Peramban tidak pernah membuka RTSP. URL HLS satu: `/hls/<id>/index.m3u8`; engine AI
@@ -1066,6 +1116,23 @@ memutar `hls_url` yang diturunkan backend (`/hls/<id>/index.m3u8`). Tidak ada la
 Alasannya: URL RTSP biasanya memuat `user:password`. Menyimpannya di Firebase RTDB
 (yang dibaca klien) akan membocorkan kredensial kamera ke siapa pun yang membuka
 devtools. SQLite di PC operator adalah satu-satunya tempat rahasia itu berada.
+
+### Setelan runtime yang tinggal di kode
+
+Tiga setelan yang dulu ada di `backend/.env` dan `.env.example` sekarang menjadi konstanta di
+modul yang memakainya. Alasannya: ketiganya perilaku runtime yang sama untuk semua mesin, dan
+berkas `.env` yang tersalin tidak boleh diam-diam mengubahnya.
+
+| Setelan | Nilai | Lokasi |
+|---|---|---|
+| `STREAM_AUTOSTART` | `True` (stream node aktif dinyalakan saat backend start) | `backend/app.py` |
+| `ALLOW_TEST_SOURCES` | `False` (hanya `rtsp://`/`rtsps://` diterima) | `backend/nodes.py` |
+| `IG_CACHE_SECONDS` | `300` (maksimal sekali scrape per 5 menit) | `backend/social/instagram.py` |
+
+`TOKEN_CLOCK_SKEW_SECONDS` (10 detik, `backend/auth.py`) bukan setelan operator melainkan
+toleransi verifikasi: `google-auth` menolak token yang `iat`-nya beberapa detik di masa depan
+(`InvalidValue: Token used too early`) bila jam mesin backend tertinggal dari jam Google.
+Gejalanya login berhasil di peramban tetapi request pertama dibalas 401.
 
 ## Kendala yang masih terbuka
 

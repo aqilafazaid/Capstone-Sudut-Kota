@@ -34,6 +34,8 @@
         bulkDelete: document.getElementById('btn-node-bulk-delete'),
         bulkClear: document.getElementById('btn-node-bulk-clear'),
         selectAll: document.getElementById('select-all-nodes'),
+        selectPage: document.getElementById('btn-select-page'),
+        selectPageLabel: document.getElementById('btn-select-page-label'),
         statusText: document.getElementById('status-text-body'),
         tableBody: document.getElementById('node-table-body'),
         cards: document.getElementById('node-cards'),
@@ -123,6 +125,15 @@
         const semua = ids.length > 0 && ids.every(id => selected.has(id));
         el.selectAll.checked = semua;
         el.selectAll.indeterminate = !semua && ids.some(id => selected.has(id));
+
+        /* Tombol "pilih semua" untuk tampilan kartu (layar sempit) harus
+           mencerminkan keadaan yang sama dengan checkbox header tabel. */
+        if (el.selectPage) {
+            el.selectPage.setAttribute('aria-pressed', String(semua));
+            el.selectPage.classList.toggle('bg-blue-600', semua);
+            el.selectPage.classList.toggle('text-white', semua);
+            if (el.selectPageLabel) el.selectPageLabel.textContent = semua ? 'Batal pilih' : 'Pilih semua';
+        }
 
         document.querySelectorAll('[data-select]').forEach(box => {
             box.checked = selected.has(box.dataset.select);
@@ -279,13 +290,13 @@
                     <div class="text-[11px] sk-muted font-mono">${cam.id}${cam.channel ? ' · CH ' + cam.channel : ''}</div>
                     <div class="text-[10px] sk-muted">Dihapus ${fmtDeleted(cam.deleted_at)}</div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
                     <button type="button" data-restore="${cam.id}"
-                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white transition">
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white transition whitespace-nowrap">
                         <i class="fa-solid fa-rotate-left"></i> Pulihkan
                     </button>
                     <button type="button" data-purge="${cam.id}"
-                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition whitespace-nowrap">
                         <i class="fa-solid fa-trash-can"></i> Hapus permanen
                     </button>
                 </div>
@@ -339,6 +350,19 @@
         else ids.forEach(id => selected.delete(id));
         paintTable();
     });
+
+    /* Tampilan kartu: tombol yang sama memilih/membatalkan seluruh baris
+       yang lolos filter (bukan hanya yang terlihat di layar). */
+    if (el.selectPage) {
+        el.selectPage.addEventListener('click', () => {
+            const ids = visibleIds();
+            if (ids.length === 0) return;
+            const semua = ids.every(id => selected.has(id));
+            ids.forEach(id => (semua ? selected.delete(id) : selected.add(id)));
+            paintTable();
+            el.selectPage.blur();
+        });
+    }
 
     el.bulkClear.addEventListener('click', clearSelection);
 

@@ -54,6 +54,10 @@ load_dotenv(BASE_DIR / ".env")
 
 APP_VERSION = "0.4.0"
 STARTED_AT = time.time()
+# Stream node aktif dinyalakan otomatis saat backend start. Ini perilaku
+# runtime yang sama untuk semua mesin, jadi nilainya di kode — bukan di .env —
+# supaya berkas konfigurasi yang tersalin tidak diam-diam mematikan stream.
+STREAM_AUTOSTART = True
 HOST = os.environ.get("API_HOST", "127.0.0.1")
 PORT = int(os.environ.get("API_PORT", "5000"))
 
@@ -192,7 +196,7 @@ def create_app() -> Flask:
             configured={key: bool(os.environ.get(key)) for key in REQUIRED_ENV},
             auth_configured=auth.configured(),
             allow_test_sources=node_store.allow_test_sources(),
-            stream_autostart=_truthy(os.environ.get("STREAM_AUTOSTART", "true")),
+            stream_autostart=STREAM_AUTOSTART,
             ai_engine=AI_ENGINE,
         )
 
@@ -642,7 +646,7 @@ def start_stream_watchdog():
     """
     if not FFMPEG_OK or not _truthy(os.environ.get("STREAM_WATCHDOG", "true")):
         return None
-    if not _truthy(os.environ.get("STREAM_AUTOSTART", "true")):
+    if not STREAM_AUTOSTART:
         return None
 
     def loop() -> None:
@@ -709,7 +713,7 @@ def _access_log_handler() -> Path | None:
 
 if __name__ == "__main__":
     access_log = _access_log_handler()
-    if _truthy(os.environ.get("STREAM_AUTOSTART", "true")):
+    if STREAM_AUTOSTART:
         print(f"[STREAM] Autostart: {', '.join(start_active_streams()) or '-'}")
     start_stream_watchdog()
     if not _truthy(os.environ.get("STATS_COLLECTOR", "true")):

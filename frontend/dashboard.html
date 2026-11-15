@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261114v">
+    <link rel="stylesheet" href="css/style.css?v=20261115v">
 
     <script>
         tailwind.config = { darkMode: 'class' };
@@ -171,11 +171,11 @@
                 <span class="text-xs font-bold sk-ink"><span id="node-bulk-count">0</span> node dipilih</span>
                 <div class="flex items-center gap-2">
                     <button id="btn-node-bulk-delete" type="button"
-                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                            class="px-3 sm:px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition whitespace-nowrap">
                         <i class="fa-solid fa-trash-can"></i> Hapus terpilih
                     </button>
                     <button id="btn-node-bulk-clear" type="button"
-                            class="px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider sk-btn-ghost">
+                            class="px-3 sm:px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider sk-btn-ghost whitespace-nowrap">
                         Batal
                     </button>
                 </div>
@@ -186,9 +186,15 @@
                     <i class="fa-solid fa-circle-info text-blue-500 shrink-0"></i>
                     <span id="status-text-body" class="truncate">Menampilkan seluruh node terdaftar.</span>
                 </div>
-                <div class="flex items-center gap-4 shrink-0">
-                    <button id="btn-trash-toggle" type="button" class="text-[10px] font-bold sk-muted hover:text-amber-500 uppercase tracking-widest transition">
-                        <i class="fa-solid fa-trash-arrow-up"></i> Tempat sampah (<span id="trash-count">0</span>)
+                <div class="flex items-center gap-3 shrink-0">
+                    <!-- Kartu (di bawah md) tidak punya baris header tabel, jadi
+                         "pilih semua" tersedia sebagai tombol tersendiri. -->
+                    <button id="btn-select-page" type="button" aria-pressed="false"
+                            class="md:hidden text-[10px] font-black uppercase tracking-widest px-3 h-8 rounded-lg border border-blue-500/40 text-blue-600 dark:text-blue-300 hover:bg-blue-600 hover:text-white transition-colors whitespace-nowrap">
+                        <i class="fa-solid fa-check-double"></i> <span id="btn-select-page-label">Pilih semua</span>
+                    </button>
+                    <button id="btn-trash-toggle" type="button" class="text-[10px] font-bold sk-muted hover:text-amber-500 uppercase tracking-widest transition whitespace-nowrap">
+                        <i class="fa-solid fa-trash-arrow-up"></i> <span class="hidden min-[360px]:inline">Tempat sampah</span> (<span id="trash-count">0</span>)
                     </button>
                 </div>
             </div>
@@ -240,14 +246,14 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261114v"></script>
-<script src="js/firebase-config.js?v=20261114v"></script>
-<script src="js/firebase-client.js?v=20261114v"></script>
-<script src="js/config.js?v=20261114v"></script>
+<script src="js/public-config.js?v=20261115v"></script>
+<script src="js/firebase-config.js?v=20261115v"></script>
+<script src="js/firebase-client.js?v=20261115v"></script>
+<script src="js/config.js?v=20261115v"></script>
 
-<script src="js/store.js?v=20261114v"></script>
-<script src="js/auth.js?v=20261114v"></script>
-<script src="js/app.js?v=20261114v"></script>
-<script src="js/dashboard.js?v=20261114v"></script>
+<script src="js/store.js?v=20261115v"></script>
+<script src="js/auth.js?v=20261115v"></script>
+<script src="js/app.js?v=20261115v"></script>
+<script src="js/dashboard.js?v=20261115v"></script>
 </body>
 </html>

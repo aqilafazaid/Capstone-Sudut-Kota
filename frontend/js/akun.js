@@ -37,6 +37,8 @@
         tableBody: document.getElementById('user-table-body'),
         addBtn: document.getElementById('btn-add-user'),
         selectAll: document.getElementById('select-all-akun'),
+        selectPage: document.getElementById('btn-select-page'),
+        selectPageLabel: document.getElementById('btn-select-page-label'),
         bulk: document.getElementById('akun-bulk'),
         bulkCount: document.getElementById('akun-bulk-count'),
         bulkDelete: document.getElementById('btn-akun-bulk-delete'),
@@ -179,6 +181,14 @@
         const semua = ids.length > 0 && ids.every(uid => selected.has(uid));
         el.selectAll.checked = semua;
         el.selectAll.indeterminate = !semua && ids.some(uid => selected.has(uid));
+
+        /* Tombol "pilih semua" tampilan kartu mengikuti keadaan yang sama. */
+        if (el.selectPage) {
+            el.selectPage.setAttribute('aria-pressed', String(semua));
+            el.selectPage.classList.toggle('bg-blue-600', semua);
+            el.selectPage.classList.toggle('text-white', semua);
+            if (el.selectPageLabel) el.selectPageLabel.textContent = semua ? 'Batal pilih' : 'Pilih semua';
+        }
 
         document.querySelectorAll('[data-select]').forEach(box => {
             box.checked = selected.has(box.dataset.select);
@@ -329,13 +339,13 @@
                     <div class="text-[11px] sk-muted font-mono">${user.username}${user.nip ? ' · ' + user.nip : ''}</div>
                     <div class="text-[10px] sk-muted">${Auth.roleLabel(user.role)} · dihapus ${fmtDeleted(user.deleted_at)}</div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
                     <button type="button" data-restore="${user.uid}"
-                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white transition">
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white transition whitespace-nowrap">
                         <i class="fa-solid fa-rotate-left"></i> Pulihkan
                     </button>
                     <button type="button" data-purge="${user.uid}"
-                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition">
+                            class="px-3 h-9 rounded-lg text-[10px] font-black uppercase tracking-wider bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/40 hover:bg-red-600 hover:text-white transition whitespace-nowrap">
                         <i class="fa-solid fa-trash-can"></i> Hapus permanen
                     </button>
                 </div>
@@ -583,6 +593,18 @@
         else ids.forEach(uid => selected.delete(uid));
         paintList();
     });
+
+    /* Tampilan kartu: pilih/batalkan semua baris yang lolos filter. */
+    if (el.selectPage) {
+        el.selectPage.addEventListener('click', () => {
+            const ids = visibleIds();
+            if (ids.length === 0) return;
+            const semua = ids.every(uid => selected.has(uid));
+            ids.forEach(uid => (semua ? selected.delete(uid) : selected.add(uid)));
+            paintList();
+            el.selectPage.blur();
+        });
+    }
 
     el.bulkClear.addEventListener('click', clearSelection);
 

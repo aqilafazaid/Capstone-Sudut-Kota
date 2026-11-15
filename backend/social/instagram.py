@@ -40,6 +40,8 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 MAX_POSTS = 16
 POSTS_PER_HANDLE = 8
 PAUSE_SECONDS = 1.0
+# Umur cache feed (detik). 300 = maksimal sekali scrape per 5 menit.
+IG_CACHE_SECONDS = 300
 
 _lock = threading.Lock()
 
@@ -52,10 +54,13 @@ def handles() -> list[str]:
 
 
 def cache_seconds() -> int:
-    try:
-        return max(60, int(os.environ.get("IG_CACHE_SECONDS", "900")))
-    except ValueError:
-        return 900
+    """Umur cache feed Instagram, dalam detik.
+
+    Nilainya bagian dari desain laju scrape (maksimal sekali per 5 menit),
+    jadi disimpan di kode — bukan di .env — supaya berkas konfigurasi tidak
+    bisa mempercepat scrape tanpa perubahan kode yang disadari.
+    """
+    return IG_CACHE_SECONDS
 
 
 def _read_cache() -> dict[str, Any]:

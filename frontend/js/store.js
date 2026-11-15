@@ -502,8 +502,12 @@
             const cfg = PERIODS[key];
             const cameras = nodes.map(n => ({ ...n }));
             const activeCameras = cameras.filter(c => c.aktif);
-            /* Firebase satu-satunya sumber angka. Tanpa sampel -> semua nol. */
-            const countedCameras = activeCameras;
+            /* Firebase satu-satunya sumber angka. Tanpa sampel -> semua nol.
+               SEMUA node ikut dijumlahkan, bukan hanya yang `aktif`: riwayat
+               sebuah titik tetap milik titik itu walau stream-nya sedang
+               mati. `aktif` hanya menentukan kolom status dan jumlah online,
+               sehingga tabel, PDF, dan CSV selalu memuat seluruh node. */
+            const countedCameras = cameras;
             const today = startOfDay(new Date());
             const buckets = [];
             const perNodeMap = new Map(cameras.map(cam => [cam.id, {

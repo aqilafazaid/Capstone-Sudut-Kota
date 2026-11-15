@@ -1,9 +1,23 @@
 """Engine AI Sudut Kota — jembatan MirNet / Zero-DCE family / YOLO.
 
-Alur satu frame:
+Alur satu frame (urutannya tetap, apa pun sakelar yang aktif):
 
-    RTSP / file  ->  enhancer low-light (varian pilihan)  ->  YOLO
-                 ->  gambar kotak + HUD  ->  ffmpeg  ->  HLS  ->  web
+    Video masukan
+      -> [Low-Light Enhancement]  (dilewati bila nonaktif)
+      -> [YOLO]                   (dilewati bila nonaktif)
+      -> gambar kotak + HUD -> ffmpeg -> HLS -> web
+
+Tiga keadaan yang didukung tanpa restart:
+
+    LLE + YOLO : Video -> LLE -> YOLO -> Video
+    YOLO saja   : Video -> YOLO -> Video
+    LLE saja   : Video -> LLE -> Video
+
+Sakelar dibaca dari RTDB ``cam_<channel>/ai_status`` tiap 2 detik. Ketika LLE
+dinyalakan saat YOLO sedang berjalan, tahap enhancement disisipkan *sebelum*
+deteksi; YOLO langsung memakai keluaran model (bukan frame mentah) pada frame
+berikutnya. Sebaliknya, mematikan LLE mengembalikan YOLO ke frame sumber dan
+membuang LUT tampilan lama.
 
 Kebijakan device: ``auto`` = GPU NVIDIA bila terdeteksi, kalau tidak CPU
 (``AI_DEVICE=cpu`` memaksa CPU; ``AI_FP16=0`` mematikan FP16 di GPU).
@@ -13,7 +27,9 @@ Resolusi
 --------
 Yang tampil di web selalu resolusi asli sumber (``--max-side 0``). Frame kerja
 AI diperkecil ke ``--ai-side`` (default 960) supaya enhance + YOLO tetap
-ringan, lalu hasilnya diperbesar kembali ke kanvas sebelum ditulis ke ffmpeg.
+ringan. YOLO bekerja pada frame kerja hasil enhancement; jalur tampilan memakai
+LUT kecerahan per kanal dari model yang sama supaya kanvas resolusi penuh tetap
+tajam (bukan hasil upscale model yang lunak).
 
 Statistik
 ---------
@@ -21,6 +37,7 @@ Statistik
 *real* video yang tampil di web: jumlah frame yang benar-benar masuk ke
 encoder HLS dibagi waktu berjalan. ``fps_in`` (frame sumber) dan
 ``enhance_ms``/``yolo_ms`` dilaporkan terpisah supaya bottleneck terlihat.
+``pipeline`` mencatat urutan tahap yang benar-benar aktif pada frame terakhir.
 
 Kontrol runtime
 ---------------
@@ -212,6 +229,9 @@ class AiWorker:
         self._native: np.ndarray | None = None      # frame masuk (belum diolah)
         self._small: np.ndarray | None = None       # frame kerja terbaru
         self._small_version = 0
+        self._enhanced: np.ndarray | None = None    # keluaran model low-light
+        self._enhanced_version = 0
+        self._detect_key: tuple | None = None       # frame terakhir yang dideteksi
         self._request: dict | None = None
         self._wake_prep = threading.Event()
         self._wake_enhance = threading.Event()
@@ -236,6 +256,7 @@ class AiWorker:
             "variant": variant,
             "model_label": model_label,
             "yolo_active": bool(yolo_active),
+            "pipeline": self._pipeline_name(variant != "none", bool(yolo_active)),
             "counts": {"mobil": 0, "motor": 0, "truk": 0, "bus": 0},
             "boxes": [],
             "lut": None,
@@ -248,6 +269,22 @@ class AiWorker:
         }
 
     # --- API -------------------------------------------------------------
+    @staticmethod
+    def _pipeline_name(lowlight: bool, yolo: bool) -> str:
+        """Urutan tahap yang aktif, dipakai telemetri & log.
+
+        Nilainya mengikuti alur yang benar-benar dijalankan loop frame, bukan
+        sekadar flag konfigurasi: YOLO selalu membaca frame *sesudah* tahap
+        enhancement ketika tahap itu aktif.
+        """
+        if lowlight and yolo:
+            return "lowlight->yolo->video"
+        if lowlight:
+            return "lowlight->video"
+        if yolo:
+            return "yolo->video"
+        return "video"
+
     @property
     def detector(self):
         """Detektor aktif (dipakai jalur tampilan untuk menggambar kotak)."""
@@ -323,40 +360,78 @@ class AiWorker:
             with self._lock:
                 changes, self._request = self._request, None
             if changes:
-                self._apply(changes)
+                # Permintaan kontrol berasal dari RTDB; satu payload aneh
+                # (mis. model gagal dimuat) tidak boleh mematikan thread.
+                try:
+                    self._apply(changes)
+                except Exception as exc:  # noqa: BLE001 - worker tetap hidup
+                    print(f"[WARN] worker AI (kontrol): {type(exc).__name__}: {exc}")
             with self._lock:
                 small = self._small
                 variant = self.result["variant"]
+
+            # Tahap 1 dimatikan: tidak ada model yang dijalankan sama sekali.
+            # Alur menjadi Video -> YOLO -> Video (atau Video saja).
+            if variant == "none":
+                with self._lock:
+                    had_output = self._enhanced is not None or self.result["lut"] is not None
+                    self._enhanced = None
+                    self.result.update(lut=None, enhance_ms=0.0)
+                if had_output:
+                    # YOLO harus segera kembali membaca frame sumber.
+                    self._detect_key = None
+                    self._wake_detect.set()
+                continue
+
             if small is None:
                 continue
             now = time.perf_counter()
             if now - last_run < min_gap:
-                continue  # LUT masih segar
+                continue  # hasil model masih segar
             last_run = now
             try:
                 t0 = time.perf_counter()
                 enhanced = self._enhancer.enhance(small)
                 enhance_ms = (time.perf_counter() - t0) * 1000.0
 
-                lut = None if variant == "none" else gain_lut(small, enhanced)
+                if enhanced is None or getattr(enhanced, "size", 0) == 0:
+                    raise ValueError("model low-light mengembalikan frame kosong")
+                if enhanced.ndim == 2:
+                    enhanced = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
+                # Model boleh memakai resolusi kerja sendiri; YOLO menerima
+                # frame dengan ukuran yang sama dengan kanvas AI.
+                if enhanced.shape[:2] != small.shape[:2]:
+                    enhanced = cv2.resize(
+                        enhanced, (small.shape[1], small.shape[0]),
+                        interpolation=cv2.INTER_LINEAR,
+                    )
+
+                # Jalur tampilan tetap memakai LUT dari model yang sama: hasil
+                # model di-upscale ke 1080p/1440p akan lunak, sedangkan LUT
+                # mempertahankan ketajaman kanvas resolusi penuh.
+                lut = gain_lut(small, enhanced)
                 with self._lock:
+                    self._enhanced = enhanced
+                    self._enhanced_version += 1
                     self.result.update(
                         lut=lut,
                         enhance_ms=round(enhance_ms, 1),
                         variant=variant,
                         model_label=self._enhancer.label,
+                        pipeline=self._pipeline_name(True, bool(self.result["yolo_active"])),
                         seq=self.result["seq"] + 1,
                         error="",
                     )
+                # Deteksi memakai keluaran baru ini (LLE -> YOLO).
+                self._wake_detect.set()
             except Exception as exc:  # noqa: BLE001 - worker tidak boleh mati
                 message = f"{type(exc).__name__}: {exc}"
                 with self._lock:
                     self.result["error"] = message
                 print(f"[WARN] worker AI (enhance): {message}")
 
-    # --- Thread deteksi --------------------------------------------------
+    # --- Thread deteksi: tahap 2, selalu membaca keluaran tahap 1 -------
     def _detect_loop(self) -> None:
-        last_version = 0
         while not self._stop.is_set():
             self._wake_detect.wait(0.05)
             self._wake_detect.clear()
@@ -364,14 +439,39 @@ class AiWorker:
                 break
             with self._lock:
                 small, version = self._small, self._small_version
-                lut = self.result["lut"]
-                active = self.result["yolo_active"]
+                enhanced, enhanced_version = self._enhanced, self._enhanced_version
+                active = bool(self.result["yolo_active"])
+                lowlight = self.result["variant"] != "none"
                 detector = self._detector
-            if small is None or version == last_version:
+            if small is None:
                 continue
-            last_version = version
+
+            # Urutan tetap: bila enhancement aktif, YOLO membaca frame hasil
+            # model. Bila tidak, YOLO membaca frame sumber. Kunci versi
+            # mencegah frame yang sama dideteksi berulang kali — pada mode
+            # LLE+YOLLO deteksi mengikuti laju model, bukan laju sumber.
+            if lowlight and enhanced is not None:
+                frame = enhanced
+                key = ("lle", enhanced_version)
+            else:
+                frame = small
+                key = ("raw", version)
+            if key == self._detect_key:
+                continue
+            self._detect_key = key
+
+            if not active:
+                # YOLO dimatikan: kotak lama tidak boleh tertinggal di layar.
+                with self._lock:
+                    self.result.update(
+                        boxes=[],
+                        counts={"mobil": 0, "motor": 0, "truk": 0, "bus": 0},
+                        yolo_ms=0.0,
+                        pipeline=self._pipeline_name(lowlight, False),
+                    )
+                continue
+
             try:
-                frame = cv2.LUT(small, lut) if lut is not None else small
                 t0 = time.perf_counter()
                 detections = detector.detect(frame)
                 yolo_ms = (time.perf_counter() - t0) * 1000.0
@@ -379,8 +479,9 @@ class AiWorker:
                 with self._lock:
                     self.result.update(
                         counts=counts,
-                        boxes=list(detections) if active else [],
+                        boxes=list(detections),
                         yolo_ms=round(yolo_ms, 1),
+                        pipeline=self._pipeline_name(lowlight, True),
                         detect_seq=self.result["detect_seq"] + 1,
                         error="",
                     )
@@ -408,8 +509,23 @@ class AiWorker:
 
                     torch.cuda.empty_cache()
                 with self._lock:
-                    self.result["variant"] = requested
-                    self.result["model_label"] = candidate.label
+                    # Keluaran model lama tidak boleh dipakai lagi: LUT tampilan
+                    # dibuang dan YOLO dipaksa membaca frame berikutnya dari
+                    # tahap enhancement yang baru (atau frame sumber bila LLE
+                    # dimatikan).
+                    self._enhanced = None
+                    self._enhanced_version += 1
+                    self.result.update(
+                        variant=requested,
+                        model_label=candidate.label,
+                        lut=None,
+                        enhance_ms=0.0,
+                        pipeline=self._pipeline_name(
+                            requested != "none", bool(self.result["yolo_active"])
+                        ),
+                    )
+                self._detect_key = None
+                self._wake_detect.set()
                 print(f"[AI] model low-light diganti: {candidate.label}")
 
         if "yolo" in changes and not self._yolo_locked:
@@ -424,8 +540,17 @@ class AiWorker:
                     self._detector = NoopDetector()
                 old.close()
                 with self._lock:
-                    self.result["yolo_active"] = want
-                    self.result["boxes"] = [] if not want else self.result["boxes"]
+                    self.result.update(
+                        yolo_active=want,
+                        boxes=[],
+                        counts={"mobil": 0, "motor": 0, "truk": 0, "bus": 0},
+                        yolo_ms=0.0,
+                        pipeline=self._pipeline_name(self.result["variant"] != "none", want),
+                    )
+                # Setelah dimatikan lalu dinyalakan lagi, frame yang sama harus
+                # boleh dideteksi ulang.
+                self._detect_key = None
+                self._wake_detect.set()
                 print(f"[AI] YOLO {'dinyalakan' if want else 'dimatikan'} lewat RTDB")
 
 
@@ -1013,6 +1138,7 @@ def main(argv: list[str] | None = None) -> int:
     last_status_file = 0.0
     last_stop_check = 0.0
     last_log = 0.0
+    last_pipeline = ""
     stopped_reason = "selesai"
 
     try:
@@ -1082,6 +1208,10 @@ def main(argv: list[str] | None = None) -> int:
             enhance_ms = ai["enhance_ms"]
             yolo_ms = ai["yolo_ms"]
             detect_fps = ai["detect_fps"]
+            pipeline = ai.get("pipeline", "")
+            if pipeline != last_pipeline:
+                last_pipeline = pipeline
+                print(f"[AI] alur aktif: {pipeline}")
             if ai["boxes"]:
                 worker.detector.annotate(
                     frame, ai["boxes"],
@@ -1121,6 +1251,7 @@ def main(argv: list[str] | None = None) -> int:
                 "lowlight_model": model_label,
                 "lowlight_variant": variant,
                 "deteksi_aktif": yolo_active,
+                "pipeline": ai.get("pipeline", ""),
                 "yolo_weights": os.path.basename(getattr(worker.detector, "path", "") or ""),
                 "counts": counts,
                 "total_kendaraan": sum(counts.values()),
@@ -1149,7 +1280,7 @@ def main(argv: list[str] | None = None) -> int:
                     "server_fps": payload["server_fps"],
                     "fps_in": payload["fps_in"],
                     "latency_ms": payload["latency_ms"],
-                    "night_vision_status": enhancer.name != "none",
+                    "night_vision_status": variant != "none",
                     "lowlight_model": model_label,
                     "lowlight_variant": variant,
                     "deteksi_aktif": yolo_active,
@@ -1166,6 +1297,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[LIVE] frame={frame_index} web={written} "
                       f"fps_web={payload['server_fps']} fps_in={payload['fps_in']} "
                       f"enh={enhance_ms:.0f}ms yolo={yolo_ms:.0f}ms ai={detect_fps:.1f}/s "
+                      f"alur={payload['pipeline']} "
                       f"lat={latency_ms:.0f}ms total={payload['total_kendaraan']}")
 
     except KeyboardInterrupt:

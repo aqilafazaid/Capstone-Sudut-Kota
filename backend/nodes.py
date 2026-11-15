@@ -64,8 +64,15 @@ def _truthy(value: Any) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+# Sumber uji http(s) (file/replay) hanya untuk pengembangan. Nilai ini
+# sengaja berada di kode, bukan di .env: server produksi tidak boleh
+# membukanya hanya karena berkas konfigurasi tersalin. Ubah di sini bila
+# memang perlu menguji dengan sumber non-RTSP.
+ALLOW_TEST_SOURCES = False
+
+
 def allow_test_sources() -> bool:
-    return _truthy(os.environ.get("ALLOW_TEST_SOURCES", "false"))
+    return ALLOW_TEST_SOURCES
 
 
 def db_path() -> Path:
@@ -146,7 +153,7 @@ def _channel(value: Any) -> str:
 
 
 def validate_source(url: Any) -> str:
-    """Validasi URL sumber. http(s) hanya bila ALLOW_TEST_SOURCES=true."""
+    """Validasi URL sumber. http(s) hanya bila ``ALLOW_TEST_SOURCES`` menyala."""
     text = _text(url, "URL RTSP", required=True, max_len=2048)
     schemes = ("rtsp://", "rtsps://")
     if allow_test_sources():
