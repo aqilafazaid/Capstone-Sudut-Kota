@@ -402,7 +402,7 @@ Satu file kode per arsitektur, seperti isi notebook pelatihannya:
 |---|---|---|
 | `LowLightEnhancement/Mirnet/Model` | `mirnetv1.pth`, `mirnetv2-kaggle.pth`, `mirnetv2-paper.pth`, `mobile-mirnet.pth` | `Inference/mirnetv1.py`, `mirnetv2_kaggle.py`, `mirnetv2_paper.py`, `mobile_mirnet.py` |
 | `LowLightEnhancement/ZeroDCE/Model` | `zerodce.pth`, `cbam-unet-dce.pth` | `Inference/zerodce.py`, `cbam_unet_dce.py` |
-| `Yolo/Model` | `yolov8n.pt` (file `.pt` pertama) | `Inference/yolo_inference.py` (satu untuk semua `.pt`) |
+| `Yolo/Model` | `yolov8n.pt` (file `.pt` pertama; training Sudut Kota: Bus, Car, Motorcycle, Truck) | `Inference/yolo_inference.py` (satu untuk semua `.pt`) |
 
 `LowLightEnhancement/registry.py` menyatukan nama model yang dipakai CLI dan RTDB:
 `none`, `mirnetv1`, `mirnetv2_kaggle`, `mirnetv2_paper`, `mobile_mirnet`,
@@ -411,7 +411,7 @@ kerja dibatasi `DEFAULT_WORK_SIDE`); Zero-DCE family memprediksi kurva di 256² 
 menerapkannya pada resolusi penuh, jadi detail tidak hilang.
 
 Kapasitas jalur tampilan terukur di RTX 3050, kanvas **1920x1080** (resolusi
-asli), kerja AI **960x540**, YOLOv8n @ imgsz 640. Angka ini FPS video yang
+asli), kerja AI **960x540**, Yolo v8n (`yolov8n.pt`) @ imgsz 640. Angka ini FPS video yang
 tampil — tidak lagi dipotong waktu model, karena AI berjalan di thread sendiri:
 
 | Varian | fps tampil | enhance (ms, di worker) |
@@ -481,8 +481,11 @@ Statistik:
 - Semua I/O Firebase berjalan di thread `RtdbBridge`: loop frame hanya menitipkan
   payload terbaru, jadi satu panggilan jaringan yang lambat tidak lagi menahan
   video (dulu terbaca 6,6 fps tanpa RTDB vs 2,6 fps dengan RTDB).
-- Hitungan YOLO (`mobil`, `motor`, `truk`, `bus`) mengikuti kelas COCO 2/3/7/5;
-  `jumlah_*`, `total_kendaraan`, `timestamp`, `status` ditulis tiap 2 detik dan
+- Hitungan YOLO (`mobil`, `motor`, `truk`, `bus`) memetakan kelas bobot hasil
+  training `Car` → `mobil`, `Motorcycle` → `motor`, `Truck` → `truk`, `Bus` → `bus`;
+  pemetaan dibaca dari metadata `names` bobot, bukan ID hardcoded, sehingga urutan
+  kelas hasil training ulang tidak masalah. `jumlah_*`, `total_kendaraan`,
+  `timestamp`, `status` ditulis tiap 2 detik dan
   dibaca kolektor `backend/stats.py` untuk halaman Statistik.
 - Kontrol tanpa restart lewat RTDB `cam_<channel>/ai_status`:
   `lowlight_enabled`, `lowlight_model`, `yolo_enabled`. Panel **Kontrol Modul AI**
@@ -589,7 +592,8 @@ Visitor hanya CCTV + Statistik); kelima sakelar tetap bisa diubah untuk akun man
 jadi Administrator bisa memberi fitur di luar kebiasaan perannya maupun mencabutnya.
 Fitur `ai` mengatur panel **Kontrol Modul AI** di halaman CCTV: sakelar low-light dan
 YOLO, serta pilihan varian low-light dari katalog engine (`GET /api/ai`). Selector YOLO
-tetap bisa dibuka walau katalog hanya berisi satu bobot (`yolov8n.pt`); pilihan itu
+tetap bisa dibuka walau katalog hanya berisi satu bobot (`yolov8n.pt`); katalog
+menampilkan label **Yolo v8n** (dari `display_label`, bukan nama berkas), dan pilihan itu
 informatif karena engine memakai berkas `.pt` di `Yolo/Model`, bukan parameter RTDB.
 Kedua select memakai chevron kustom (12 px dari tepi field, `pr-9`) supaya tidak menempel
 ke tepi card. Perubahan low-light dikirim ke `POST /api/nodes/<id>/ai`, backend menulis
@@ -931,6 +935,7 @@ backend/.venv/Scripts/python.exe test/test_hls_stream.py       # argumen ffmpeg 
 backend/.venv/Scripts/python.exe test/test_hls_crud.py         # CRUD node membersihkan media/
 backend/.venv/Scripts/python.exe test/test_hls_ffmpeg_e2e.py   # HLS ffmpeg polos: segmen ~2 dtk
 backend/.venv/Scripts/python.exe test/test_ai_models.py        # 6 enhancer + YOLO: strict load, FPS
+backend/.venv/Scripts/python.exe test/test_yolo_kelas.py       # kelas YOLO baru + label web (akun & node sementara)
 backend/.venv/Scripts/python.exe test/test_ai_engine_e2e.py    # file gelap -> HLS AI + ai_stats
 backend/.venv/Scripts/python.exe test/test_ai_control.py       # katalog AI + POST ai_status (mock RTDB)
 backend/.venv/Scripts/python.exe test/test_sosmed_feed.py      # pagination + cache + sanitasi feed Instagram

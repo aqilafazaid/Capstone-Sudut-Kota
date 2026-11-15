@@ -276,6 +276,7 @@ def _empty_live(reason: str) -> dict[str, Any]:
         "lowlight_model": "",
         "deteksi_aktif": False,
         "yolo_weights": "",
+        "yolo_label": "",
         "latency_ms": 0.0,
         "fps_in": 0.0,
         "enhance_ms": 0.0,
@@ -364,6 +365,7 @@ def live_snapshots(nodes: list[dict[str, Any]] | None = None) -> dict[str, Any]:
             "lowlight_model": str(raw.get("lowlight_model") or ""),
             "deteksi_aktif": bool(raw.get("deteksi_aktif")),
             "yolo_weights": str(raw.get("yolo_weights") or ""),
+            "yolo_label": str(raw.get("yolo_label") or ""),
             "latency_ms": _float(raw.get("latency_ms")),
             # Beban kerja engine: terlihat apakah AI jalan di GPU atau CPU
             # dan seberapa cepat deteksi diperbarui.

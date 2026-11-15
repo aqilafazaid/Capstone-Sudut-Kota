@@ -14,13 +14,22 @@ import cv2
 import numpy as np
 
 NAME = "yolov8n"
-LABEL = "YOLOv8n"
+LABEL = "Yolo v8n"
 MODEL_DIR = Path(__file__).resolve().parents[1] / "Model"
 
-# Kontrak statistik backend: hanya kendaraan ini yang dihitung.
+# Bobot hasil training Sudut Kota memakai nama kelas bahasa Inggris. Kontrak
+# statistik/API/frontend tetap bahasa Indonesia, jadi nama model dipetakan di
+# sini — bukan di caller.
+MODEL_CLASSES = {
+    "bus": "bus",
+    "car": "mobil",
+    "motorcycle": "motor",
+    "truck": "truk",
+}
+# Bobot COCO lama (2 car, 3 motorcycle, 5 bus, 7 truck) tetap dikenali lewat
+# nama di atas; peta ID ini hanya fallback bila bobot tidak membawa ``names``.
 COCO_TARGETS = {2: "mobil", 3: "motor", 5: "bus", 7: "truk"}
 CLASS_NAMES = ("mobil", "motor", "truk", "bus")
-TARGET_CLASSES = tuple(sorted(COCO_TARGETS))
 COLORS = {
     "mobil": (255, 160, 0),
     "motor": (0, 235, 255),
@@ -43,6 +52,12 @@ def resolve_weights(weights: str | Path | None = None) -> str:
         return str(weights)
     candidates = sorted(MODEL_DIR.glob("*.pt"))
     return str(candidates[0]) if candidates else "yolov8n.pt"
+
+
+def display_label(weights: str | Path | None = None) -> str:
+    """Nama model untuk UI: ``Yolo v8n`` untuk bobot bawaan, nama berkas lain."""
+    name = Path(weights or resolve_weights()).name
+    return LABEL if name == "yolov8n.pt" else name
 
 
 class VehicleDetector:
@@ -69,6 +84,27 @@ class VehicleDetector:
         except Exception:
             self.device = "cpu"
             self.model.to("cpu")
+        self.targets = self._class_targets()
+
+    def _class_targets(self) -> dict[int, str]:
+        """Peta ID kelas bobot -> label internal, dibaca dari metadata model.
+
+        Urutan ID tidak diasumsikan: bobot hasil training ulang bisa memakai
+        urutan apa pun. Nama kelas yang tidak dikenal tidak pernah dihitung.
+        """
+        names = getattr(self.model, "names", None)
+        if not names:
+            names = getattr(getattr(self.model, "model", None), "names", None)
+        if not names:
+            return dict(COCO_TARGETS)
+        if isinstance(names, (list, tuple)):
+            names = dict(enumerate(names))
+        targets: dict[int, str] = {}
+        for cls_id, raw in dict(names).items():
+            label = MODEL_CLASSES.get(str(raw).strip().lower())
+            if label:
+                targets[int(cls_id)] = label
+        return targets
 
     def detect(self, frame_bgr: np.ndarray) -> list[dict]:
         """Kotak kendaraan pada satu frame (list of dict)."""
@@ -78,7 +114,7 @@ class VehicleDetector:
             imgsz=self.imgsz,
             conf=self.conf,
             iou=self.iou,
-            classes=list(TARGET_CLASSES),
+            classes=list(self.targets),
             device=self.device,
             verbose=False,
         )
@@ -87,11 +123,9 @@ class VehicleDetector:
         detections: list[dict] = []
         if results:
             result = results[0]
-            names = result.names
             for box in result.boxes:
-                cls_id = int(box.cls[0])
-                label = COCO_TARGETS.get(cls_id) or names.get(cls_id, str(cls_id))
-                if label not in CLASS_NAMES:
+                label = self.targets.get(int(box.cls[0]))
+                if not label:
                     continue
                 x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
                 detections.append({
@@ -149,6 +183,7 @@ class NoopDetector:
     device = "cpu"
     imgsz = 0
     ms = 0.0
+    targets: dict[int, str] = {}
 
     def detect(self, frame_bgr: np.ndarray) -> list[dict]:  # noqa: ARG002
         return []

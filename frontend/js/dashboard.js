@@ -150,7 +150,7 @@
         const ai = Store.getAi(cam.id);
         const badges = [];
         badges.push(ai.yolo
-            ? `<span class="px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 border border-yellow-500/30 text-[10px] font-bold">YOLO ${ai.yolo_model}</span>`
+            ? `<span class="px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 border border-yellow-500/30 text-[10px] font-bold">${ai.yolo_model}</span>`
             : '<span class="px-2 py-0.5 rounded bg-slate-500/10 text-slate-600 dark:bg-slate-700/40 dark:text-slate-400 border border-slate-400/40 dark:border-slate-600/40 text-[10px] font-bold">YOLO OFF</span>');
         badges.push(ai.lowlight
             ? `<span class="px-2 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[10px] font-bold">${ai.lowlight_model}</span>`

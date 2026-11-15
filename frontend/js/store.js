@@ -23,14 +23,14 @@
     /* v3: cache node lama (sebelum pembersihan database) tidak boleh dipakai
        lagi — kalau backend sempat mati, direktori akan tampil dari cache usang. */
     const NODES_CACHE_KEY = 'sudutkota.nodes.cache.v3';
-    const AI_KEY = 'sudutkota.ai.v1';
+    const AI_KEY = 'sudutkota.ai.v2';
 
     const DEFAULT_AI = {
         lowlight: false,
         lowlight_variant: 'mobile_mirnet',
         lowlight_model: 'Mobile-MIRNet',
         yolo: true,
-        yolo_model: 'yolov8n.pt'
+        yolo_model: 'Yolo v8n'
     };
 
     /* ---------------------------------------------------------------------
@@ -421,7 +421,7 @@
                 lowlight_variant: snap.lowlight_variant || saved.lowlight_variant,
                 lowlight_model: snap.lowlight_model || saved.lowlight_model,
                 yolo: !!snap.deteksi_aktif,
-                yolo_model: snap.yolo_weights || saved.yolo_model,
+                yolo_model: snap.yolo_label || snap.yolo_weights || saved.yolo_model,
                 online: (snap.status || 'OFFLINE') !== 'OFFLINE',
                 /* Telemetri beban kerja: perangkat yang benar-benar dipakai
                    engine, laju deteksi, encoder, dan waktu model. */

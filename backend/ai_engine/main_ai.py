@@ -1047,6 +1047,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[AI] node={node_id} channel={channel or '-'} variant={variant}")
 
     from model_ai.LowLightEnhancement import registry as lowlight_registry
+    from model_ai.Yolo.Inference import yolo_inference as yolo_meta
 
     registry_names = lowlight_registry.available()
     enhancer = load_enhancer(variant, device, args.enhance_side or None)
@@ -1236,6 +1237,8 @@ def main(argv: list[str] | None = None) -> int:
             frame_index += 1
 
             # 6. Laporan berkala
+            yolo_path = getattr(worker.detector, "path", "") or ""
+            yolo_weights = os.path.basename(yolo_path)
             payload = {
                 "node_id": node_id,
                 "channel": channel,
@@ -1252,7 +1255,8 @@ def main(argv: list[str] | None = None) -> int:
                 "lowlight_variant": variant,
                 "deteksi_aktif": yolo_active,
                 "pipeline": ai.get("pipeline", ""),
-                "yolo_weights": os.path.basename(getattr(worker.detector, "path", "") or ""),
+                "yolo_weights": yolo_weights,
+                "yolo_label": yolo_meta.display_label(yolo_path) if yolo_active else "",
                 "counts": counts,
                 "total_kendaraan": sum(counts.values()),
                 "frames": frame_index,
@@ -1284,7 +1288,8 @@ def main(argv: list[str] | None = None) -> int:
                     "lowlight_model": model_label,
                     "lowlight_variant": variant,
                     "deteksi_aktif": yolo_active,
-                    "yolo_weights": os.path.basename(getattr(worker.detector, "path", "") or ""),
+                    "yolo_weights": yolo_weights,
+                    "yolo_label": yolo_meta.display_label(yolo_path) if yolo_active else "",
                     "device": payload["device"],
                     "enhance_ms": payload["enhance_ms"],
                     "yolo_ms": payload["yolo_ms"],

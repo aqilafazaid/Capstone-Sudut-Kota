@@ -48,6 +48,7 @@ from streamer import MEDIA_ROOT as HLS_ROOT
 from streamer import manager as hls_manager
 from ai_engine import engine_manager as ai_engine
 from ai_engine.model_ai.LowLightEnhancement import catalog as lowlight_catalog
+from ai_engine.model_ai.Yolo.Inference import yolo_inference as yolo_meta
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
@@ -217,7 +218,7 @@ def create_app() -> Flask:
                 {"name": name, "label": lowlight_catalog.LABELS.get(name, name)}
                 for name in lowlight_catalog.ORDER
             ],
-            yolo=[{"name": name, "label": name} for name in yolo],
+            yolo=[{"name": name, "label": yolo_meta.display_label(name)} for name in yolo],
             defaults={
                 "lowlight_variant": (os.environ.get("AI_LOWLIGHT_MODEL") or "mobile_mirnet").replace("-", "_"),
                 "lowlight_enabled": _truthy(os.environ.get("AI_LOWLIGHT", "true")),
