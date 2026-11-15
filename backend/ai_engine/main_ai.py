@@ -1,23 +1,27 @@
 """Engine AI Sudut Kota — jembatan MirNet / Zero-DCE family / YOLO.
 
-Alur satu frame (urutannya tetap, apa pun sakelar yang aktif):
+Alur satu frame selalu melewati empat lapisan dengan posisi tetap:
 
-    Video masukan
-      -> [Low-Light Enhancement]  (dilewati bila nonaktif)
-      -> [YOLO]                   (dilewati bila nonaktif)
-      -> gambar kotak + HUD -> ffmpeg -> HLS -> web
+    posisi 1  Video masuk
+    posisi 2  Low-Light Enhancement  (proses, atau bypass bila dimatikan)
+    posisi 3  YOLO                   (deteksi pada keluaran posisi 2, atau bypass)
+    posisi 4  Video keluar -> kotak + HUD -> ffmpeg -> HLS -> web
 
-Tiga keadaan yang didukung tanpa restart:
+Posisi lapisan tidak pernah bergeser: sakelar di RTDB hanya mengubah sebuah
+lapisan dari *proses* menjadi *bypass* (frame diteruskan apa adanya). Low-Light
+Enhancement selalu di posisi 2 dan YOLO selalu di posisi 3, baik AI menyala
+maupun mati. Empat kombinasi sakelar didukung tanpa restart:
 
-    LLE + YOLO : Video -> LLE -> YOLO -> Video
-    YOLO saja   : Video -> YOLO -> Video
-    LLE saja   : Video -> LLE -> Video
+    LLE + YOLO  : 1 video -> 2 LLE(on)     -> 3 YOLO(on)     -> 4 video
+    YOLO saja   : 1 video -> 2 LLE(bypass) -> 3 YOLO(on)     -> 4 video
+    LLE saja    : 1 video -> 2 LLE(on)     -> 3 YOLO(bypass) -> 4 video
+    keduanya off: 1 video -> 2 LLE(bypass) -> 3 YOLO(bypass) -> 4 video
 
-Sakelar dibaca dari RTDB ``cam_<channel>/ai_status`` tiap 2 detik. Ketika LLE
-dinyalakan saat YOLO sedang berjalan, tahap enhancement disisipkan *sebelum*
-deteksi; YOLO langsung memakai keluaran model (bukan frame mentah) pada frame
-berikutnya. Sebaliknya, mematikan LLE mengembalikan YOLO ke frame sumber dan
-membuang LUT tampilan lama.
+Sakelar dibaca dari RTDB ``cam_<channel>/ai_status`` tiap 2 detik. Menyalakan
+LLE membuat lapisan posisi 2 mulai memproses frame, sehingga YOLO di posisi 3
+langsung menerima keluarannya pada frame berikutnya. Mematikan LLE membuat
+lapisan posisi 2 meneruskan frame sumber (bypass) dan membuang LUT tampilan
+lama; YOLO tetap di posisi 3.
 
 Kebijakan device: ``auto`` = GPU NVIDIA bila terdeteksi, kalau tidak CPU
 (``AI_DEVICE=cpu`` memaksa CPU; ``AI_FP16=0`` mematikan FP16 di GPU).
@@ -37,7 +41,9 @@ Statistik
 *real* video yang tampil di web: jumlah frame yang benar-benar masuk ke
 encoder HLS dibagi waktu berjalan. ``fps_in`` (frame sumber) dan
 ``enhance_ms``/``yolo_ms`` dilaporkan terpisah supaya bottleneck terlihat.
-``pipeline`` mencatat urutan tahap yang benar-benar aktif pada frame terakhir.
+``pipeline`` adalah rantai empat lapisan yang posisinya tetap
+(``video->lowlight->yolo->video``); ``pipeline_layers`` mencatat modus tiap
+posisi pada frame terakhir (``proses``/``deteksi`` vs ``bypass``).
 
 Kontrol runtime
 ---------------
@@ -79,6 +85,11 @@ DEFAULT_VARIANT = os.environ.get("AI_LOWLIGHT_MODEL", "mobile_mirnet")
 PUSH_INTERVAL = 2.0
 STATUS_POLL_INTERVAL = 2.0
 STATUS_FILE_INTERVAL = 1.0
+
+# Empat lapisan pipeline dengan posisi tetap. Sakelar AI hanya mengubah sebuah
+# lapisan menjadi *proses* atau *bypass*; posisinya tidak pernah bergeser, jadi
+# Low-Light Enhancement selalu posisi 2 dan YOLO selalu posisi 3.
+PIPELINE_CHAIN = "video->lowlight->yolo->video"
 
 
 # ---------------------------------------------------------------------------
@@ -207,12 +218,9 @@ class AiWorker:
     * thread ``ai-enhance`` memperkecil frame, menjalankan model low-light
       **hanya sesering ``enhance_hz``** (LUT kecerahan berubah lambat, tidak
       perlu tiap frame), lalu menerbitkan LUT;
-    * thread ``ai-detect`` mengambil frame kecil terbaru, menerapkan LUT
-      (``cv2.LUT``, ~1 ms) dan menjalankan YOLO secepat GPU/CPU mampu.
-
-    Hasilnya deteksi mengikuti laju sumber, sementara model low-light yang
-    mahal tetap dijalankan secukupnya — GPU dipakai untuk dua alur kerja yang
-    saling tumpang tindih, bukan satu antrean panjang.
+    * thread ``ai-detect`` (posisi 3) mengambil keluaran thread enhance
+      (posisi 2; frame sumber bila lapisan itu bypass) dan menjalankan YOLO
+      secepat GPU/CPU mampu.
     """
 
     def __init__(self, enhancer, detector, ai_size: tuple[int, int], device,
@@ -256,7 +264,7 @@ class AiWorker:
             "variant": variant,
             "model_label": model_label,
             "yolo_active": bool(yolo_active),
-            "pipeline": self._pipeline_name(variant != "none", bool(yolo_active)),
+            **self._pipeline_fields(variant != "none", bool(yolo_active)),
             "counts": {"mobil": 0, "motor": 0, "truk": 0, "bus": 0},
             "boxes": [],
             "lut": None,
@@ -270,20 +278,31 @@ class AiWorker:
 
     # --- API -------------------------------------------------------------
     @staticmethod
-    def _pipeline_name(lowlight: bool, yolo: bool) -> str:
-        """Urutan tahap yang aktif, dipakai telemetri & log.
+    def _pipeline_fields(lowlight: bool, yolo: bool) -> dict:
+        """Telemetri empat lapisan tetap; posisinya tidak ikut berubah.
 
-        Nilainya mengikuti alur yang benar-benar dijalankan loop frame, bukan
-        sekadar flag konfigurasi: YOLO selalu membaca frame *sesudah* tahap
-        enhancement ketika tahap itu aktif.
+        ``pipeline`` selalu rantai yang sama. Yang berubah hanya ``mode`` tiap
+        lapisan: ``proses``/``deteksi`` saat modul menyala, ``bypass`` saat
+        dimatikan. Pembaca karena itu tidak pernah melihat YOLO "pindah" ke
+        posisi 2 ketika low-light dimatikan.
         """
-        if lowlight and yolo:
-            return "lowlight->yolo->video"
-        if lowlight:
-            return "lowlight->video"
-        if yolo:
-            return "yolo->video"
-        return "video"
+        layers = [
+            {"pos": 1, "key": "video_in", "name": "Video masuk",
+             "active": True, "mode": "sumber"},
+            {"pos": 2, "key": "lowlight", "name": "Low-Light Enhancement",
+             "active": bool(lowlight), "mode": "proses" if lowlight else "bypass"},
+            {"pos": 3, "key": "yolo", "name": "YOLO",
+             "active": bool(yolo), "mode": "deteksi" if yolo else "bypass"},
+            {"pos": 4, "key": "video_out", "name": "Video keluar",
+             "active": True, "mode": "keluaran"},
+        ]
+        text = "video -> lowlight({}) -> yolo({}) -> video".format(
+            "on" if lowlight else "bypass", "on" if yolo else "bypass")
+        return {
+            "pipeline": PIPELINE_CHAIN,
+            "pipeline_text": text,
+            "pipeline_layers": layers,
+        }
 
     @property
     def detector(self):
@@ -418,7 +437,7 @@ class AiWorker:
                         enhance_ms=round(enhance_ms, 1),
                         variant=variant,
                         model_label=self._enhancer.label,
-                        pipeline=self._pipeline_name(True, bool(self.result["yolo_active"])),
+                        **self._pipeline_fields(True, bool(self.result["yolo_active"])),
                         seq=self.result["seq"] + 1,
                         error="",
                     )
@@ -446,10 +465,11 @@ class AiWorker:
             if small is None:
                 continue
 
-            # Urutan tetap: bila enhancement aktif, YOLO membaca frame hasil
-            # model. Bila tidak, YOLO membaca frame sumber. Kunci versi
+            # Posisi lapisan tetap: 2 (low-light) lalu 3 (YOLO). Saat low-light
+            # menyala YOLO membaca keluaran posisi 2; saat dimatikan lapisan itu
+            # meneruskan frame sumber (bypass) dan posisinya tetap 2. Kunci versi
             # mencegah frame yang sama dideteksi berulang kali — pada mode
-            # LLE+YOLLO deteksi mengikuti laju model, bukan laju sumber.
+            # LLE(on)+YOLO(on) deteksi mengikuti laju model, bukan laju sumber.
             if lowlight and enhanced is not None:
                 frame = enhanced
                 key = ("lle", enhanced_version)
@@ -467,7 +487,7 @@ class AiWorker:
                         boxes=[],
                         counts={"mobil": 0, "motor": 0, "truk": 0, "bus": 0},
                         yolo_ms=0.0,
-                        pipeline=self._pipeline_name(lowlight, False),
+                        **self._pipeline_fields(lowlight, False),
                     )
                 continue
 
@@ -481,7 +501,7 @@ class AiWorker:
                         counts=counts,
                         boxes=list(detections),
                         yolo_ms=round(yolo_ms, 1),
-                        pipeline=self._pipeline_name(lowlight, True),
+                        **self._pipeline_fields(lowlight, True),
                         detect_seq=self.result["detect_seq"] + 1,
                         error="",
                     )
@@ -520,7 +540,7 @@ class AiWorker:
                         model_label=candidate.label,
                         lut=None,
                         enhance_ms=0.0,
-                        pipeline=self._pipeline_name(
+                        **self._pipeline_fields(
                             requested != "none", bool(self.result["yolo_active"])
                         ),
                     )
@@ -545,7 +565,7 @@ class AiWorker:
                         boxes=[],
                         counts={"mobil": 0, "motor": 0, "truk": 0, "bus": 0},
                         yolo_ms=0.0,
-                        pipeline=self._pipeline_name(self.result["variant"] != "none", want),
+                        **self._pipeline_fields(self.result["variant"] != "none", want),
                     )
                 # Setelah dimatikan lalu dinyalakan lagi, frame yang sama harus
                 # boleh dideteksi ulang.
@@ -1209,10 +1229,10 @@ def main(argv: list[str] | None = None) -> int:
             enhance_ms = ai["enhance_ms"]
             yolo_ms = ai["yolo_ms"]
             detect_fps = ai["detect_fps"]
-            pipeline = ai.get("pipeline", "")
+            pipeline = ai.get("pipeline_text") or ai.get("pipeline", "")
             if pipeline != last_pipeline:
                 last_pipeline = pipeline
-                print(f"[AI] alur aktif: {pipeline}")
+                print(f"[AI] alur lapisan: {pipeline}")
             if ai["boxes"]:
                 worker.detector.annotate(
                     frame, ai["boxes"],
@@ -1255,6 +1275,8 @@ def main(argv: list[str] | None = None) -> int:
                 "lowlight_variant": variant,
                 "deteksi_aktif": yolo_active,
                 "pipeline": ai.get("pipeline", ""),
+                "pipeline_text": ai.get("pipeline_text", ""),
+                "pipeline_layers": ai.get("pipeline_layers", []),
                 "yolo_weights": yolo_weights,
                 "yolo_label": yolo_meta.display_label(yolo_path) if yolo_active else "",
                 "counts": counts,
@@ -1302,7 +1324,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[LIVE] frame={frame_index} web={written} "
                       f"fps_web={payload['server_fps']} fps_in={payload['fps_in']} "
                       f"enh={enhance_ms:.0f}ms yolo={yolo_ms:.0f}ms ai={detect_fps:.1f}/s "
-                      f"alur={payload['pipeline']} "
+                      f"alur={payload['pipeline_text'] or payload['pipeline']} "
                       f"lat={latency_ms:.0f}ms total={payload['total_kendaraan']}")
 
     except KeyboardInterrupt:

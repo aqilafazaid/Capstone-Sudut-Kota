@@ -368,6 +368,63 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
 .toggle-btn.active-mirnet { background-color: var(--sk-surface-2); border-color: #3b82f6; color: #3b82f6; box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.2); }
 .toggle-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* --- 8b. ALUR AI: EMPAT LAPISAN POSISI TETAP ---
+   Posisi 1 video -> 2 low-light -> 3 YOLO -> 4 video tidak pernah berubah.
+   `.is-on` = lapisan memproses frame, `.is-off` = lapisan meneruskan frame
+   apa adanya (bypass). Warna mengikuti tema lewat variabel --sk-*. */
+.ai-pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 2px;
+}
+.ai-layer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: 0 0 auto;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--sk-border);
+    border-radius: 0.6rem;
+    background: var(--sk-surface-2);
+    color: var(--sk-text-muted);
+    transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+}
+.ai-layer-pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 0.35rem;
+    background: var(--sk-surface-3);
+    border: 1px solid var(--sk-border-soft);
+    font-size: 0.6rem;
+    font-weight: 900;
+}
+.ai-layer-name { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; }
+.ai-layer-state { font-size: 0.58rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; }
+.ai-layer.is-endpoint { color: var(--sk-text-faint); }
+.ai-layer.is-on { border-color: #3b82f6; color: #3b82f6; box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.18); }
+.ai-layer.is-on[data-stage="yolo"] { border-color: var(--sk-warning); color: var(--sk-warning); box-shadow: inset 0 0 10px rgba(250, 204, 21, 0.18); }
+.ai-layer.is-off { opacity: 0.78; }
+.ai-layer.is-off .ai-layer-state { color: var(--sk-text-faint); }
+.ai-layer-arrow { flex: 0 0 auto; color: var(--sk-text-faint); font-size: 0.6rem; }
+
+/* Ponsel: keempat posisi harus terlihat tanpa geser horizontal. Grid 2x2
+   mempertahankan urutan baca 1-2 / 3-4; panah disembunyikan karena arah
+   baris sudah ditunjukkan nomor posisi. */
+@media (max-width: 640px) {
+    .ai-pipeline {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        white-space: normal;
+    }
+    .ai-layer-arrow { display: none; }
+}
+
 /* --- 9. DAFTAR KAMERA (AKORDION) --- */
 .accordion-group {
     margin-bottom: 10px;

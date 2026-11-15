@@ -332,28 +332,32 @@ python scripts/apply_rtdb_rules.py --show     # lihat aturan aktif
 ### Engine AI — satu folder per cara inferensi
 
 `ai_engine/main_ai.py` adalah jembatan tiga keluarga model. Satu proses per kamera,
-dengan **dua laju** yang terpisah. Urutan tahapnya tetap; hanya tahap yang dimatikan
-yang dilewati:
+dengan **dua laju** yang terpisah. Alurnya **empat lapisan dengan posisi tetap**;
+sakelar AI tidak memindahkan lapisan, hanya mengubahnya dari *proses* menjadi
+*bypass*:
 
 ```text
-RTSP → [1] low-light (opsional) → [2] YOLO (opsional)
-     → kotak + HUD + LUT tampilan → ffmpeg → HLS
+posisi 1        posisi 2                     posisi 3      posisi 4
+Video masuk → Low-Light Enhancement → YOLO → Video keluar → kotak + HUD + LUT
+              (proses / bypass)      (deteksi / bypass)   → ffmpeg → HLS
 ```
 
-| Sakelar aktif | Alur yang benar-benar dijalankan |
-|---|---|
-| LLE + YOLO | Video → LLE → YOLO → Video |
-| YOLO saja | Video → YOLO → Video |
-| LLE saja | Video → LLE → Video |
-| keduanya mati | Video → Video |
+| Posisi | Lapisan | Saat ON | Saat OFF |
+|---|---|---|---|
+| 1 | Video masuk | frame sumber | — |
+| 2 | Low-Light Enhancement | frame diproses model | frame diteruskan apa adanya (*bypass*) |
+| 3 | YOLO | deteksi pada keluaran posisi 2 | tanpa deteksi; keluaran posisi 2 diteruskan |
+| 4 | Video keluar | kotak + HUD + LUT tampilan → ffmpeg → HLS | sama |
 
-YOLO selalu membaca **keluaran tahap sebelumnya**: saat enhancement aktif, detektor
-menerima frame hasil model low-light (bukan frame mentah yang dicerahkan LUT). Saat
-LLE dimatikan, model low-light tidak dijalankan sama sekali, LUT tampilan lama
-dibuang, dan detektor kembali ke frame sumber. Semuanya tanpa restart proses — hanya
-lewat `cam_<channel>/ai_status` di RTDB. Urutan yang sedang berjalan dilaporkan di
-`ai_stats.json` sebagai `pipeline` (`lowlight->yolo->video`, `yolo->video`,
-`lowlight->video`, atau `video`) dan dicetak di log engine sebagai `alur=…`.
+Low-Light Enhancement **selalu** di posisi 2 dan YOLO **selalu** di posisi 3, untuk
+keempat kombinasi sakelar (LLE + YOLO, LLE saja, YOLO saja, keduanya mati). YOLO
+membaca keluaran posisi 2: saat enhancement aktif itu piksel hasil model, bukan
+frame mentah yang dicerahkan LUT; saat LLE dimatikan posisi 2 meneruskan frame
+sumber. Semuanya tanpa restart proses — hanya lewat `cam_<channel>/ai_status` di
+RTDB. Urutan yang berjalan dilaporkan di `ai_stats.json` sebagai rantai tetap
+`pipeline` (`video->lowlight->yolo->video`) plus `pipeline_layers` (posisi, nama,
+`mode`: `sumber` / `proses` / `deteksi` / `bypass` / `keluaran`), dan dicetak di log
+engine sebagai `alur=video -> lowlight(on) -> yolo(off) -> video`.
 
 HUD di dalam video ditulis **dua baris di sudut kiri-bawah** — model low-light,
 bobot YOLO, dan perangkat pemroses (`GPU · <nama>` / `CPU`). Kiri-bawah dipilih
@@ -371,7 +375,7 @@ thread** yang tidak pernah ditunggu jalur tampilan:
 |---|---|---|
 | `ai-prep` | perkecil frame asli → `AI_AI_SIDE` | tiap frame |
 | `ai-enhance` | model low-light → frame hasil model + LUT tampilan | `AI_ENHANCE_HZ` (default 6x/dtk) |
-| `ai-detect` | YOLO pada keluaran `ai-enhance` (frame sumber bila LLE mati) | mengikuti laju tahap 1; ±laju sumber saat LLE mati |
+| `ai-detect` | YOLO (posisi 3) pada keluaran `ai-enhance` (posisi 2; frame sumber bila lapisan itu bypass) | mengikuti laju tahap 1; ±laju sumber saat LLE mati |
 
 Kuncinya: model low-light termahal tidak perlu dijalankan tiap frame — LUT
 tampilan berubah lambat, dan YOLO hanya perlu membaca frame hasil model yang
@@ -599,7 +603,11 @@ Kedua select memakai chevron kustom (12 px dari tepi field, `pr-9`) supaya tidak
 ke tepi card. Perubahan low-light dikirim ke `POST /api/nodes/<id>/ai`, backend menulis
 `cam_<channel>/ai_status`, dan engine menerapkannya dalam ~2 detik tanpa restart — panel
 baru berubah setelah telemetri menunjukkan engine benar-benar sudah berganti. Bila fitur
-dicabut, panelnya disembunyikan dan tayangan tetap berjalan.
+dicabut, panelnya disembunyikan dan tayangan tetap berjalan. Di bawah kedua kartu sakelar
+ada strip **Alur AI · posisi tetap** berisi empat lapisan bernomor (1 Video → 2 Low-Light
+→ 3 YOLO → 4 Video). Strip itu menegaskan bahwa sakelar tidak memindahkan lapisan: yang
+berubah hanya label `ON · proses` / `ON · deteksi` menjadi `OFF · bypass` pada posisi yang
+sama (grid 2×2 di bawah 640 px supaya keempat posisi tetap terlihat).
 Nilai yang tidak ada memakai bawaan peran, sehingga akun lama (tanpa field `akses`)
 berperilaku seperti sebelumnya. `PUT /api/akun/<uid>` menggabungkan kiriman parsial
 (`{"akses":{"cctv":false}}` hanya mengubah satu fitur), dan mengubah `peran` tanpa
@@ -950,6 +958,9 @@ backend/.venv/Scripts/python.exe test/test_channel_unique.py      # channel kano
 backend/.venv/Scripts/python.exe test/test_stats_trash_filter.py   # statistik node di tempat sampah disembunyikan
 backend/.venv/Scripts/python.exe test/test_stats_all_nodes.py    # statistik + CSV/PDF memuat semua node
 backend/.venv/Scripts/python.exe test/test_ai_pipeline_order.py    # urutan LLE -> YOLO + sakelar dinamis (stub model)
+backend/.venv/Scripts/python.exe test/test_ai_pipeline_positions.py # posisi lapisan 1-4 tetap pada 4 kombinasi sakelar (stub model)
+backend/.venv/Scripts/python.exe test/test_ai_engine_layers.py     # engine asli: posisi lapisan tiap kombinasi + HLS
+backend/.venv/Scripts/python.exe test/test_ai_layers_ui.py         # strip Alur AI di CCTV (Playwright, admin + node sementara)
 backend/.venv/Scripts/python.exe test/test_ai_engine_toggle.py     # alur AI lewat RTDB pada engine sungguhan
 backend/.venv/Scripts/python.exe test/test_crud_e2e.py             # CRUD node + akun (akun uji sementara, dibersihkan)
 backend/.venv/Scripts/python.exe test/test_ui_select_responsive.py # UI: select/pilih semua/tempat sampah 12 viewport

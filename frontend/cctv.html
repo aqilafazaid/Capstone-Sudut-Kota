@@ -12,7 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20261115v">
+    <link rel="stylesheet" href="css/style.css?v=20261116v">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
 
     <script>
@@ -296,6 +296,41 @@
                         </div>
                     </div>
 
+                    <!-- ALUR AI: empat lapisan dengan posisi tetap. Sakelar hanya
+                         mengubah lapisan menjadi proses atau bypass; posisinya
+                         tidak pernah bergeser, jadi LLE selalu posisi 2 dan
+                         YOLO selalu posisi 3 meski AI dinyalakan/dimatikan. -->
+                    <div class="px-5 pb-4">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <span class="text-[10px] font-black sk-muted uppercase tracking-widest">Alur AI &middot; posisi tetap</span>
+                            <span class="text-[10px] font-bold sk-muted">LLE posisi 2 &middot; YOLO posisi 3</span>
+                        </div>
+                        <div id="ai-pipeline" class="ai-pipeline" role="list"
+                             aria-label="Alur AI empat lapisan: 1 Video, 2 Low-Light Enhancement, 3 YOLO, 4 Video">
+                            <div class="ai-layer is-endpoint" id="ai-layer-1" data-pos="1" role="listitem">
+                                <span class="ai-layer-pos">1</span>
+                                <span class="ai-layer-name">Video</span>
+                            </div>
+                            <span class="ai-layer-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right-long"></i></span>
+                            <div class="ai-layer is-off" id="ai-layer-2" data-pos="2" data-stage="lowlight" role="listitem">
+                                <span class="ai-layer-pos">2</span>
+                                <span class="ai-layer-name">Low-Light</span>
+                                <span class="ai-layer-state" id="ai-layer-2-state">OFF &middot; bypass</span>
+                            </div>
+                            <span class="ai-layer-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right-long"></i></span>
+                            <div class="ai-layer is-off" id="ai-layer-3" data-pos="3" data-stage="yolo" role="listitem">
+                                <span class="ai-layer-pos">3</span>
+                                <span class="ai-layer-name">YOLO</span>
+                                <span class="ai-layer-state" id="ai-layer-3-state">OFF &middot; bypass</span>
+                            </div>
+                            <span class="ai-layer-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right-long"></i></span>
+                            <div class="ai-layer is-endpoint" id="ai-layer-4" data-pos="4" role="listitem">
+                                <span class="ai-layer-pos">4</span>
+                                <span class="ai-layer-name">Video</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="px-5 pb-4">
                         <div class="sk-panel-2 sk-line border rounded-xl px-4 py-3 flex items-center gap-3 shadow-inner">
                             <i class="fa-solid fa-terminal text-blue-500 text-xs"></i>
@@ -346,15 +381,15 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="js/public-config.js?v=20261115v"></script>
-<script src="js/firebase-config.js?v=20261115v"></script>
-<script src="js/firebase-client.js?v=20261115v"></script>
-<script src="js/config.js?v=20261115v"></script>
+<script src="js/public-config.js?v=20261116v"></script>
+<script src="js/firebase-config.js?v=20261116v"></script>
+<script src="js/firebase-client.js?v=20261116v"></script>
+<script src="js/config.js?v=20261116v"></script>
 
-<script src="js/store.js?v=20261115v"></script>
-<script src="js/auth.js?v=20261115v"></script>
-<script src="js/app.js?v=20261115v"></script>
-<script src="js/main.js?v=20261115v"></script>
+<script src="js/store.js?v=20261116v"></script>
+<script src="js/auth.js?v=20261116v"></script>
+<script src="js/app.js?v=20261116v"></script>
+<script src="js/main.js?v=20261116v"></script>
 <script>
     App.init({ active: 'cctv' });
     CctvPlayer.init();

@@ -43,7 +43,8 @@
             'stat-mobil', 'stat-motor', 'stat-truk', 'stat-bus', 'stat-total', 'stat-fps',
             'stream-mode-badge', 'loading-text',
             'btn-volume', 'btn-reload', 'btn-fullscreen', 'btn-retry-overlay', 'operator-badge',
-            'ai-engine-device', 'ai-engine-detect', 'ai-engine-encoder', 'ai-engine-enhance'
+            'ai-engine-device', 'ai-engine-detect', 'ai-engine-encoder', 'ai-engine-enhance',
+            'ai-layer-2', 'ai-layer-3', 'ai-layer-2-state', 'ai-layer-3-state'
         ];
         ids.forEach(id => { el[id] = document.getElementById(id); });
     }
@@ -245,6 +246,27 @@
         }
     }
 
+    /* Alur AI: empat lapisan dengan posisi tetap. LLE selalu posisi 2 dan YOLO
+       selalu posisi 3; sakelar hanya mengubah lapisan itu dari proses menjadi
+       bypass. Kelas .is-on/.is-off menandai modus, bukan memindahkan posisi. */
+    function paintPipelineLayers(ai) {
+        const stages = [
+            { pos: 2, on: !!ai.lowlight, mode: 'proses', label: 'Low-Light Enhancement' },
+            { pos: 3, on: !!ai.yolo, mode: 'deteksi', label: 'YOLO' }
+        ];
+        stages.forEach(({ pos, on, mode, label }) => {
+            const layer = el['ai-layer-' + pos];
+            const state = el['ai-layer-' + pos + '-state'];
+            if (layer) {
+                layer.classList.toggle('is-on', on);
+                layer.classList.toggle('is-off', !on);
+                layer.dataset.mode = on ? mode : 'bypass';
+                layer.setAttribute('aria-label', `Posisi ${pos}: ${label} ${on ? 'aktif' : 'bypass'}`);
+            }
+            if (state) state.textContent = on ? `ON · ${mode}` : 'OFF · bypass';
+        });
+    }
+
     function paintAiPanel(ai) {
         if (!ai) return;
         const pending = state.aiPending;
@@ -297,6 +319,9 @@
         if (el['ai-engine-enhance']) {
             el['ai-engine-enhance'].textContent = ai.enhance_ms ? `${Math.round(ai.enhance_ms)} ms` : '—';
         }
+
+        /* Alur AI: posisi 1-4 tetap; hanya modus lapisan 2/3 yang berubah. */
+        paintPipelineLayers(ai);
 
         const active = ai.yolo || ai.lowlight;
         if (el['ai-status-indicator']) {
