@@ -75,10 +75,28 @@ def resolve_weights(weights: str | Path | None = None) -> str:
     return str(candidates[0]) if candidates else "yolov8n.pt"
 
 
+DISPLAY_LABELS = {
+    "yolov8n.pt": LABEL,
+}
+
+
 def display_label(weights: str | Path | None = None) -> str:
-    """Nama model untuk UI: ``Yolo v8n`` untuk bobot bawaan, nama berkas lain."""
+    """Nama model untuk UI, **tanpa** nama berkas .pt/.pth.
+
+    ``Yolo v8n`` untuk bobot bawaan (lihat ``DISPLAY_LABELS``). Berkas lain
+    diubah menjadi judul biasa — ``kendaraan-sudutkota-v8n.pt`` menjadi
+    ``Kendaraan Sudutkota V8n`` — supaya dashboard, panel kontrol, dan HUD
+    memakai penamaan yang sama dengan selector modul AI.
+    """
     name = Path(weights or resolve_weights()).name
-    return LABEL if name == "yolov8n.pt" else name
+    known = DISPLAY_LABELS.get(name.lower())
+    if known:
+        return known
+    stem = Path(name).stem.replace("_", " ").replace("-", " ")
+    words = [word for word in stem.split() if word]
+    if not words:
+        return LABEL
+    return " ".join(word[:1].upper() + word[1:] for word in words)
 
 
 class VehicleDetector:

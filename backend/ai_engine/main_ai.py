@@ -913,35 +913,102 @@ def device_summary(device: str) -> str:
     return f"{kind} · {name}" if name else kind
 
 
-def hud(frame: np.ndarray, *, lowlight: str, yolo: str, device: str, scale: float = 1.0) -> None:
+HUD_REF_WIDTH = 960
+HUD_MIN_SCALE = 0.45
+HUD_MAX_SCALE = 4.0
+
+
+def hud_layout(width: int, height: int, lines: tuple[str, str]) -> dict:
+    """Ukuran HUD proporsional terhadap lebar frame, termasuk frame kecil.
+
+    Referensi 960 px: font, ketebalan garis, outline, jarak baris, dan margin
+    dikalikan faktor yang sama, jadi proporsinya tetap di 640x360 maupun
+    3840x2160. Dulu skalanya di-clamp minimal 1,0 dan outline memakai +5 px
+    tetap: pada sumber 640-704 px teks tampak gemuk dan bayangannya terlalu
+    tebal. Bila baris terpanjang tetap tidak muat (nama model panjang), font
+    dikecilkan sampai muat supaya teks tidak terpotong di tepi kanan.
+    """
+    s = min(HUD_MAX_SCALE, max(HUD_MIN_SCALE, float(width) / HUD_REF_WIDTH))
+    margin = max(6, int(round(16 * s)))
+    step = max(12, int(round(32 * s)))
+    thickness = max(1, int(round(1.2 * s)))
+    outline = max(1, int(round(3.5 * s)))
+    font = 0.60 * s
+
+    available = max(40, int(width) - 2 * margin)
+    longest = max(lines, key=len)
+    text_width = 0
+    for _ in range(5):
+        text_width = cv2.getTextSize(
+            longest, cv2.FONT_HERSHEY_SIMPLEX, font, thickness)[0][0]
+        if text_width <= available or font <= 0.16:
+            break
+        font = max(0.16, font * available / text_width)
+    text_width = cv2.getTextSize(
+        longest, cv2.FONT_HERSHEY_SIMPLEX, font, thickness)[0][0]
+
+    bottom = max(6, int(round(18 * s)))
+    y = int(height) - bottom - step * (len(lines) - 1)
+    return {
+        "scale": s, "font": font, "thickness": thickness, "outline": outline,
+        "step": step, "x": margin, "y": y, "text_width": text_width,
+        "available": available,
+    }
+
+
+def _hud_outline(frame: np.ndarray, text: str, x: int, y: int, font: int,
+                 size: float, thickness: int, radius: int) -> None:
+    """Satu baris HUD: halo hitam dari mask yang didilasi + isi putih.
+
+    OpenCV 5 membatasi ``thickness`` putText di 2 px, jadi trik klasik "teks
+    hitam tebal lalu putih tipis" tidak lagi menghasilkan outline (teks putih
+    menutup habis teks hitam). Halo dibuat dari mask teks yang didilasi dengan
+    kernel elips selebar ``radius``, lalu isi putih digambar di atasnya.
+    Pekerjaan dibatasi ke ROI teks supaya biayanya tetap kecil di 4K.
+    """
+    (text_w, text_h), baseline = cv2.getTextSize(text, font, size, thickness)
+    x0 = max(0, int(x) - radius - 2)
+    y0 = max(0, int(y) - text_h - radius - 2)
+    x1 = min(frame.shape[1], int(x) + text_w + radius + 2)
+    y1 = min(frame.shape[0], int(y) + baseline + radius + 2)
+    if x1 <= x0 or y1 <= y0:
+        return
+    ox, oy = int(x) - x0, int(y) - y0
+    roi = frame[y0:y1, x0:x1]
+    mask = np.zeros((y1 - y0, x1 - x0), dtype=np.uint8)
+    cv2.putText(mask, text, (ox, oy), font, size, 255, thickness, cv2.LINE_AA)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * radius + 1, 2 * radius + 1))
+    halo = cv2.dilate(mask, kernel)
+    # Gelapkan area halo dengan alpha mask (tepi luar tetap halus).
+    roi[:] = (roi.astype(np.uint16) * (255 - halo)[..., None] // 255).astype(np.uint8)
+    cv2.putText(roi, text, (ox, oy), font, size, (255, 255, 255), thickness, cv2.LINE_AA)
+
+
+def hud(frame: np.ndarray, *, lowlight: str, yolo: str, device: str) -> None:
     """Overlay kiri-bawah: model AI yang dipakai + perangkat pemrosesnya.
 
     Dua baris ringkas di sudut kiri-bawah, karena kamera biasanya membakar OSD
     sendiri di kiri-atas (nama kanal), kanan-atas (jam), dan kanan-bawah
-    (lokasi). Teks putih dengan tepi hitam tebal, tanpa kotak latar.
+    (lokasi). Teks putih dengan outline hitam di sekeliling huruf (bukan
+    bayangan offset), tanpa kotak latar. Ukuran teks dan outline mengikuti
+    lebar frame (lihat ``hud_layout``).
     """
-    s = max(1.0, float(scale))
     font = cv2.FONT_HERSHEY_SIMPLEX
-    size = 0.60 * s
-    thickness = max(1, int(round(s)))
-    # Tepi hitam harus cukup tebal: di atas langit terang + kompresi x264,
-    # tepi tipis "meleleh" dan teks putih menyatu dengan latar.
-    outline = thickness + 5
-    step = int(32 * s)
-    x = int(16 * s)
-
     lines = (
-        f"Low-Light : {lowlight}    YOLO : {yolo}",
+        f"Low-Light Enhancement : {lowlight}    YOLO : {yolo}",
         f"Prosesor  : {device}",
     )
-    y = frame.shape[0] - int(18 * s) - step * (len(lines) - 1)
+    lay = hud_layout(frame.shape[1], frame.shape[0], lines)
+    size = lay["font"]
+    thickness = lay["thickness"]
+    outline = lay["outline"]
+    x = lay["x"]
+    y = lay["y"]
+    radius = max(1, int(round(outline / 2)))
     for text in lines:
-        # Bayangan 2 px + tepi hitam tebal di bawah teks putih.
-        cv2.putText(frame, text, (x + thickness, y + thickness), font, size,
-                    (0, 0, 0), outline, cv2.LINE_AA)
-        cv2.putText(frame, text, (x, y), font, size, (0, 0, 0), outline, cv2.LINE_AA)
-        cv2.putText(frame, text, (x, y), font, size, (255, 255, 255), thickness, cv2.LINE_AA)
-        y += step
+        # Outline hitam di sekeliling huruf (bukan bayangan offset).
+        _hud_outline(frame, text, x, y, font, size, thickness, radius)
+        y += lay["step"]
 
 
 def write_status_file(out_dir: Path | None, payload: dict) -> None:
@@ -1246,10 +1313,9 @@ def main(argv: list[str] | None = None) -> int:
             # 4. HUD: model AI yang dipakai + perangkat pemrosesnya
             hud(frame,
                 lowlight="Nonaktif" if variant == "none" else model_label,
-                yolo=(os.path.basename(getattr(worker.detector, "path", "") or "")
+                yolo=(yolo_meta.display_label(getattr(worker.detector, "path", ""))
                       if yolo_active else "Nonaktif"),
-                device=device_summary(device_label(device)),
-                scale=size[0] / 960.0)
+                device=device_summary(device_label(device)))
             if writer is not None:
                 if not writer.running:
                     print("[ERROR] ffmpeg berhenti; cek engine.log")

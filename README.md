@@ -364,9 +364,29 @@ HUD di dalam video ditulis **dua baris di sudut kiri-bawah** — model low-light
 bobot YOLO, dan perangkat pemroses (`GPU · <nama>` / `CPU`). Kiri-bawah dipilih
 karena kamera Pekalongan ini sudah membakar OSD-nya sendiri di kiri-atas (nama
 dinas), kanan-atas (jam), dan kanan-bawah (lokasi); versi sebelumnya di kiri-atas
-menimpa OSD kamera. Teksnya putih dengan tepi hitam tebal + bayangan 2 px, tanpa
-kotak latar. Tanggal/jam dan hitungan kendaraan tidak dicetak ke video — angkanya
-ada di kartu halaman CCTV dan RTDB.
+menimpa OSD kamera. Teksnya putih dengan **outline hitam** di sekeliling huruf,
+tanpa bayangan offset dan tanpa kotak latar. Outline dibuat dari mask teks yang
+didilasi (kernel elips) lalu digelapkan sebelum isi putih digambar — bukan trik
+"teks hitam tebal lalu putih tipis", karena OpenCV 5 membatasi `thickness`
+`putText` di 2 px sehingga trik itu menghasilkan teks putih tanpa outline.
+Tanggal/jam dan hitungan kendaraan tidak dicetak ke video — angkanya ada di kartu
+halaman CCTV dan RTDB.
+
+Nama model yang tampil di web memakai label manusiawi, bukan nama berkas.
+`yolo_inference.display_label()` mengubah `yolov8n.pt` menjadi **Yolo v8n** dan
+`kendaraan-sudutkota-v8n.pt` menjadi **Kendaraan Sudutkota V8n**; varian low-light
+memakai `lowlight_catalog.LABELS` (mis. **Mobile-MIRNet**). Label yang sama dipakai
+HUD, badge **Modul AI** di Dashboard, dan opsi selector di panel CCTV. Sebagai
+jaring pengaman, `Store.prettyModel()` di frontend membuang ekstensi `.pt`/`.pth`
+dari snapshot/cache lama, sehingga nama berkas tidak pernah tampil di UI.
+
+Ukuran HUD **proporsional terhadap lebar frame** dengan referensi 960 px
+(`hud_layout`): font, ketebalan garis, outline, jarak baris, dan margin memakai
+faktor yang sama, termasuk untuk sumber di bawah 960 px. Sebelumnya skala di-clamp
+minimal 1,0 dan outline memakai `ketebalan + 5 px` tetap, sehingga pada sumber
+640–704 px teks tampak gemuk dengan outline terlalu tebal. Bila baris terpanjang
+tidak muat (nama model panjang), font dikecilkan sampai muat — HUD tidak pernah
+terpotong di tepi kanan.
 
 Model butuh 100–250 ms/frame; menulis 1080p ke HLS hanya ~40 ms. Kalau keduanya
 dijalankan berurutan, video jadi 3–5 fps. Karena itu AI berjalan di **tiga
@@ -537,6 +557,9 @@ Peramban (Vercel, HTTPS) → Tailscale Funnel → nginx:8080 → /hls (file) + /
 
 Vercel hanya menyajikan HTML/CSS/JS. Playlist dan segmen diambil peramban langsung dari
 backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panjang.
+
+Stream HLS hanya membawa video (`-an` di engine AI maupun streamer polos), jadi tidak
+ada audio yang bisa dikontrol: tombol mute/unmute sengaja tidak disediakan di pemutar.
 
 Kotak pemutar selalu 16:9 (`.video-wrapper`, `padding-top: 56,25%`), sedangkan video di
 dalamnya memakai **`object-fit: contain`** — bukan `fill`. Dengan begitu stream yang
@@ -1005,6 +1028,10 @@ backend/.venv/Scripts/python.exe test/test_ai_pipeline_order.py    # urutan LLE 
 backend/.venv/Scripts/python.exe test/test_ai_pipeline_positions.py # posisi lapisan 1-4 tetap pada 4 kombinasi sakelar (stub model)
 backend/.venv/Scripts/python.exe test/test_yolo_iou_dedupe.py       # dedupe IoU: satu objek tidak berlabel ganda + --iou/AI_YOLO_IOU
 backend/.venv/Scripts/python.exe test/test_video_aspect_ui.py       # video 4:3 di kotak 16:9 tidak gepeng (Playwright + piksel)
+backend/.venv/Scripts/python.exe test/test_hud_responsive.py        # HUD 320-3840 px: teks/outline proporsional, tanpa bayangan, tidak terpotong
+backend/.venv/Scripts/python.exe test/test_player_controls_ui.py    # tombol volume hilang, reload/fullscreen tetap jalan
+backend/.venv/Scripts/python.exe test/test_model_labels.py         # display_label + /api/ai tanpa ekstensi .pt/.pth
+backend/.venv/Scripts/python.exe test/test_model_labels_ui.py      # label di CCTV/Dashboard (admin + node sementara)
 backend/.venv/Scripts/python.exe test/test_ai_engine_layers.py     # engine asli: posisi lapisan tiap kombinasi + HLS
 backend/.venv/Scripts/python.exe test/test_ai_layers_ui.py         # strip Alur AI di CCTV (Playwright, admin + node sementara)
 backend/.venv/Scripts/python.exe test/test_ai_status_sync.py        # status Modul AI CCTV == Dashboard (Playwright, admin + node sementara)
@@ -1013,7 +1040,7 @@ backend/.venv/Scripts/python.exe test/test_crud_e2e.py             # CRUD node +
 backend/.venv/Scripts/python.exe test/test_ui_select_responsive.py # UI: select/pilih semua/tempat sampah 12 viewport
 
 # profiling (bukan uji lulus/gagal, mencetak angka)
-backend/.venv/Scripts/python.exe test/probe_hls_rate.py        # CFR -r vs wallclock pada HlsSink
+backend/.venv/Scripts/python.exe test/probe_hls_rate.py        # CFR -r vs wallclock pada HlsWriter
 backend/.venv/Scripts/python.exe test/profile_ai_pipeline.py   # waktu per tahap pipeline AI
 
 # diagnosa read-only (butuh backend/.env berisi kredensial)
@@ -1027,8 +1054,9 @@ Aturan yang dipakai:
 - Skrip uji, audit, cek, dan diagnosa baru **wajib** dibuat di `test/`, bukan di `backend/`
   atau root. Pengecualian: `backend/scripts/audit_accounts.py` adalah **tool operator**
   yang dikirim bersama aplikasi dan dirujuk dokumentasi, bukan kode uji.
-- Tiap skrip berdiri sendiri: mencetak `PASS`/`FAIL` per cek, ringkasan `HASIL: n/n lulus`
-  (atau `gagal: tidak ada`), dan keluar dengan kode 1 bila ada yang gagal.
+- Tiap skrip berdiri sendiri: mencetak `OK  `/`GAGAL` per cek, ringkasan `HASIL: n/n lulus`,
+  dan keluar dengan kode 1 bila ada yang gagal. Skrip `check_*` bersifat read-only dan
+  melaporkan temuan tanpa menggagalkan proses.
 - Path diturunkan dari `Path(__file__).resolve().parent.parent`, bukan hardcode —
   repo boleh dipindah tanpa menyunting skrip.
 - Tanpa kredensial untuk suite uji: klien RTDB di-stub, database memakai `NODE_DB` ke folder

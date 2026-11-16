@@ -33,6 +33,19 @@
         yolo_model: 'Yolo v8n'
     };
 
+    /* Nama model untuk tampilan: label dari engine sudah ramah, tetapi cache
+       atau snapshot lama bisa membawa nama berkas. Jangan pernah tampilkan
+       ".pt"/".pth" di UI — ubah menjadi judul biasa seperti selector model. */
+    function modelLabel(name) {
+        const text = String(name || '').trim();
+        if (!/\.(pt|pth)$/i.test(text)) return text;
+        return text
+            .replace(/\.(pt|pth)$/i, '')
+            .replace(/[_-]+/g, ' ')
+            .trim()
+            .replace(/\b\w/g, (ch) => ch.toUpperCase());
+    }
+
     /* ---------------------------------------------------------------------
        Cache baca + token operator
        --------------------------------------------------------------------- */
@@ -408,6 +421,11 @@
             return { ...DEFAULT_AI };
         },
 
+        /** Nama model untuk tampilan (tanpa ekstensi .pt/.pth). */
+        prettyModel(name) {
+            return modelLabel(name);
+        },
+
         getAi(id) {
             const saved = { ...DEFAULT_AI, ...(aiState[id] || {}) };
             /* Keadaan yang benar-benar berjalan datang dari engine lewat
@@ -425,9 +443,9 @@
                 ...saved,
                 lowlight: online && !!snap.lowlight_variant && snap.lowlight_variant !== 'none',
                 lowlight_variant: (online && snap.lowlight_variant) || saved.lowlight_variant,
-                lowlight_model: (online && snap.lowlight_model) || saved.lowlight_model,
+                lowlight_model: modelLabel((online && snap.lowlight_model) || saved.lowlight_model),
                 yolo: online && !!snap.deteksi_aktif,
-                yolo_model: snap.yolo_label || snap.yolo_weights || saved.yolo_model,
+                yolo_model: modelLabel(snap.yolo_label || snap.yolo_weights || saved.yolo_model),
                 online,
                 /* Telemetri beban kerja: perangkat yang benar-benar dipakai
                    engine, laju deteksi, encoder, dan waktu model. */

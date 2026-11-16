@@ -42,7 +42,7 @@
             'toggle-lowlight', 'toggle-yolo', 'select-lowlight', 'select-yolo',
             'stat-mobil', 'stat-motor', 'stat-truk', 'stat-bus', 'stat-total', 'stat-fps',
             'stream-mode-badge', 'loading-text',
-            'btn-volume', 'btn-reload', 'btn-fullscreen', 'btn-retry-overlay', 'operator-badge',
+            'btn-reload', 'btn-fullscreen', 'btn-retry-overlay', 'operator-badge',
             'ai-engine-device', 'ai-engine-detect', 'ai-engine-encoder', 'ai-engine-enhance',
             'ai-layer-2', 'ai-layer-3', 'ai-layer-2-state', 'ai-layer-3-state'
         ];
@@ -656,16 +656,6 @@
         if (el['btn-retry-overlay']) el['btn-retry-overlay'].addEventListener('click', () => applyStream());
 
         if (el['btn-reload']) el['btn-reload'].addEventListener('click', () => { log('Muat ulang manual.'); applyStream(); });
-
-        if (el['btn-volume']) {
-            el['btn-volume'].addEventListener('click', () => {
-                if (!video) return;
-                video.muted = !video.muted;
-                el['btn-volume'].innerHTML = video.muted
-                    ? '<i class="fa-solid fa-volume-xmark text-sm"></i>'
-                    : '<i class="fa-solid fa-volume-high text-sm text-[#3b82f6]"></i>';
-            });
-        }
 
         if (el['btn-fullscreen']) {
             el['btn-fullscreen'].addEventListener('click', () => {
