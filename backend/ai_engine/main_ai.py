@@ -116,7 +116,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--enhance-side", type=int, default=0,
                         help="Override resolusi kerja enhancer (default per model)")
     parser.add_argument("--imgsz", type=int, default=int(os.environ.get("AI_YOLO_IMGSZ", "640")))
-    parser.add_argument("--conf", type=float, default=float(os.environ.get("AI_YOLO_CONF", "0.35")))
+    parser.add_argument("--conf", type=float, default=float(os.environ.get("AI_YOLO_CONF", "0.44")))
+    parser.add_argument("--iou", type=float, default=float(os.environ.get("AI_YOLO_IOU", "0.5")),
+                        help="Ambang IoU NMS + dedupe lintas kelas (default 0.5)")
     parser.add_argument("--out", default="", help="Folder HLS tujuan (default media/hls/<node>)")
     parser.add_argument("--no-stream", action="store_true", help="Tanpa HLS (uji model)")
     parser.add_argument("--no-yolo", action="store_true", help="Matikan YOLO")
@@ -588,7 +590,10 @@ def load_detector(args: argparse.Namespace, device):
 
     if args.no_yolo:
         return yolo_inference.NoopDetector()
-    return yolo_inference.VehicleDetector(device=str(device), imgsz=args.imgsz, conf=args.conf)
+    return yolo_inference.VehicleDetector(
+        device=str(device), imgsz=args.imgsz, conf=args.conf,
+        iou=float(getattr(args, "iou", yolo_inference.DEFAULT_IOU)),
+    )
 
 
 def benchmark(device) -> int:

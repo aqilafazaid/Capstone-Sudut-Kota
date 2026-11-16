@@ -349,7 +349,21 @@ html.dark .glass-input option { color: #f8fafc; background: #050a1f; }
 }
 
 .video-wrapper { position: relative; width: 100%; padding-top: 56.25%; background: #000; }
-.video-element { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+/* `contain`, bukan `fill`: `fill` meregangkan video mengikuti kotak pemutar,
+   jadi sumber yang rasionya bukan 16:9 (substream 4:3, kamera ultrawide)
+   tampil gepeng. Dengan `contain` rasio asli dipertahankan; sisa ruang diisi
+   latar hitam `.video-wrapper`. Untuk sumber 16:9 (semua kamera saat ini)
+   hasilnya identik dengan sebelumnya. */
+.video-element { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+/* Fullscreen: kotak mengikuti layar, bukan padding-top 16:9. Chromium sudah
+   memaksa `box-sizing: border-box` pada `:fullscreen` sehingga video tetap
+   penuh, tetapi mesin lain (WebKit lama) menambahkan tinggi padding ke tinggi
+   layar — video meluber dan terpotong. Aturan ini membuat niatnya eksplisit
+   dan aman di semua mesin; sisa ruang di layar non-16:9 diisi bar hitam
+   (video memakai `contain`), bukan gambar gepeng. Ditulis terpisah karena
+   pseudo-class tak dikenal membatalkan seluruh selector list. */
+.video-wrapper:fullscreen { padding-top: 0; width: 100%; height: 100%; }
+.video-wrapper:-webkit-full-screen { padding-top: 0; width: 100%; height: 100%; }
 
 /* --- 7. INDIKATOR SINYAL --- */
 .signal-container { display: flex; flex-direction: column; align-items: flex-end; }

@@ -313,12 +313,45 @@
         paintTrash();
     }
 
+    /* --- Status AI: satu sumber dengan halaman CCTV ---------------------- */
+    /* Kolom "Modul AI" dulu membaca cache localStorage saja, sehingga node
+       yang engine-nya mematikan YOLO tetap tampil "Yolo v8n" selama belum ada
+       operator yang menekan sakelar di peramban yang sama. Sekarang tabel
+       memakai snapshot telemetri RTDB yang sama dengan panel Kontrol Modul AI
+       di halaman CCTV (Store.getAi), dimuat saat halaman dibuka dan dipoll
+       berkala. */
+    let aiSignature = '';
+
+    function aiSignatureNow() {
+        return Store.list().map(cam => {
+            const ai = Store.getAi(cam.id);
+            return [
+                cam.id,
+                ai.online === false ? 'off' : 'on',
+                ai.yolo ? 1 : 0,
+                ai.yolo_model || '',
+                ai.lowlight ? 1 : 0,
+                ai.lowlight_model || ''
+            ].join('|');
+        }).join(';');
+    }
+
+    /* Render ulang hanya bila keadaan AI benar-benar berubah, supaya tabel
+       tidak berkedip setiap tick polling. */
+    function paintAiIfChanged() {
+        const next = aiSignatureNow();
+        if (next === aiSignature) return;
+        aiSignature = next;
+        paintTable();
+    }
+
     /* --- Render ulang ---------------------------------------------------- */
     function refresh() {
         paintSummary();
         paintZoneOptions();
         paintRoadOptions();
         paintTable();
+        aiSignature = aiSignatureNow();
         /* Isi tempat sampah berubah setiap kali node dihapus/dipulihkan; tanpa
            ini hitungannya tetap angka lama sampai panel ditutup-buka. */
         loadTrash();
@@ -485,9 +518,23 @@
     });
 
     paintProfile();
-    Store.ready().then(() => {
+    Store.ready().then(async () => {
+        /* Snapshot live dimuat sebelum render pertama supaya kolom "Modul AI"
+           tidak sempat menampilkan nilai bawaan localStorage. Backend yang
+           tidak terjangkau tetap dirender dari cache (fetchLive tidak melempar). */
+        await Store.refreshLive();
         refresh();
         loadTrash();
+        /* Halaman CCTV mempoll 2 dtk untuk panel kontrolnya; Dashboard cukup
+           5 dtk karena hanya menampilkan ringkasan status. */
+        Store.subscribeLive(paintAiIfChanged, 5000);
+    });
+
+    /* Tab yang lama di latar belakang ditahan peramban; segarkan begitu
+       terlihat lagi agar status tidak tampil basi. */
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        Store.refreshLive().then(paintAiIfChanged);
     });
 
     document.addEventListener('store:offline', () => {

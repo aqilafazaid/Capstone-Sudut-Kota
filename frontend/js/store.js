@@ -414,15 +414,21 @@
                telemetri RTDB (cam_<channel>). localStorage hanya cadangan
                sebelum engine mengirim snapshot pertama. */
             const snap = liveSnapshots[id];
-            if (!snap || (!snap.lowlight_variant && !snap.status)) return saved;
+            if (!snap || !snap.status) return saved;
+
+            /* Engine yang berhenti mengirim snapshot ditandai OFFLINE oleh
+               backend; modul yang terakhir dilaporkan tidak boleh tetap tampil
+               aktif. Kedua halaman (CCTV dan Dashboard) membaca aturan yang
+               sama dari sini supaya status keduanya tidak pernah berbeda. */
+            const online = snap.status !== 'OFFLINE' && !snap.stale;
             return {
                 ...saved,
-                lowlight: !!snap.lowlight_variant && snap.lowlight_variant !== 'none',
-                lowlight_variant: snap.lowlight_variant || saved.lowlight_variant,
-                lowlight_model: snap.lowlight_model || saved.lowlight_model,
-                yolo: !!snap.deteksi_aktif,
+                lowlight: online && !!snap.lowlight_variant && snap.lowlight_variant !== 'none',
+                lowlight_variant: (online && snap.lowlight_variant) || saved.lowlight_variant,
+                lowlight_model: (online && snap.lowlight_model) || saved.lowlight_model,
+                yolo: online && !!snap.deteksi_aktif,
                 yolo_model: snap.yolo_label || snap.yolo_weights || saved.yolo_model,
-                online: (snap.status || 'OFFLINE') !== 'OFFLINE',
+                online,
                 /* Telemetri beban kerja: perangkat yang benar-benar dipakai
                    engine, laju deteksi, encoder, dan waktu model. */
                 device: snap.device || '',
@@ -467,19 +473,39 @@
             return { ...OFFLINE_SNAPSHOT, ...(liveSnapshots[id] || {}) };
         },
 
-        /** Polling 2 detik ke /api/stats/live; mengembalikan fungsi berhenti. */
-        subscribeTelemetry(id, callback) {
+        /**
+         * Muat ulang snapshot live seluruh node sekali (dipakai sebelum render
+         * pertama Dashboard dan saat tab kembali aktif).
+         */
+        refreshLive() {
+            return fetchLive();
+        },
+
+        /**
+         * Polling snapshot live seluruh node. Callback menerima peta
+         * `{ nodeId: snapshot }` setiap tick, sehingga halaman yang memantau
+         * banyak node (Dashboard) membaca sumber yang sama dengan panel AI
+         * halaman CCTV. Mengembalikan fungsi berhenti.
+         */
+        subscribeLive(callback, intervalMs = 2000) {
             let stopped = false;
 
             const tick = async () => {
                 if (!stopped) await fetchLive();
                 if (stopped) return;
-                callback({ ...OFFLINE_SNAPSHOT, ...(liveSnapshots[id] || {}) });
+                callback(liveSnapshots);
             };
 
             tick();
-            const timer = setInterval(tick, 2000);
+            const timer = setInterval(tick, Math.max(1000, intervalMs));
             return () => { stopped = true; clearInterval(timer); };
+        },
+
+        /** Polling 2 detik ke /api/stats/live untuk satu node; mengembalikan fungsi berhenti. */
+        subscribeTelemetry(id, callback) {
+            return Store.subscribeLive(snapshots => {
+                callback({ ...OFFLINE_SNAPSHOT, ...(snapshots[id] || {}) });
+            });
         },
 
         onChange(callback) {

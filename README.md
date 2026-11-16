@@ -296,6 +296,7 @@ Baris lama yang masih teks biasa tetap terbaca; ubah semuanya dengan
 | Node CCTV | `backend/data/sudutkota.db` (SQLite) | `GET /api/nodes`, cache `sudutkota.nodes.cache.v3`; yang di tempat sampah lewat `GET /api/nodes/trash` |
 | Akun | Firebase Auth (identitas) + RTDB `<RTDB_ROOT>/akun/<uid>` (profil, peran, `akses`, `deleted_at`) | `GET /api/akun/me`, `GET /api/akun`, `GET /api/akun?deleted=1` |
 | Statistik | RTDB `<RTDB_ROOT>/statistik*` | `GET /api/stats/telemetry` (agregat), `GET /api/stats/live` (snapshot) |
+| Status modul AI | Telemetri engine di RTDB `cam_<channel>` (`deteksi_aktif`, `lowlight_variant`, `status`) | `GET /api/stats/live` → `Store.getAi()`; CCTV lewat `Store.subscribeTelemetry()`, Dashboard lewat `Store.subscribeLive()`; `localStorage` hanya cache |
 
 Periksa ketiganya sekaligus (read-only):
 
@@ -491,6 +492,14 @@ Statistik:
   kelas hasil training ulang tidak masalah. `jumlah_*`, `total_kendaraan`,
   `timestamp`, `status` ditulis tiap 2 detik dan
   dibaca kolektor `backend/stats.py` untuk halaman Statistik.
+- **Satu objek hanya boleh membawa satu label.** NMS ultralytics berjalan per
+  kelas, jadi satu kendaraan bisa lolos dua kali dengan label berbeda (mis. `mobil`
+  dan `truk` pada kotak yang hampir sama). Hasil mentah disaring lagi oleh
+  `VehicleDetector.dedupe` dengan **IoU lintas kelas**: deteksi diurutkan dari
+  confidence tertinggi, kotak berikutnya dibuang bila IoU dengan kotak yang sudah
+  dipertahankan ≥ ambang. Ambangnya sama dengan NMS model — `--iou` /
+  `AI_YOLO_IOU`, default **0,5**. Gambar dan `jumlah_*` memakai daftar yang sudah
+  bersih, jadi satu kendaraan tidak dihitung dua kali.
 - Kontrol tanpa restart lewat RTDB `cam_<channel>/ai_status`:
   `lowlight_enabled`, `lowlight_model`, `yolo_enabled`. Panel **Kontrol Modul AI**
   di halaman CCTV menulisnya lewat `POST /api/nodes/<id>/ai`.
@@ -528,6 +537,20 @@ Peramban (Vercel, HTTPS) → Tailscale Funnel → nginx:8080 → /hls (file) + /
 
 Vercel hanya menyajikan HTML/CSS/JS. Playlist dan segmen diambil peramban langsung dari
 backend lewat Funnel, bukan lewat Vercel — Vercel tidak mem-proxy stream panjang.
+
+Kotak pemutar selalu 16:9 (`.video-wrapper`, `padding-top: 56,25%`), sedangkan video di
+dalamnya memakai **`object-fit: contain`** — bukan `fill`. Dengan begitu stream yang
+rasionya bukan 16:9 (substream 4:3, kamera ultrawide) tampil utuh dengan bar hitam, tidak
+diregangkan mengikuti kotak. Untuk sumber 16:9 (semua kamera saat ini) hasilnya identik
+dengan kotak penuh, dan tinggi pemutar tidak berubah saat berganti node (tanpa layout shift).
+
+Mode **fullscreen** melepas hack 16:9 itu: `.video-wrapper:fullscreen` (plus
+`:-webkit-full-screen`) memasang `padding-top: 0; width/height: 100%`, sehingga kotak
+mengikuti layar dan video `contain` mengisi layar dengan bar hitam bila rasionya berbeda.
+Chromium sudah memaksa `box-sizing: border-box` pada elemen fullscreen, jadi aturan ini
+adalah pengaman lintas mesin (WebKit lama menambahkan tinggi padding ke tinggi layar).
+Uji regresinya memotret poster 4:3 di kotak 16:9, mengukur lingkarannya, lalu mengulang di
+fullscreen pada viewport 1000×600 dan 2560×1080: `test/test_video_aspect_ui.py`.
 
 | Method | Endpoint | Akses | Fungsi |
 |---|---|---|---|
@@ -739,9 +762,27 @@ dari versi lama atau penghapusan manual bisa dibersihkan dengan
 `backend/scripts/purge_orphan_data.py` (dry-run default, `--apply` untuk menghapus).
 
 - `localStorage['sudutkota.nodes.cache.v3']` — cache baca, bukan sumber kebenaran.
-- `localStorage['sudutkota.ai.v1']` — status AI lokal (belum tersinkron ke RTDB).
+- `localStorage['sudutkota.ai.v2']` — cache tampilan status AI. Sumber kebenaran tetap
+  telemetri engine (`cam_<channel>`); begitu snapshot masuk, `Store.getAi()` memakai
+  keadaan engine, bukan isi cache ini.
 - `localStorage['sudutkota.backend']` — override alamat backend; kosongkan bila halaman
   Vercel harus memakai proxy `/api` (`localStorage.removeItem('sudutkota.backend')`).
+
+### Status Modul AI di Dashboard
+
+Kolom **Modul AI** pada tabel Command Center menampilkan keadaan engine yang sama dengan
+panel **Kontrol Modul AI** di halaman Live CCTV — bukan pilihan terakhir di peramban:
+
+- sumbernya `GET /api/stats/live` → snapshot `cam_<channel>` (`deteksi_aktif`, `yolo_label`,
+  `lowlight_variant`, `lowlight_model`, `status`, `stale`);
+- `Store.subscribeLive()` memuat snapshot sebelum render pertama, mem-poll tiap **5 dtk**
+  (CCTV 2 dtk) dan menyegarkan lagi saat tab kembali terlihat; tabel hanya digambar ulang
+  bila tanda tangan status AI berubah;
+- engine yang berhenti mengirim snapshot ditandai `OFFLINE` (`stale`), sehingga modul tampil
+  `YOLO OFF`/`LOWLIGHT OFF` — sejalan dengan chip **AI INACTIVE** di CCTV, bukan status
+  terakhir yang tertinggal;
+- label model (`Yolo v8n`, `Kendaraan Sudut Kota`, `Mobile-MIRNet`) berasal dari
+  `yolo_label`/`lowlight_model` engine, jadi dua halaman tidak bisa menyebut model berbeda.
 
 ## Kabar terbaru (Instagram)
 
@@ -794,7 +835,8 @@ Store.ready()                    Store.isOnline()       Store.config()
 Store.list()                     Store.get(id)          Store.byZone()
 Store.upsert(camera)             Store.remove(id)       Store.fetchDetail(id)
 Store.getAi(id)                  Store.setAi(id, patch)
-Store.subscribeTelemetry(id, cb) Store.onChange(cb)
+Store.subscribeTelemetry(id, cb) Store.subscribeLive(cb, ms)
+Store.refreshLive()              Store.onChange(cb)
 Store.loadStats(force)           Store.statsInfo()      Store.stats(period)
 
 // auth.js — Firebase Auth + peran/akses dari /api/akun/me
@@ -805,10 +847,12 @@ Auth.featureLabel(feature)       Auth.roleFeatures()    Auth.homeFor(role)
 ```
 
 Akun sudah sepenuhnya di Firebase Authentication + RTDB, dan statistik dibaca dari
-agregat RTDB lewat `Store.loadStats()`. Kartu kendaraan di halaman Live CCTV memakai
-`GET /api/stats/live` (snapshot `cam_<channel>` di RTDB) lewat
-`Store.subscribeTelemetry()`. Tidak ada angka simulasi di peramban; yang masih lokal
-hanya status toggle AI (`localStorage['sudutkota.ai.v1']`).
+agregat RTDB lewat `Store.loadStats()`. Kartu kendaraan di halaman Live CCTV dan kolom
+**Modul AI** di Dashboard memakai sumber yang sama: `GET /api/stats/live` (snapshot
+`cam_<channel>` di RTDB). CCTV memanggil `Store.subscribeTelemetry()`, Dashboard
+memanggil `Store.subscribeLive()`. Tidak ada angka simulasi di peramban; toggle AI
+dikirim ke engine lewat `POST /api/nodes/<id>/ai` dan keadaan yang tampil selalu
+keadaan engine, bukan pilihan terakhir di `localStorage['sudutkota.ai.v2']` (cache).
 
 ## Halaman Statistik & Ekspor
 
@@ -959,8 +1003,11 @@ backend/.venv/Scripts/python.exe test/test_stats_trash_filter.py   # statistik n
 backend/.venv/Scripts/python.exe test/test_stats_all_nodes.py    # statistik + CSV/PDF memuat semua node
 backend/.venv/Scripts/python.exe test/test_ai_pipeline_order.py    # urutan LLE -> YOLO + sakelar dinamis (stub model)
 backend/.venv/Scripts/python.exe test/test_ai_pipeline_positions.py # posisi lapisan 1-4 tetap pada 4 kombinasi sakelar (stub model)
+backend/.venv/Scripts/python.exe test/test_yolo_iou_dedupe.py       # dedupe IoU: satu objek tidak berlabel ganda + --iou/AI_YOLO_IOU
+backend/.venv/Scripts/python.exe test/test_video_aspect_ui.py       # video 4:3 di kotak 16:9 tidak gepeng (Playwright + piksel)
 backend/.venv/Scripts/python.exe test/test_ai_engine_layers.py     # engine asli: posisi lapisan tiap kombinasi + HLS
 backend/.venv/Scripts/python.exe test/test_ai_layers_ui.py         # strip Alur AI di CCTV (Playwright, admin + node sementara)
+backend/.venv/Scripts/python.exe test/test_ai_status_sync.py        # status Modul AI CCTV == Dashboard (Playwright, admin + node sementara)
 backend/.venv/Scripts/python.exe test/test_ai_engine_toggle.py     # alur AI lewat RTDB pada engine sungguhan
 backend/.venv/Scripts/python.exe test/test_crud_e2e.py             # CRUD node + akun (akun uji sementara, dibersihkan)
 backend/.venv/Scripts/python.exe test/test_ui_select_responsive.py # UI: select/pilih semua/tempat sampah 12 viewport

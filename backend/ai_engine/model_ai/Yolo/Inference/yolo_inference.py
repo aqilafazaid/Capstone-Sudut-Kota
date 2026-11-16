@@ -42,6 +42,27 @@ DEFAULT_CONF = 0.35
 DEFAULT_IOU = 0.5
 
 
+def box_iou(a, b) -> float:
+    """IoU dua kotak ``[x1, y1, x2, y2]``; 0.0 bila tidak beririsan.
+
+    Dipakai untuk membuang label ganda pada objek yang sama. Kotak tanpa luas
+    (lebar/tinggi 0) tidak pernah dianggap beririsan.
+    """
+    ax1, ay1, ax2, ay2 = (float(v) for v in a)
+    bx1, by1, bx2, by2 = (float(v) for v in b)
+
+    lebar = min(ax2, bx2) - max(ax1, bx1)
+    tinggi = min(ay2, by2) - max(ay1, by1)
+    if lebar <= 0 or tinggi <= 0:
+        return 0.0
+
+    irisan = lebar * tinggi
+    luas_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+    luas_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+    gabungan = luas_a + luas_b - irisan
+    return irisan / gabungan if gabungan > 0 else 0.0
+
+
 def empty_counts() -> dict[str, int]:
     return {name: 0 for name in CLASS_NAMES}
 
@@ -133,7 +154,30 @@ class VehicleDetector:
                     "conf": round(float(box.conf[0]), 3),
                     "box": [x1, y1, x2, y2],
                 })
-        return detections
+        return self.dedupe(detections, self.iou)
+
+    @staticmethod
+    def dedupe(detections: list[dict], iou_threshold: float = DEFAULT_IOU) -> list[dict]:
+        """Buang label ganda: satu objek hanya boleh muncul sekali.
+
+        NMS ultralytics berjalan **per kelas**, jadi satu kendaraan bisa lolos
+        dua kali dengan label berbeda (mis. ``mobil`` 0,71 dan ``truk`` 0,62
+        pada kotak yang hampir sama). Deteksi diurutkan dari confidence
+        tertinggi; kotak berikutnya dibuang bila IoU dengan kotak yang sudah
+        dipertahankan mencapai ``iou_threshold``. Kotak yang lolos dikembalikan
+        urut kiri->kanan, atas->bawah agar label tidak melompat antar frame.
+        """
+        urut = sorted(detections, key=lambda item: item.get("conf", 0.0), reverse=True)
+        kept: list[dict] = []
+        for item in urut:
+            box = item.get("box") or []
+            if len(box) != 4:
+                continue  # kotak rusak tidak bisa digambar maupun dihitung
+            if any(box_iou(box, lain["box"]) >= iou_threshold for lain in kept):
+                continue
+            kept.append(item)
+        kept.sort(key=lambda item: (item["box"][0], item["box"][1]))
+        return kept
 
     @staticmethod
     def counts(detections: list[dict]) -> dict[str, int]:
