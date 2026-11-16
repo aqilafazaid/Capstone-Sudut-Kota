@@ -79,6 +79,7 @@ Capstone-Sudut-Kota/
 │   ├── ai_engine/
 │   │   ├── main_ai.py         engine per kamera: low-light + YOLO → HLS
 │   │   ├── engine_manager.py  pengelola proses engine (dipakai app.py)
+│   │   ├── requirements_ai.txt dependensi khusus engine (torch, ultralytics, opencv)
 │   │   └── model_ai/          bobot + kode inference tiap model
 │   ├── gateway/               SATU-SATUNYA konfigurasi edge
 │   │   ├── nginx.conf         serve frontend/ + proxy /api + /hls dari disk
@@ -97,8 +98,11 @@ Capstone-Sudut-Kota/
 │   ├── .env / .env.example
 │   └── requirements.txt
 ├── test/                       ← kode uji (gitignored + vercelignored, lokal saja)
-├── docs/                      catatan desain lokal (gitignored)
+├── docs/                      catatan desain lokal (gitignored, opsional)
 ├── vercel.json                deploy: framework Other, output frontend/
+├── .gitignore                 kredensial (.env, *.pem, *.key), venv/__pycache__, .vscode/.idea,
+│                              keluaran HLS (*.m3u8/*.ts/*.mp4), backend/data + media + logs,
+│                              tools nginx, docs/, test/, bobot model .pth/.pt — tidak ikut repo
 ├── .vercelignore              backend/, docs/, tools/, test/ tidak ikut upload
 ├── start-backend.bat          Windows: nginx + Flask + Tailscale Funnel (satu klik)
 ├── start-frontend.bat         Windows: server statis loopback 8787 (mode lokal)
@@ -584,22 +588,22 @@ fullscreen pada viewport 1000×600 dan 2560×1080: `test/test_video_aspect_ui.py
 | GET | `/api/stats/telemetry` | publik | agregat statistik per jam/hari dari RTDB (`?days=N`) |
 | GET | `/api/stats/live` | publik | snapshot terakhir tiap node dari RTDB (`cam_<channel>`) |
 | GET | `/api/ai` | publik | katalog varian low-light + bobot YOLO untuk panel kontrol |
-| GET | `/api/nodes/<id>` | teknisi, admin | detail + RTSP untuk form edit |
-| POST/PUT/DELETE | `/api/nodes[/<id>]` | teknisi, admin | CRUD node; `channel` wajib unik (digit, tanpa nol depan); DELETE = **soft delete** (masuk tempat sampah) + bersihkan HLS, log engine, telemetri live |
-| GET | `/api/nodes/trash` | teknisi, admin | daftar node di tempat sampah |
-| POST | `/api/nodes/<id>/restore` | teknisi, admin | pulihkan node dari tempat sampah (engine dinyalakan bila `aktif`) |
-| DELETE | `/api/nodes/<id>/permanent` | teknisi, admin | hapus permanen: baris, log, telemetri, dan seluruh agregat statistik |
-| POST | `/api/nodes/<id>/ai` | teknisi, admin | tulis `cam_<channel>/ai_status` (low-light on/off, model, YOLO) |
-| POST/DELETE | `/api/streams/<cam>` | teknisi, admin | start/stop ffmpeg |
-| GET | `/api/status` | teknisi, admin | path database, daftar model |
+| GET | `/api/nodes/<id>` | login + fitur `dashboard` | detail + RTSP untuk form edit |
+| POST/PUT/DELETE | `/api/nodes[/<id>]` | login + fitur `dashboard` | CRUD node; `channel` wajib unik (digit, tanpa nol depan); DELETE = **soft delete** (masuk tempat sampah) + bersihkan HLS, log engine, telemetri live |
+| GET | `/api/nodes/trash` | login + fitur `dashboard` | daftar node di tempat sampah |
+| POST | `/api/nodes/<id>/restore` | login + fitur `dashboard` | pulihkan node dari tempat sampah (engine dinyalakan bila `aktif`) |
+| DELETE | `/api/nodes/<id>/permanent` | login + fitur `dashboard` | hapus permanen: baris, log, telemetri, dan seluruh agregat statistik |
+| POST | `/api/nodes/<id>/ai` | login + fitur `dashboard` | tulis `cam_<channel>/ai_status` (low-light on/off, model, YOLO) |
+| POST/DELETE | `/api/streams/<cam>` | login + fitur `dashboard` | start/stop ffmpeg |
+| GET | `/api/status` | login + fitur `dashboard` | path database, daftar model |
 | GET | `/api/sosmed/instagram?page=N&per_page=6` | publik | kiriman Instagram asli (scrape + cache), berhalaman |
 | GET | `/api/sosmed/instagram/image/<code>.jpg` | publik | gambar kiriman yang disimpan backend |
 | GET | `/api/sosmed/instagram/avatar/<handle>.jpg` | publik | foto profil akun hasil scrape |
-| POST | `/api/stats/collect` | teknisi, admin | paksa satu sampel statistik |
-| GET/PUT/DELETE | `/api/akun[/<uid>]` | admin | kelola akun; DELETE = **soft delete** (user Firebase `disabled`) |
-| GET | `/api/akun?deleted=1` | admin | akun di tempat sampah |
-| POST | `/api/akun/<uid>/restore` | admin | aktifkan kembali akun dari tempat sampah |
-| DELETE | `/api/akun/<uid>/permanent` | admin | hapus identitas Firebase + profil (harus sudah soft delete) |
+| POST | `/api/stats/collect` | login + fitur `dashboard` | paksa satu sampel statistik |
+| GET/PUT/DELETE | `/api/akun[/<uid>]` | login + fitur `akun` | kelola akun; DELETE = **soft delete** (user Firebase `disabled`) |
+| GET | `/api/akun?deleted=1` | login + fitur `akun` | akun di tempat sampah |
+| POST | `/api/akun/<uid>/restore` | login + fitur `akun` | aktifkan kembali akun dari tempat sampah |
+| DELETE | `/api/akun/<uid>/permanent` | login + fitur `akun` | hapus identitas Firebase + profil (harus sudah soft delete) |
 | GET | `/api/akun/me` | login | profil sendiri |
 | POST | `/api/akun/self` | login | buat profil saat pendaftaran (peran visitor) |
 
@@ -608,7 +612,10 @@ diambil dari RTDB dan di-cache 60 detik di backend; pemeriksaan wewenang **tidak
 di peramban. Halaman tetap memanggil `Auth.can()`/`Auth.guard(feature)` untuk menu dan pagar
 tampilan, tetapi itu hanya kosmetik — endpoint tetap menolak sendiri. Endpoint tulis
 memakai `@auth.require_feature("dashboard"|"akun")`, yang hanya membaca field `akses`
-akun (bawaan peran dipakai bila kunci tidak diset).
+akun (bawaan peran dipakai bila kunci tidak diset). Karena itu kolom **Akses** di tabel
+ditulis sebagai fitur, bukan nama peran: bawaan `dashboard` aktif untuk teknisi dan admin,
+`akun` hanya admin, tetapi Administrator bisa menyalakan fitur mana pun per akun di halaman
+Kelola Akun — akun `visitor` yang diberi `dashboard` tetap bisa memanggil endpointnya.
 
 `copy: true` meneruskan video apa adanya (hemat CPU); `copy: false` men-transcode H.264
 (wajib bila sumber bukan H.264). Engine AI selalu memakai jalur transcode.
@@ -1062,6 +1069,7 @@ backend/.venv/Scripts/python.exe test/profile_ai_pipeline.py   # waktu per tahap
 backend/.venv/Scripts/python.exe test/check_auth_cfg.py        # authorized domains + provider
 backend/.venv/Scripts/python.exe test/check_accounts.py       # Auth <-> RTDB konsisten
 backend/.venv/Scripts/python.exe test/check_sync.py           # node/statistik/akun sinkron
+backend/.venv/Scripts/python.exe test/check_readme_tree.py    # README vs repo: struktur/env/endpoint/tes (read-only)
 ```
 
 Aturan yang dipakai:
@@ -1079,25 +1087,29 @@ Aturan yang dipakai:
 
 ## Cache aset lokal
 
-Semua referensi aset lokal di HTML memakai query versi, misalnya `css/style.css?v=20261114s` dan
-`js/app.js?v=20261114s`. Tujuannya: server statis (nginx maupun `python -m http.server`) tidak
+Semua referensi aset lokal di HTML memakai query versi, misalnya `css/style.css?v=20261116y` dan
+`js/store.js?v=20261116z`. Tujuannya: server statis (nginx maupun `python -m http.server`) tidak
 mengirim `Cache-Control` untuk aset, sehingga peramban bisa menyajikan versi lama setelah berkas
-diubah. **Setiap kali `css/` atau `js/` diedit, naikkan angka versi itu di kesembilan halaman**
-(cari `?v=`); cukup satu penggantian global.
+diubah. Satu berkas dipakai di beberapa halaman dengan **token yang sama**, dan tiap berkas punya
+token sendiri (keadaan sekarang: `20261116v` untuk sebagian besar `js/`, `w` untuk
+`dashboard.js` + `sosmed.js`, `y` untuk `style.css` + `main.js`, `z` untuk `store.js`).
+**Setiap kali satu berkas di `css/` atau `js/` diedit, naikkan token berkas itu di semua halaman
+yang memuatnya** (cari `nama-berkas.js?v=`), bukan menaikkan seluruh `?v=` di sembilan halaman —
+berkas yang tidak berubah tidak perlu memaksa unduh ulang.
 
 Di Vercel tidak diperlukan karena `vercel.json` (root) sudah memasang `max-age=0, must-revalidate`
 untuk `/js/`.
 
 ## Responsif
 
-Semua halaman diuji ulang pada 9 halaman × 13 ukuran viewport (280×653, 320×568, 360×640,
-390×844, 430×932, 540×720, 768×1024, 1024×768, 1280×720, 1920×1080, 2560×1080, 3440×1440,
-dan 1920×600 untuk layar pendek): `scrollWidth == innerWidth` pada semua kombinasi, termasuk
-saat bilah aksi massal dan panel tempat sampah terbuka. Selain dashboard/akun, tujuh halaman
-lain (beranda, CCTV, statistik, tambah data, login, registrasi, lupa sandi) diukur pada
-seluruh viewport itu. Label navigasi bawah kini `truncate` dengan
-huruf 9 px di bawah 640 px, sehingga lima item tetap muat di 280 px tanpa memperlebar layout
-viewport (sebelumnya 320 px melebar ke 349 px).
+`test/test_ui_select_responsive.py` menyapu **Dashboard pada 12 ukuran viewport** — 280×653,
+320×568, 360×640, 390×844, 430×932, 768×1024, 1024×768, 1280×720, 1920×600, 1920×1080,
+2560×1080, 3440×1440 — dan memastikan `scrollWidth == innerWidth` (dokumen dan body) pada semua
+kombinasi, termasuk saat bilah aksi massal dan panel tempat sampah terbuka, serta tidak ada error
+JS. Halaman lain tidak punya sapuan viewport sendiri; semuanya memakai `.sk-shell`, navbar fixed,
+dan bar bawah yang sama sehingga perbaikan CSS berlaku untuk kesembilan halaman. Label navigasi
+bawah `truncate` dengan huruf 9 px di bawah 640 px, sehingga lima item tetap muat di 280 px tanpa
+memperlebar layout viewport (sebelumnya 320 px melebar ke 349 px).
 
 Navbar memakai `position: fixed` dengan tinggi tetap yang ditetapkan di CSS — `--sk-nav-h: 64px`
 dan `80px` pada ≥768 px — sehingga `main { padding-top: calc(var(--sk-nav-h) + 20px) !important }`
@@ -1201,6 +1213,59 @@ API di `auth.js`: `list()`, `count()`, `create()`, `update()`, `remove()`, `can(
 `guard(feature)`, `features()`, `featureLabel()`, `roleFeatures()`, `resetAccounts()`. Semuanya
 mengembalikan `{ ok, user?, error? }` untuk operasi tulis.
 
+## Variabel lingkungan
+
+Sumber kebenaran daftar ini adalah kode: `os.environ.get("<NAMA>", "<default>")` di modul yang
+memakainya. Yang wajib diisi (kredensial) ada di `backend/.env.example` — blok 1 Web SDK
+(`FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_DATABASE_URL`, `FIREBASE_PROJECT_ID`,
+`FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`,
+`FIREBASE_MEASUREMENT_ID`) dan blok 2 Admin SDK (`FIREBASE_TYPE`, `FIREBASE_PRIVATE_KEY_ID`,
+`FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_CLIENT_ID`, `FIREBASE_AUTH_URI`,
+`FIREBASE_TOKEN_URI`, `FIREBASE_AUTH_PROVIDER_X509_CERT_URL`, `FIREBASE_CLIENT_X509_CERT_URL`,
+`FIREBASE_UNIVERSE_DOMAIN`). Admin SDK kosong = endpoint baca tetap 200, endpoint tulis 503.
+
+**Server dan jaringan** (`backend/app.py`)
+
+| Variabel | Default | Efek |
+|---|---|---|
+| `API_HOST` | `127.0.0.1` | alamat bind Flask; sengaja loopback karena nginx yang menghadap publik |
+| `API_PORT` | `5000` | port Flask; `start-backend.bat` memakai nilai tetap ini |
+| `ALLOWED_ORIGINS` | origin lokal :8080 dan :8787 | daftar origin CORS, dipisah koma; tambahkan domain Vercel/kustom di sini |
+| `ALLOWED_ORIGIN_PATTERNS` | kosong | pola tambahan (regex, dipisah koma) di samping pola bawaan `https://capstone-sudut-kota*.vercel.app` untuk URL preview |
+| `STREAM_WATCHDOG` | `true` | watchdog proses stream; `false` = tidak ada pemulihan otomatis |
+| `STREAM_WATCHDOG_INTERVAL` | `5` | jeda pemeriksaan watchdog (detik) |
+| `STATS_COLLECTOR` | `true` | kolektor sampel statistik tiap 60 detik |
+| `NODE_DB` | `data/sudutkota.db` | berkas SQLite konfigurasi kamera (relatif terhadap `backend/`) |
+| `RTDB_ROOT` | `cctv_data` | akar semua data di Realtime Database (`<root>/akun`, `<root>/statistik`, `cam_<channel>`) |
+
+**Stream, engine AI, dan skrip**
+
+| Variabel | Default | Efek |
+|---|---|---|
+| `RTSP_URL` / `RTSP_URL_TEMPLATE` | kosong | sumber untuk `main_ai.py` bila dijalankan manual (di produksi URL dikirim `engine_manager.py` lewat environment proses anak) |
+| `HLS_OUT_DIR` | `backend/media/hls` | akar keluaran HLS engine |
+| `AI_ENGINE` | aktif bila bobot YOLO ada | `false` mematikan engine dan panel AI kembali ke stream ffmpeg polos |
+| `AI_LOWLIGHT` / `AI_YOLO` / `AI_RTDB` | `true` | sakelar bawaan modul saat engine start; nilai per node menang |
+| `AI_LOWLIGHT_MODEL` | `mobile_mirnet` | varian low-light bawaan (katalog lengkap: `GET /api/ai`) |
+| `AI_DEVICE` | `auto` | `cuda` atau `cpu`; `auto` memilih GPU bila tersedia |
+| `AI_MAX_SIDE` | `0` | batas sisi frame keluaran; `0` = resolusi sumber apa adanya |
+| `AI_AI_SIDE` | `960` | sisi kerja low-light + YOLO (CPU memakai 640) |
+| `AI_YOLO_IMGSZ` | `640` | ukuran inference YOLO |
+| `AI_YOLO_CONF` | `0.44` | ambang confidence YOLO |
+| `AI_YOLO_IOU` | `0.5` | ambang IoU untuk dedupe antar-kelas setelah NMS |
+| `AI_ENCODER` | `auto` | encoder ffmpeg (`h264_nvenc`, `libx264`, …) |
+| `AI_CRF` | `0` | `0` = kualitas otomatis (CRF 26 untuk NVENC, bawaan libx264 bila bukan) |
+| `AI_HLS_GOP` | `12` | panjang GOP; menentukan latensi segmen |
+| `AI_CPU_THREADS` | `0` | `0` = jumlah core mesin |
+| `AI_SOURCE_BUFFER` | `3` | panjang buffer pembaca RTSP (frame) |
+| `AI_ENHANCE_HZ` | `6.0` CUDA / `1.5` CPU | laju low-light per detik |
+| `IG_HANDLES` | `dishub_kotapekalongan,pjukotapekalongan` | akun Instagram yang di-scrape |
+| `PUBLIC_BACKEND_URL` | diisi `funnel_serve.py` | alamat backend publik untuk `sync_public_config.py` (menulis `public-config.js` + rewrite `vercel.json`) |
+| `TAILSCALE_EXE` | dicari di `PATH` | path `tailscale.exe` bila tidak ada di `PATH` |
+
+`SK_NO_FUNNEL=1` dan `SK_NO_OPEN=1` bukan setelan backend melainkan sakelar launcher
+(`start-backend.bat` / `start-frontend.bat`) yang dipakai skrip uji.
+
 ## Sumber stream: satu RTSP
 
 Setiap node menyimpan satu URL: `rtsp` (kolom `rtsp` di SQLite). Halaman Live CCTV
@@ -1234,6 +1299,7 @@ berkas `.env` yang tersalin tidak boleh diam-diam mengubahnya.
 | `STREAM_AUTOSTART` | `True` (stream node aktif dinyalakan saat backend start) | `backend/app.py` |
 | `ALLOW_TEST_SOURCES` | `False` (hanya `rtsp://`/`rtsps://` diterima) | `backend/nodes.py` |
 | `IG_CACHE_SECONDS` | `300` (maksimal sekali scrape per 5 menit) | `backend/social/instagram.py` |
+| `RETRY_AFTER_ERROR` | `60` (detik; jeda sebelum scrape Instagram dicoba lagi setelah gagal) | `backend/social/instagram.py` |
 
 `TOKEN_CLOCK_SKEW_SECONDS` (10 detik, `backend/auth.py`) bukan setelan operator melainkan
 toleransi verifikasi: `google-auth` menolak token yang `iat`-nya beberapa detik di masa depan
