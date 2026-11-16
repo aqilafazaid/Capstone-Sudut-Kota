@@ -721,6 +721,11 @@ if __name__ == "__main__":
         print("[STATS] Kolektor dimatikan lewat STATS_COLLECTOR=false.")
     else:
         stats_store.start_collector()
+    try:
+        if social_instagram.warm():
+            print("[SOSMED] Cache Instagram basi: scrape latar dimulai.")
+    except Exception as exc:  # jangan gagalkan start karena feed
+        print(f"[SOSMED] Gagal memulai scrape latar: {type(exc).__name__}: {exc}")
     print(f"Sudut Kota API v{APP_VERSION} -> http://{HOST}:{PORT}")
     if access_log:
         print(f"[backend] access log: {access_log}  (jangan menyeleksi jendela ini)")

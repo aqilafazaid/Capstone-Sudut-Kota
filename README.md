@@ -829,13 +829,28 @@ tidak ada input manual, tidak ada kartu contoh.
   daftar akun (default kedua akun di atas). Scrape yang berhenti di tengah menulis cache
   `partial` dengan `fetched_at` lama, dan cache parsial **tidak** dianggap segar — pengunjung
   tidak pernah menerima setengah feed.
+- **Tidak menahan request (stale-while-revalidate)**: scrape Playwright butuh **25-30 detik**,
+  jadi `/api/sosmed/instagram` tidak pernah menunggunya. Saat cache basi, isi cache lama
+  dibalas dalam **<100 ms** (`stale: true`, `refreshing: true`) sementara scrape berjalan di
+  thread latar; saat cache belum ada sama sekali balasan berisi `posts: []` + `refreshing: true`.
+  Konsekuensinya: beranda tidak lagi menampilkan skeleton 30 detik pada kunjungan pertama, dan
+  refresh di tengah scrape tidak mengosongkan feed seperti dulu (respons `scrape berjalan`).
+  Hanya satu scrape berjalan pada satu waktu (`threading.Lock`); bila scrape gagal, percobaan
+  berikutnya ditahan `RETRY_AFTER_ERROR` = 60 detik dan `errors[]` dilaporkan, supaya klien yang
+  mengulang cepat tidak meluncurkan Chromium tiap dua detik. `warm()` dipanggil saat backend
+  start untuk mengisi cache yang basi tanpa menunggu pengunjung. `refresh(force=True)` tetap
+  sinkron (dipakai tes/CLI).
 - **Refresh di halaman**: `sosmed.js` melakukan refresh senyap tiap **5 menit** hanya untuk area
   feed (`#instagram-feed`, pager, teks "Diperbarui"), tanpa reload halaman dan tanpa skeleton.
   Status **Selengkapnya** yang sedang terbuka dan halaman pager yang aktif dipertahankan; timer
-  berhenti saat tab tidak aktif dan menyusul sekali ketika tab kembali terlihat.
+  berhenti saat tab tidak aktif dan menyusul sekali ketika tab kembali terlihat. Selama backend
+  melaporkan `refreshing`, halaman mengulang sendiri tiap **2 detik** (maksimal `RETRY_MAX` = 20
+  kali) dan tiap **5 detik** bila cache lama sudah tampil, jadi feed muncul tanpa refresh manual;
+  teks "Diperbarui" diberi akhiran **· memperbarui** sampai hasil baru tiba. Status ini hanya
+  jalan saat tab terlihat — `visibilitychange` yang melanjutkannya.
 - **API**: `GET /api/sosmed/instagram?page=N&per_page=6` → `posts[]` (`handle`, `kind`, `code`,
   `permalink`, `caption`, `date`, `taken_at`, `likes`, `image_ok`), `page`, `pages`, `total`,
-  `fetched_at`, `errors[]`.
+  `fetched_at`, `errors[]`, `refreshing`, `stale`.
 - **Tanggal unggah**: diturunkan dari shortcode post (41 bit pertama media id = milidetik epoch
   yang digeser `1314220021721` ms), jadi tersedia untuk semua post tanpa API. Setiap kartu
   menampilkan **jumlah suka dan tanggal** sekaligus, mis. `18 suka · 12 Maret 2026`.
@@ -1013,7 +1028,7 @@ backend/.venv/Scripts/python.exe test/test_ai_models.py        # 6 enhancer + YO
 backend/.venv/Scripts/python.exe test/test_yolo_kelas.py       # kelas YOLO baru + label web (akun & node sementara)
 backend/.venv/Scripts/python.exe test/test_ai_engine_e2e.py    # file gelap -> HLS AI + ai_stats
 backend/.venv/Scripts/python.exe test/test_ai_control.py       # katalog AI + POST ai_status (mock RTDB)
-backend/.venv/Scripts/python.exe test/test_sosmed_feed.py      # pagination + cache + sanitasi feed Instagram
+backend/.venv/Scripts/python.exe test/test_sosmed_feed.py      # pagination + cache + responsivitas + sanitasi feed Instagram
 backend/.venv/Scripts/python.exe test/test_hls_sink_rate.py    # server_fps == laju frame yang tampil
 backend/.venv/Scripts/python.exe test/test_rtsp_crypto.py      # AES-256-GCM: enkripsi, dekripsi, tamper, kunci
 backend/.venv/Scripts/python.exe test/test_rtsp_crud_api.py    # CRUD /api/nodes: disk terenkripsi, GET terdekripsi

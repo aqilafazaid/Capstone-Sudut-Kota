@@ -13,7 +13,10 @@ kedaluwarsa cache:
    pada URL CDN bertanda tangan yang kedaluwarsa;
 4. simpan hasilnya di ``data/instagram-cache.json``.
 
-Halaman lalu memanggil :func:`page` dan tidak pernah memicu scrape sendiri.
+Scrape tidak pernah menahan request HTTP: :func:`page` membalas dari cache
+dalam hitungan milidetik dan scrape berjalan di thread latar (stale-while-
+revalidate). Pengunjung pertama pada cache kosong mendapat ``refreshing:
+true`` dan mengulang beberapa detik kemudian, bukan menunggu 25-30 detik.
 """
 
 from __future__ import annotations
@@ -44,6 +47,12 @@ PAUSE_SECONDS = 1.0
 IG_CACHE_SECONDS = 300
 
 _lock = threading.Lock()
+_worker: threading.Thread | None = None
+_last_error: str | None = None
+_last_attempt = 0.0
+# Jeda sebelum mencoba scrape lagi setelah gagal, supaya klien yang mengulang
+# cepat tidak meluncurkan Chromium baru setiap dua detik.
+RETRY_AFTER_ERROR = 60
 
 
 def handles() -> list[str]:
@@ -336,33 +345,100 @@ def _purge_old_images(keep: set[str]) -> None:
                 pass
 
 
-def refresh(force: bool = False) -> dict[str, Any]:
-    """Kembalikan cache; scrape ulang bila kedaluwarsa atau ``force``."""
-    cached = _read_cache()
-    fresh_enough = False
-    if cached.get("fetched_at") and cached.get("posts") and not cached.get("partial"):
-        try:
-            age = datetime.now() - datetime.fromisoformat(cached["fetched_at"])
-            fresh_enough = age.total_seconds() < cache_seconds()
-        except ValueError:
-            fresh_enough = False
+def _fresh_enough(cached: dict[str, Any]) -> bool:
+    """True bila cache punya hasil utuh yang belum lewat IG_CACHE_SECONDS."""
+    if not (cached.get("fetched_at") and cached.get("posts") and not cached.get("partial")):
+        return False
+    try:
+        age = datetime.now() - datetime.fromisoformat(cached["fetched_at"])
+    except ValueError:
+        return False
+    return age.total_seconds() < cache_seconds()
 
-    if fresh_enough and not force:
+
+def scraping() -> bool:
+    """True selama scrape latar masih berjalan."""
+    return _worker is not None and _worker.is_alive()
+
+
+def _scrape_worker() -> None:
+    """Scrape di thread latar; lock selalu dilepas saat selesai."""
+    global _worker, _last_error
+    try:
+        scrape()
+        _last_error = None
+    except Exception as exc:  # Playwright/browser tidak siap
+        _last_error = f"{type(exc).__name__}: {exc}"
+    finally:
+        _worker = None
+        _lock.release()
+
+
+def _start_scrape() -> bool:
+    """Mulai scrape latar satu kali; False bila sudah ada yang berjalan."""
+    global _worker, _last_attempt
+    if scraping() or not _lock.acquire(blocking=False):
+        return False
+    try:
+        _worker = threading.Thread(target=_scrape_worker, name="ig-scrape", daemon=True)
+        _last_attempt = time.monotonic()
+        _worker.start()
+    except Exception as exc:  # thread tidak bisa dibuat
+        _worker = None
+        _lock.release()
+        _last_error = f"{type(exc).__name__}: {exc}"
+        return False
+    return True
+
+
+def _may_attempt() -> bool:
+    """True bila percobaan scrape baru boleh dimulai (jeda setelah gagal)."""
+    if _last_error is None:
+        return True
+    return (time.monotonic() - _last_attempt) >= RETRY_AFTER_ERROR
+
+
+def warm() -> bool:
+    """Mulai scrape latar saat backend start bila cache belum segar."""
+    if _fresh_enough(_read_cache()):
+        return False
+    return _start_scrape()
+
+
+def refresh(force: bool = False) -> dict[str, Any]:
+    """Kembalikan cache segera; scrape Playwright berjalan di latar.
+
+    Request HTTP tidak boleh menunggu scrape (25-30 detik): dengan cache basi
+    isinya langsung dipakai sementara scrape berjalan, dan tanpa cache sama
+    sekali balasan membawa ``refreshing: True`` supaya klien mengulang
+    beberapa detik lagi. ``force=True`` tetap sinkron untuk CLI dan tes.
+    """
+    cached = _read_cache()
+
+    if _fresh_enough(cached) and not force:
         return cached
 
-    if not _lock.acquire(blocking=False):
-        # Scrape lain sedang jalan: pakai cache lama bila ada.
-        return cached or {"fetched_at": None, "posts": [], "errors": ["scrape berjalan"]}
-    try:
-        try:
-            return scrape()
-        except Exception as exc:  # Playwright/browser tidak siap
-            if cached.get("posts"):
-                cached["errors"] = [f"{type(exc).__name__}: {exc}"]
-                return cached
-            return {"fetched_at": None, "posts": [], "errors": [f"{type(exc).__name__}: {exc}"]}
-    finally:
-        _lock.release()
+    if force:
+        with _lock:
+            try:
+                return scrape()
+            except Exception as exc:
+                if cached.get("posts"):
+                    cached["errors"] = [f"{type(exc).__name__}: {exc}"]
+                    return cached
+                return {"fetched_at": None, "posts": [], "errors": [f"{type(exc).__name__}: {exc}"]}
+
+    started = _start_scrape() if _may_attempt() else False
+    result = dict(cached) if cached else {"fetched_at": None, "posts": [], "errors": []}
+    result.pop("partial", None)
+    result["refreshing"] = started or scraping()
+    if result["refreshing"]:
+        result["errors"] = []
+    elif _last_error:
+        result["errors"] = [_last_error]
+    else:
+        result["errors"] = []
+    return result
 
 
 def page(page_no: int = 1, per_page: int = 6, force: bool = False) -> dict[str, Any]:
@@ -382,6 +458,8 @@ def page(page_no: int = 1, per_page: int = 6, force: bool = False) -> dict[str, 
         "ok": bool(posts),
         "fetched_at": data.get("fetched_at"),
         "cache_seconds": cache_seconds(),
+        "refreshing": bool(data.get("refreshing")),
+        "stale": bool(posts) and bool(data.get("refreshing")),
         "page": current,
         "pages": pages,
         "per_page": per_page,

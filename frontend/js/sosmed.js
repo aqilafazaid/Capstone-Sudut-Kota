@@ -19,8 +19,15 @@
     /* Selaras IG_CACHE_SECONDS=300 di backend; permintaan lebih sering dari ini
        tetap dilayani dari cache, jadi tidak menambah beban ke Instagram. */
     var REFRESH_MS = 5 * 60 * 1000;
+    /* Backend membalas dari cache dalam milidetik dan menjalankan scrape di
+       latar (25-30 detik). Selama scrape itu berjalan belum ada kiriman, jadi
+       halaman mengulang cepat alih-alih menampilkan "gagal" dan menunggu 5
+       menit. RETRY_MAX menjaga pengulangan tetap terbatas. */
+    var RETRY_MS = 2000;
+    var FOLLOW_UP_MS = 5000;
+    var RETRY_MAX = 20;
     var pollId = null;
-    var state = { page: 1, pages: 1, loading: false, data: null, expanded: {}, polls: 0 };
+    var state = { page: 1, pages: 1, loading: false, data: null, expanded: {}, polls: 0, retries: 0, retryId: null };
 
     function esc(text) {
         return String(text == null ? '' : text)
@@ -163,6 +170,33 @@
         });
     }
 
+    function clearRetry() {
+        if (state.retryId) {
+            clearTimeout(state.retryId);
+            state.retryId = null;
+        }
+    }
+
+    /* Ulangi permintaan dalam waktu singkat: backend mungkin masih menjalankan
+       scrape latar. Hanya jalan saat tab terlihat; visibilitychange melanjutkan
+       bila tab sempat disembunyikan. */
+    function scheduleRetry(delay) {
+        clearRetry();
+        if (state.retries >= RETRY_MAX) return;
+        state.retries += 1;
+        var wait = delay || RETRY_MS;
+        var fire = function () {
+            state.retryId = null;
+            if (document.visibilityState !== 'visible') return;
+            if (state.loading) {
+                state.retryId = setTimeout(fire, wait);
+                return;
+            }
+            load(state.page, { silent: true });
+        };
+        state.retryId = setTimeout(fire, wait);
+    }
+
     function load(page, opts) {
         var silent = !!(opts && opts.silent);
         var host = document.getElementById('instagram-feed');
@@ -184,27 +218,50 @@
                 state.data = data;
                 state.page = data.page || page;
                 state.pages = data.pages || 1;
-                if (!data.posts || !data.posts.length) {
+                var posts = data.posts || [];
+                var busy = !!data.refreshing;
+
+                if (!posts.length) {
+                    /* Backend masih scrape di latar: tahan skeleton lalu ulangi
+                       cepat, jangan tampilkan pesan gagal. */
+                    if (busy) {
+                        if (!silent) host.innerHTML = skeleton();
+                        renderPager(host, null);
+                        scheduleRetry();
+                        return;
+                    }
                     if (silent) return;  /* biarkan kartu lama tetap tampil */
                     host.innerHTML = fallback('Kiriman belum bisa dimuat dari Instagram.');
                     renderPager(host, null);
                     return;
                 }
-                host.innerHTML = data.posts.map(card).join('');
+
+                state.retries = 0;
+                clearRetry();
+                host.innerHTML = posts.map(card).join('');
                 bindCards(host);
                 renderPager(host, data);
                 var note = document.getElementById('instagram-updated');
                 if (note) {
-                    note.textContent = data.fetched_at
+                    var label = data.fetched_at
                         ? 'Diperbarui ' + timeLabel(data.fetched_at) + ' · ' + data.total + ' kiriman'
                         : data.total + ' kiriman';
+                    note.textContent = data.stale ? label + ' · memperbarui' : label;
                 }
+                /* Cache lama tampil dulu sementara scrape berjalan: ambil hasil
+                   barunya sebentar lagi, tanpa menunggu poll 5 menit. */
+                if (busy) scheduleRetry(FOLLOW_UP_MS);
             })
             .catch(function (err) {
                 console.warn('[Sosmed] gagal memuat feed:', err.message || err);
-                if (silent) return;  /* refresh latar gagal: jangan rusak tampilan */
+                if (silent) {
+                    scheduleRetry(FOLLOW_UP_MS);
+                    return;
+                }
                 host.innerHTML = fallback('Feed Instagram tidak dapat dihubungi.');
                 renderPager(host, null);
+                /* Coba lagi senyap; pesan hilang sendiri begitu berhasil. */
+                scheduleRetry(FOLLOW_UP_MS);
             })
             .finally(function () { state.loading = false; });
     }
@@ -224,6 +281,11 @@
         }, REFRESH_MS);
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState !== 'visible') return;
+            /* Belum ada kartu (scrape latar belum selesai): lanjutkan retry. */
+            if (!state.data || !(state.data.posts || []).length) {
+                scheduleRetry();
+                return;
+            }
             var stamp = state.data && state.data.fetched_at
                 ? new Date(state.data.fetched_at).getTime() : 0;
             if (Date.now() - stamp > REFRESH_MS) refreshSilently();
