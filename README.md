@@ -641,13 +641,39 @@ dengan profil di RTDB `/akun/<uid>`:
 | Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, dan AI |
 | Visitor | `visitor` | hanya Beranda, Live CCTV dan Statistik; tanpa Dashboard, Tambah Data, dan Kelola Akun |
 
+Pemetaan halaman ke fitur: Live CCTV (`cctv.html`) dan Statistik (`statistik.html`) adalah
+halaman **publik tanpa `Auth.guard`** — fitur `cctv` dan `statistik` hanya mengatur munculnya
+tautan di menu, bukan akses halamannya. Command Center (`dashboard.html`) dan Tambah Data
+(`add-data.html`) memakai `Auth.guard('dashboard')`; Kelola Akun (`akun.html`) memakai
+`Auth.guard('akun')`. Pada halaman ber-guard, pengguna tanpa sesi diarahkan ke login dan
+pengguna tanpa fitur melihat panel “Akses Fitur Dinonaktifkan”. Panel Kontrol Modul AI di
+CCTV mengikuti fitur `ai`. Beranda (`index.html`) publik tanpa guard — tamu maupun Visitor bisa
+membukanya dan tautannya selalu tampil di menu (`feature: null`). Satu-satunya tambahan: saat
+akun **Visitor** yang sudah login membuka Beranda, `App.init()` mengalihkannya ke fitur pertama
+yang ia punya (praktisnya Live CCTV), jadi Beranda tetap bisa diakses tetapi Visitor tidak
+berhenti di sana pada kunjungan itu; Visitor yang seluruh fiturnya dicabut tidak dialihkan.
+
 **Akses fitur per akun.** Selain peran, setiap profil punya field
-`akses: { cctv, statistik, dashboard, ai, akun }`. Administrator mengaturnya lewat sakelar
-di `akun.html` (kolom *Akses Fitur* dan bagian yang sama di modal Tambah/Ubah Akun).
-Peran hanya mengisi **nilai bawaan** (Administrator semua, Teknisi tanpa Kelola Akun,
-Visitor hanya CCTV + Statistik); kelima sakelar tetap bisa diubah untuk akun mana pun,
-jadi Administrator bisa memberi fitur di luar kebiasaan perannya maupun mencabutnya.
-Fitur `ai` mengatur panel **Kontrol Modul AI** di halaman CCTV: sakelar low-light dan
+`akses: { cctv, statistik, dashboard, ai, akun }`. Administrator mengaturnya lewat lima sakelar
+di `akun.html` (kolom *Akses Fitur* dan bagian yang sama di modal Tambah/Ubah Akun). Teks
+bantuan tiap sakelar di UI diambil dari `FEATURE_DESC` (`akun.js`), dan inilah padanan
+sakelar → halaman:
+
+| Sakelar | Yang dibuka |
+|---|---|
+| `cctv` | Live CCTV — menonton kamera live |
+| `statistik` | Statistik — grafik volume lalu lintas, tabel, ekspor PDF/CSV |
+| `dashboard` | Command Center **dan** Tambah Data (registrasi titik kamera) |
+| `ai` | Panel Kontrol Modul AI di halaman CCTV |
+| `akun` | Kelola Akun — akun petugas dan sakelar aksesnya |
+
+Beranda tidak punya sakelar karena publik dan tanpa guard. Peran hanya mengisi **nilai
+bawaan**: Administrator kelima-limanya, Teknisi semua kecuali `akun`, Visitor hanya `cctv`
+dan `statistik` — itulah isi baris Visitor pada tabel di atas ("Beranda, Live CCTV dan
+Statistik"), karena Beranda publik dan sisanya dua fitur tersebut. Kelima sakelar tetap bisa
+diubah untuk akun mana pun, jadi Administrator bisa memberi fitur di luar kebiasaan perannya
+maupun mencabutnya.
+Sakelar `ai` membuka panel **Kontrol Modul AI** di halaman CCTV: sakelar low-light dan
 YOLO, serta pilihan varian low-light dari katalog engine (`GET /api/ai`). Selector YOLO
 tetap bisa dibuka walau katalog hanya berisi satu bobot (`yolov8n.pt`); katalog
 menampilkan label **Yolo v8n** (dari `display_label`, bukan nama berkas), dan pilihan itu
@@ -1069,7 +1095,7 @@ backend/.venv/Scripts/python.exe test/profile_ai_pipeline.py   # waktu per tahap
 backend/.venv/Scripts/python.exe test/check_auth_cfg.py        # authorized domains + provider
 backend/.venv/Scripts/python.exe test/check_accounts.py       # Auth <-> RTDB konsisten
 backend/.venv/Scripts/python.exe test/check_sync.py           # node/statistik/akun sinkron
-backend/.venv/Scripts/python.exe test/check_readme_tree.py    # README vs repo: struktur/env/endpoint/tes (read-only)
+backend/.venv/Scripts/python.exe test/check_readme_tree.py    # README vs repo: struktur/env/peran/endpoint/tes (read-only)
 ```
 
 Aturan yang dipakai:
