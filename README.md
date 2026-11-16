@@ -639,7 +639,7 @@ dengan profil di RTDB `/akun/<uid>`:
 |---|---|---|
 | Administrator | `admin` | semua halaman, termasuk Kelola Akun |
 | Teknisi | `teknisi` | semua halaman kecuali Kelola Akun; setara Administrator untuk node, stream, dan AI |
-| Visitor | `visitor` | hanya Live CCTV dan Statistik; tanpa Dashboard, Tambah Data, Kelola Akun, atau Beranda |
+| Visitor | `visitor` | hanya Beranda, Live CCTV dan Statistik; tanpa Dashboard, Tambah Data, dan Kelola Akun |
 
 **Akses fitur per akun.** Selain peran, setiap profil punya field
 `akses: { cctv, statistik, dashboard, ai, akun }`. Administrator mengaturnya lewat sakelar
